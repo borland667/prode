@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String?
+  password             String?
+  googleId             String?              @unique
+  avatarUrl            String?
+  role                 String               @default("USER")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  groupPredictions     GroupPrediction[]
+  knockoutPredictions  KnockoutPrediction[]
+  scores               Score[]
+  tournamentMemberships TournamentMember[]
+  createdLeagues       TournamentLeague[]   @relation("LeagueCreator")
+  leagueMemberships    LeagueMember[]
+}
+
+model Tournament {
+  id                   String               @id @default(cuid())
+  name                 String
+  nameEs               String?
+  modeKey              String               @default("classic_argentinian_prode")
+  modeName             String               @default("Classic Argentinian Prode")
+  modeNameEs           String?              @default("Prode Argentino Clasico")
+  sport                String               @default("football")
+  status               String               @default("upcoming")
+  prizesEnabled        Boolean              @default(false)
+  entryFee             Float                @default(0)
+  currency             String               @default("USD")
+  accessType           String               @default("public")
+  joinCode             String?              @unique
+  startDate            DateTime?
+  endDate              DateTime?
+  closingDate          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  teams                Team[]
+  groups               Group[]
+  rounds               Round[]
+  groupPredictions     GroupPrediction[]
+  knockoutPredictions  KnockoutPrediction[]
+  groupResults         GroupResult[]
+  scores               Score[]
+  members              TournamentMember[]
+  leagues              TournamentLeague[]
+}
+
+model Team {
+  id        String     @id @default(cuid())
+  name      String
+  nameEs    String?
+  code      String?
+  flagUrl   String?
+  groupId   String
+  tournamentId String
+  group     Group      @relation(fields: [groupId], references: [id])
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+}
+
+model Group {
+  id               String            @id @default(cuid())
+  name             String
+  tournamentId     String
+  tournament       Tournament        @relation(fields: [tournamentId], references: [id])
+  teams            Team[]
+  groupPredictions GroupPrediction[]
+  groupResults     GroupResult[]
+
+  @@unique([tournamentId, name])
+}
+
+model Round {
+  id               String     @id @default(cuid())
+  name             String
+  nameEs           String?
+  order            Int
+  pointsPerCorrect Int        @default(0)
+  tournamentId     String
+  tournament       Tournament @relation(fields: [tournamentId], references: [id])
+  matches          Match[]
+
+  @@unique([tournamentId, name])
+}
+
+model Match {
+  id                   String               @id @default(cuid())
+  roundId              String
+  matchNumber          Int                  @default(0)
+  homeLabel            String?
+  awayLabel            String?
+  selectedHomeTeamId   String?
+  selectedAwayTeamId   String?
+  winner               String?
+  status               String               @default("scheduled")
+  matchDate            DateTime?
+  round                Round                @relation(fields: [roundId], references: [id])
+  knockoutPredictions  KnockoutPrediction[]
+}
+
+model GroupPrediction {
+  id           String     @id @default(cuid())
+  userId       String
+  tournamentId String
+  groupId      String
+  first        String
+  second       String
+  third        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id])
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  group        Group      @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, tournamentId, groupId])
+}
+
+model KnockoutPrediction {
+  id              String     @id @default(cuid())
+  userId          String
+  tournamentId    String
+  matchId         String
+  predictedWinner String
+  selectedHomeTeamId String?
+  selectedAwayTeamId String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  user            User       @relation(fields: [userId], references: [id])
+  tournament      Tournament @relation(fields: [tournamentId], references: [id])
+  match           Match      @relation(fields: [matchId], references: [id])
+
+  @@unique([userId, matchId])
+}
+
+model GroupResult {
+  id           String     @id @default(cuid())
+  tournamentId String
+  groupId      String
+  first        String
+  second       String
+  third        String?
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  group        Group      @relation(fields: [groupId], references: [id])
+
+  @@unique([tournamentId, groupId])
+}
+
+model Score {
+  id             String     @id @default(cuid())
+  userId         String
+  tournamentId   String
+  groupScore     Int        @default(0)
+  knockoutScore  Int        @default(0)
+  totalScore     Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User       @relation(fields: [userId], references: [id])
+  tournament     Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([userId, tournamentId])
+}
+
+model TournamentMember {
+  id           String     @id @default(cuid())
+  userId       String
+  tournamentId String
+  role         String     @default("member")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id])
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([userId, tournamentId])
+}
+
+model TournamentLeague {
+  id             String        @id @default(cuid())
+  tournamentId   String
+  createdByUserId String
+  name           String
+  description    String?
+  joinCode       String        @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  tournament     Tournament    @relation(fields: [tournamentId], references: [id])
+  createdBy      User          @relation("LeagueCreator", fields: [createdByUserId], references: [id])
+  members        LeagueMember[]
+
+  @@unique([tournamentId, name])
+}
+
+model LeagueMember {
+  id         String           @id @default(cuid())
+  leagueId   String
+  userId     String
+  role       String           @default("member")
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  league     TournamentLeague @relation(fields: [leagueId], references: [id])
+  user       User             @relation(fields: [userId], references: [id])
+
+  @@unique([leagueId, userId])
+}
