@@ -22,6 +22,7 @@ model User {
   tournamentMemberships TournamentMember[]
   createdLeagues       TournamentLeague[]   @relation("LeagueCreator")
   leagueMemberships    LeagueMember[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 model Tournament {
@@ -208,4 +209,14 @@ model LeagueMember {
   user       User             @relation(fields: [userId], references: [id])
 
   @@unique([leagueId, userId])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
 }

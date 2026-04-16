@@ -1,6 +1,6 @@
 # Prode — Sports Prediction Game
 
-A World Cup bracket prediction game where users predict group stage results and knockout round winners. Built with React, Express, PostgreSQL, and deployable to Netlify.
+A sports prediction app centered on Prode-style tournament picks, where users predict group stage results and knockout round winners. Built with React, Express, PostgreSQL, and deployable to Netlify.
 
 ## Features
 
@@ -126,11 +126,15 @@ Generate the Prisma client:
 npx prisma generate
 ```
 
-Seed the database with World Cup 2026 data:
+Seed the database with the current football tournament catalog:
 
-- Official FIFA-qualified teams and groups
-- Current app-mode Prode knockout bracket/scoring rules
-- Prize pool enabled for the seeded tournament
+- FIFA World Cup 2026
+- UEFA Euro
+- Copa América
+- AFC Asian Cup
+- Africa Cup of Nations
+- Current app-mode Prode knockout/scoring rules for each seeded tournament
+- Prize pool enabled for the seeded World Cup, disabled for the other seeded tournaments
 - Public access by default, with private-group support available from the admin panel
 
 ```bash
@@ -138,7 +142,7 @@ npm run db:seed
 ```
 
 Note:
-The seed uses the official April 2026 tournament line-up, the official FIFA 2026 Round of 32 structure, and the real best-third-place slot format used by the expanded 48-team bracket. In the prediction UI, users explicitly place the advancing third-placed teams into the eligible Round of 32 slots before picking winners.
+The World Cup seed uses the official April 2026 line-up, the official FIFA 2026 Round of 32 structure, and the real best-third-place slot format used by the expanded 48-team bracket. The other seeded tournaments are format-compatible football templates that fit the current group-stage plus knockout Prode engine. In the prediction UI, users explicitly place the advancing third-placed teams into the eligible knockout slots whenever a tournament mode uses best-third-place qualifiers.
 
 ### 6. Start the development servers
 
@@ -154,7 +158,7 @@ Vite automatically proxies `/api/*` requests to the Express server.
 
 ### 7. Open the app
 
-Go to http://localhost:5173 in your browser. You should see the Prode landing page with the World Cup 2026 tournament.
+Go to http://localhost:5173 in your browser. You should see the Prode landing page with the seeded tournament catalog, including World Cup 2026.
 
 To test registration, create an account at http://localhost:5173/register.
 
@@ -173,8 +177,22 @@ To test registration, create an account at http://localhost:5173/register.
 | `npm run db:migrate:status` | Show migration status |
 | `npm run db:push` | Push schema directly without a migration (use sparingly) |
 | `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:seed` | Seed database with WC2026 data |
+| `npm run db:seed` | Seed database with the current football tournament catalog |
 | `npm run db:studio` | Open Prisma Studio (visual DB editor) |
+
+### QA Checklist
+
+For end-to-end manual testing, use [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md).
+
+It covers:
+
+- guest and auth flows
+- password recovery
+- public/private tournament participation
+- prediction locking
+- private league lifecycle
+- admin tournament creation and result entry
+- spectator tournament views
 
 ### Tournament Access And Prizes
 
@@ -182,7 +200,8 @@ To test registration, create an account at http://localhost:5173/register.
 - Private tournaments use a join code and only members can submit predictions or view the leaderboard
 - Prize pools can be enabled or disabled per tournament
 - The admin panel lets you change access type, entry fee, currency, prize toggle, and regenerate the private join code
-- For World Cup 2026 mode, the app also supports third-place group picks plus the best-third-place Round of 32 slots
+- Tournament rules and scoring are mode-driven, so the UI should present the rules for the selected tournament mode
+- For World Cup 2026 mode and UEFA-style 24-team formats, the app also supports third-place group picks plus the best-third-place knockout slots
 
 ### Private Leagues Inside A Tournament
 
@@ -253,7 +272,7 @@ prode/
 │   ├── app.cjs          # Express API (all routes)
 │   ├── db.cjs           # Prisma client singleton
 │   ├── scoring.cjs      # Scoring engine
-│   ├── seed.cjs         # Database seeder (WC2026)
+│   ├── seed.cjs         # Database seeder (football tournament catalog)
 │   └── server.cjs       # Local dev server entry
 ├── netlify/
 │   └── functions/
@@ -278,7 +297,7 @@ prode/
 
 ## Scoring Rules
 
-Based on the classic Argentine prode format, adapted to the official FIFA 2026 bracket:
+Based on the classic Argentine prode format, with scoring shown according to the selected tournament mode:
 
 **Group Stage** (per group):
 - **4 pts** — Both teams correct, correct positions (1st and 2nd)
@@ -291,7 +310,7 @@ Based on the classic Argentine prode format, adapted to the official FIFA 2026 b
 - Points scale linearly from the earliest knockout round to the final
 - The default step is **+2 points per round**
 
-Current app-mode World Cup 2026 example:
+Current World Cup 2026 seeded mode example:
 
 | Round | Points per Correct | Max Matches | Max Points |
 |-------|-------------------|-------------|------------|

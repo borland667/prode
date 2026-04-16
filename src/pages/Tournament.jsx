@@ -4,7 +4,14 @@ import { Clock } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
-import { getModeLabel, sortGroups } from '../utils/tournament';
+import {
+  buildTeamMap,
+  getKnockoutRounds,
+  getModeLabel,
+  getRoundLabel,
+  resolveMatchParticipants,
+  sortGroups,
+} from '../utils/tournament';
 
 export default function Tournament() {
   const { id } = useParams();
@@ -170,21 +177,48 @@ export default function Tournament() {
     Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   );
   const groups = sortGroups(tournament.groups || []);
-  const canPredict = Boolean(user && tournament.access?.canSubmitPredictions);
+  const rounds = getKnockoutRounds(tournament.rounds || []);
+  const teamMap = buildTeamMap(groups);
+  const canSubmitPredictions = Boolean(user && tournament.access?.canSubmitPredictions);
+  const canManageLeagues = Boolean(user && tournament.access?.canViewPredictions);
   const isPrivate = Boolean(tournament.access?.isPrivate);
   const isMember = Boolean(tournament.access?.isMember);
+  const predictionsLocked = Boolean(tournament.access?.predictionsLocked);
   const showPrizeInfo = Boolean(tournament.prizesEnabled && tournament.entryFee);
+  const actualGroupSelections = Object.fromEntries(
+    groups
+      .filter((group) => group.result)
+      .map((group) => [
+        group.id,
+        {
+          first: group.result.first,
+          second: group.result.second,
+          third: group.result.third || '',
+        },
+      ])
+  );
+  const actualKnockoutSelections = Object.fromEntries(
+    rounds.flatMap((round) =>
+      (round.matches || []).map((match) => [match.id, match.winner || ''])
+    )
+  );
+  const statusLabel = t(`tournament.${tournament.status}`) !== `tournament.${tournament.status}`
+    ? t(`tournament.${tournament.status}`)
+    : tournament.status;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+    <div className="sport-shell min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="mb-12">
-          <h1 className="text-5xl font-bold text-white mb-6">
+          <div className="score-pill mb-5 text-emerald-200">
+            {tournament.sport || 'football'}
+          </div>
+          <h1 className="sport-display text-5xl md:text-6xl text-white mb-6">
             {tournament.name}
           </h1>
 
           <div className="grid md:grid-cols-6 gap-6 mb-8">
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.mode')}
               </p>
@@ -193,7 +227,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.access')}
               </p>
@@ -202,16 +236,16 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.status')}
               </p>
               <p className="text-white font-semibold text-lg capitalize">
-                {tournament.status}
+                {statusLabel}
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.closingDate')}
               </p>
@@ -220,7 +254,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {isPrivate ? t('tournament.members') : t('tournament.participants')}
               </p>
@@ -229,7 +263,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.prizes')}
               </p>
@@ -243,16 +277,16 @@ export default function Tournament() {
               ) : null}
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.participants')}
+                {t('tournament.predictionWindow')}
               </p>
               <p className="text-white font-semibold text-lg">
-                {tournament.participantCount || 0}
+                {predictionsLocked ? t('tournament.closedNow') : t('tournament.openNow')}
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2 flex items-center gap-2">
                 <Clock size={16} />
                 {t('home.tournamentEndsIn')}
@@ -276,7 +310,7 @@ export default function Tournament() {
           ) : null}
 
           {isPrivate && !isMember ? (
-            <div className="bg-slate-800 border border-amber-500 rounded-lg p-6 mb-8">
+            <div className="sport-panel-strong rounded-[1.75rem] border border-amber-500/60 p-6 mb-8">
               <h2 className="text-2xl font-bold text-white mb-3">
                 {t('tournament.joinTournament')}
               </h2>
@@ -287,7 +321,11 @@ export default function Tournament() {
                 {user ? t('tournament.joinToPredict') : t('tournament.signInToJoin')}
               </p>
 
-              {user ? (
+              {predictionsLocked ? (
+                <p className="text-white font-semibold">
+                  {t('tournament.joinClosed')}
+                </p>
+              ) : user ? (
                 <div className="flex flex-col sm:flex-row gap-4">
                   <input
                     type="text"
@@ -299,7 +337,7 @@ export default function Tournament() {
                   <button
                     onClick={handleJoinTournament}
                     disabled={joining}
-                    className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+                    className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] disabled:opacity-50 transition"
                   >
                     {joining ? t('tournament.joining') : t('tournament.joinNow')}
                   </button>
@@ -307,23 +345,23 @@ export default function Tournament() {
               ) : (
                 <Link
                   to="/login"
-                  className="inline-flex px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition"
+                  className="sport-button inline-flex px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] transition"
                 >
                   {t('auth.login')}
                 </Link>
               )}
 
               <p className="text-gray-400 text-sm mt-4">
-                {t('tournament.joinHelp')}
+                {predictionsLocked ? t('tournament.predictionsClosedHelp') : t('tournament.joinHelp')}
               </p>
             </div>
           ) : null}
 
-          {canPredict ? (
+          {canSubmitPredictions ? (
             <div className="flex gap-4">
               <button
                 onClick={() => navigate(`/tournament/${id}/predict`)}
-                className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition"
+                className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] transition"
               >
                 {hasPredictions ? t('predict.makePredictions') : t('home.enterPredictions')}
               </button>
@@ -331,24 +369,43 @@ export default function Tournament() {
               {hasPredictions && (
                 <Link
                   to={`/leaderboard/${id}`}
-                  className="px-6 py-3 border-2 border-emerald-500 text-emerald-400 rounded-lg font-semibold hover:bg-emerald-500 hover:text-white transition"
+                  className="sport-button-secondary px-6 py-3 text-emerald-300 rounded-full font-bold hover:bg-white/5 transition"
                 >
                   {t('home.viewLeaderboard')}
                 </Link>
               )}
             </div>
+          ) : user && isMember && predictionsLocked ? (
+            <div className="sport-panel rounded-[1.75rem] border border-amber-500/30 p-6">
+              <h2 className="text-2xl font-bold text-white mb-3">
+                {t('tournament.predictionsClosed')}
+              </h2>
+              <p className="text-gray-300 mb-5">
+                {t('tournament.predictionsClosedHelp')}
+              </p>
+              <div className="flex flex-wrap gap-4">
+                {hasPredictions ? (
+                  <Link
+                    to={`/leaderboard/${id}`}
+                    className="sport-button-secondary px-6 py-3 text-emerald-300 rounded-full font-bold hover:bg-white/5 transition"
+                  >
+                    {t('home.viewLeaderboard')}
+                  </Link>
+                ) : null}
+              </div>
+            </div>
           ) : null}
         </div>
 
-        {canPredict ? (
+        {canManageLeagues ? (
           <div className="mb-12">
-            <h2 className="text-3xl font-bold text-white mb-8">
+            <h2 className="sport-display text-4xl text-white mb-8">
               {t('tournament.leagues')}
             </h2>
 
             <div className="grid lg:grid-cols-2 gap-8 mb-8">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="text-xl font-bold text-white mb-3">
+              <div className="sport-panel rounded-[1.75rem] p-6">
+                <h3 className="sport-display text-2xl text-white mb-3">
                   {t('tournament.createLeague')}
                 </h3>
                 <p className="text-gray-400 mb-6">
@@ -372,15 +429,15 @@ export default function Tournament() {
                   <button
                     onClick={handleCreateLeague}
                     disabled={creatingLeague}
-                    className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+                    className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] disabled:opacity-50 transition"
                   >
                     {creatingLeague ? t('tournament.creatingLeague') : t('tournament.createLeagueNow')}
                   </button>
                 </div>
               </div>
 
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                <h3 className="text-xl font-bold text-white mb-3">
+              <div className="sport-panel rounded-[1.75rem] p-6">
+                <h3 className="sport-display text-2xl text-white mb-3">
                   {t('tournament.joinLeague')}
                 </h3>
                 <p className="text-gray-400 mb-6">
@@ -397,7 +454,7 @@ export default function Tournament() {
                   <button
                     onClick={handleJoinLeague}
                     disabled={joiningLeague}
-                    className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+                    className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] disabled:opacity-50 transition"
                   >
                     {joiningLeague ? t('tournament.joining') : t('tournament.joinLeagueNow')}
                   </button>
@@ -405,8 +462,8 @@ export default function Tournament() {
               </div>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-white mb-6">
+            <div className="sport-panel rounded-[1.75rem] p-6">
+              <h3 className="sport-display text-2xl text-white mb-6">
                 {t('tournament.yourLeagues')}
               </h3>
               {leagues.length === 0 ? (
@@ -416,9 +473,9 @@ export default function Tournament() {
                   {leagues.map((league) => (
                     <div
                       key={league.id}
-                      className="bg-slate-900 border border-slate-700 rounded-lg p-5"
+                      className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-5"
                     >
-                      <h4 className="text-lg font-bold text-white mb-2">{league.name}</h4>
+                      <h4 className="sport-display text-xl text-white mb-2">{league.name}</h4>
                       {league.description ? (
                         <p className="text-gray-400 mb-4">{league.description}</p>
                       ) : null}
@@ -432,7 +489,7 @@ export default function Tournament() {
                       </div>
                       <Link
                         to={`/league/${league.id}`}
-                        className="inline-flex px-4 py-2 border-2 border-emerald-500 text-emerald-400 rounded-lg font-semibold hover:bg-emerald-500 hover:text-white transition"
+                        className="sport-button-secondary inline-flex px-4 py-2 rounded-full text-emerald-300 font-bold hover:bg-white/5 transition"
                       >
                         {t('tournament.openLeague')}
                       </Link>
@@ -445,7 +502,7 @@ export default function Tournament() {
         ) : null}
 
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-white mb-8">
+            <h2 className="sport-display text-4xl text-white mb-8">
             {t('tournament.groups')}
           </h2>
 
@@ -453,18 +510,21 @@ export default function Tournament() {
             {groups.map((group) => (
               <div
                 key={group.id}
-                className="bg-slate-800 border border-slate-700 rounded-lg p-6"
+                className="sport-panel sport-pitch rounded-[1.75rem] p-6"
               >
-                <h3 className="text-xl font-bold text-emerald-400 mb-4">
+                <div className="score-pill mb-4 text-emerald-200">
+                  {group.name}
+                </div>
+                <h3 className="sport-display text-2xl text-white mb-4">
                   {group.name}
                 </h3>
 
                 <div className="space-y-2">
                   {group.teams?.length ? (
-                    group.teams.map((team, index) => (
+                    getGroupDisplayTeams(group, actualGroupSelections, teamMap).map((team, index) => (
                       <div
                         key={team.id}
-                        className="flex items-center justify-between p-3 bg-slate-900 rounded border border-slate-700"
+                        className="flex items-center justify-between p-3 bg-slate-950/70 rounded-2xl border border-white/8"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-gray-500 font-semibold w-6">
@@ -473,7 +533,7 @@ export default function Tournament() {
                           <span className="text-white">{team.name}</span>
                         </div>
                         <span className="text-gray-400 text-sm">
-                          {team.code || ''}
+                          {group.result && index < 3 ? positionLabel(index) : team.code || ''}
                         </span>
                       </div>
                     ))
@@ -486,9 +546,80 @@ export default function Tournament() {
           </div>
         </div>
 
-        {canPredict && !hasPredictions && (
-          <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 border border-emerald-700 rounded-lg p-12 text-center">
-            <h3 className="text-3xl font-bold text-white mb-4">
+        {rounds.length ? (
+          <div className="mb-12">
+            <h2 className="sport-display text-4xl text-white mb-8">
+              {t('tournament.knockoutBracket')}
+            </h2>
+
+            <div className="space-y-8">
+              {rounds.map((round) => (
+                <div key={round.id} className="sport-panel rounded-[1.75rem] p-6">
+                  <h3 className="sport-display text-2xl text-white mb-6">
+                    {getRoundLabel(round, t)}
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {(round.matches || []).map((match) => {
+                      const matchup = resolveMatchParticipants({
+                        match,
+                        groups,
+                        rounds,
+                        groupSelections: actualGroupSelections,
+                        knockoutSelections: actualKnockoutSelections,
+                        slotSelections: {
+                          [match.homeLabel]: match.selectedHomeTeamId || '',
+                          [match.awayLabel]: match.selectedAwayTeamId || '',
+                        },
+                        teamMap,
+                      });
+
+                      return (
+                        <div
+                          key={match.id}
+                          className="rounded-[1.5rem] border border-white/8 bg-slate-950/60 p-5"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="score-pill text-emerald-200">{match.code}</span>
+                            <span className="text-sm text-gray-400 capitalize">
+                              {match.status}
+                            </span>
+                          </div>
+
+                          <div className="space-y-3 mb-4">
+                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.home.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/[0.02]'}`}>
+                              <span className="text-white">
+                                {matchup.home.teamName || matchup.home.slotLabel || match.homeLabel}
+                              </span>
+                              {match.winner === matchup.home.teamId ? (
+                                <span className="text-emerald-300 font-semibold">
+                                  {t('tournament.winner')}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.away.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/[0.02]'}`}>
+                              <span className="text-white">
+                                {matchup.away.teamName || matchup.away.slotLabel || match.awayLabel}
+                              </span>
+                              {match.winner === matchup.away.teamId ? (
+                                <span className="text-emerald-300 font-semibold">
+                                  {t('tournament.winner')}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {canSubmitPredictions && !hasPredictions && (
+          <div className="sport-panel-strong rounded-[2rem] p-12 text-center">
+            <h3 className="sport-display text-4xl text-white mb-4">
               {t('tournament.makeYourPredictions')}
             </h3>
             <p className="text-emerald-200 mb-8 text-lg">
@@ -496,7 +627,7 @@ export default function Tournament() {
             </p>
             <button
               onClick={() => navigate(`/tournament/${id}/predict`)}
-              className="px-8 py-4 bg-white text-emerald-600 rounded-lg font-semibold hover:bg-gray-100 transition"
+              className="sport-button px-8 py-4 text-slate-950 rounded-full font-bold hover:scale-[1.02] transition"
             >
               {t('tournament.startPredicting')}
             </button>
@@ -505,4 +636,37 @@ export default function Tournament() {
       </div>
     </div>
   );
+}
+
+function getGroupDisplayTeams(group, groupSelections, teamMap) {
+  if (!group.result) {
+    return group.teams || [];
+  }
+
+  const orderedTeamIds = [
+    groupSelections[group.id]?.first,
+    groupSelections[group.id]?.second,
+    groupSelections[group.id]?.third,
+  ].filter(Boolean);
+  const orderedTeams = orderedTeamIds
+    .map((teamId) => teamMap[teamId])
+    .filter(Boolean);
+  const remainingTeams = (group.teams || []).filter(
+    (team) => !orderedTeamIds.includes(team.id)
+  );
+
+  return [...orderedTeams, ...remainingTeams];
+}
+
+function positionLabel(index) {
+  if (index === 0) {
+    return '#1';
+  }
+  if (index === 1) {
+    return '#2';
+  }
+  if (index === 2) {
+    return '#3';
+  }
+  return '';
 }

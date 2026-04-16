@@ -69,10 +69,13 @@ export default function Leaderboard() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+    <div className="sport-shell min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="mb-12">
-          <h1 className="text-5xl font-bold text-white mb-6">
+          <div className="score-pill mb-5 text-emerald-200">
+            Standings
+          </div>
+          <h1 className="sport-display text-5xl md:text-6xl text-white mb-6">
             {t('leaderboard.leaderboard')}
           </h1>
           <p className="text-gray-400 text-lg">
@@ -82,7 +85,7 @@ export default function Leaderboard() {
 
         {tournament?.prizesEnabled && tournament?.entryFee ? (
           <div className="grid md:grid-cols-4 gap-6 mb-12">
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.prizePool')}
               </p>
@@ -91,7 +94,7 @@ export default function Leaderboard() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.participants')}
               </p>
@@ -100,7 +103,7 @@ export default function Leaderboard() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.firstPlace')}
               </p>
@@ -109,7 +112,7 @@ export default function Leaderboard() {
               </p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+            <div className="sport-panel rounded-[1.6rem] p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.secondPlace')}
               </p>
@@ -119,23 +122,23 @@ export default function Leaderboard() {
             </div>
           </div>
         ) : tournament ? (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-12">
+          <div className="sport-panel rounded-[1.6rem] p-6 mb-12">
             <p className="text-gray-300">{t('leaderboard.prizesDisabled')}</p>
           </div>
         ) : null}
 
         {players.length === 0 ? (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-12 text-center">
+          <div className="sport-panel rounded-[1.75rem] p-12 text-center">
             <p className="text-gray-400 text-lg">
               {t('leaderboard.noPlayers')}
             </p>
           </div>
         ) : (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+          <div className="sport-panel-strong rounded-[1.9rem] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-700 bg-slate-900">
+                  <tr className="border-b border-white/10 bg-slate-950/80">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
                       {t('leaderboard.rank')}
                     </th>

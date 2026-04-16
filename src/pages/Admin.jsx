@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { get, patch, post } from '../utils/api';
+import { get, patch, post, put } from '../utils/api';
 import {
   buildTeamMap,
   getEligibleBestThirdGroups,
@@ -12,6 +12,124 @@ import {
   resolveMatchParticipants,
   sortGroups,
 } from '../utils/tournament';
+
+const DEFAULT_GROUPS_TEMPLATE = JSON.stringify(
+  [
+    {
+      name: 'A',
+      teams: [
+        { name: 'Team 1', code: 'T1' },
+        { name: 'Team 2', code: 'T2' },
+        { name: 'Team 3', code: 'T3' },
+        { name: 'Team 4', code: 'T4' },
+      ],
+    },
+  ],
+  null,
+  2
+);
+
+const DEFAULT_ROUNDS_TEMPLATE = JSON.stringify(
+  [
+    {
+      name: 'round_of_16',
+      nameEs: 'Octavos de Final',
+      order: 1,
+      pointsPerCorrect: 2,
+      matches: [
+        { matchNumber: 1, homeLabel: '1A', awayLabel: '2B' },
+        { matchNumber: 2, homeLabel: '1B', awayLabel: '2A' },
+      ],
+    },
+  ],
+  null,
+  2
+);
+
+function toDateTimeLocalValue(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const pad = (input) => String(input).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function createEmptyBuilderForm() {
+  return {
+    name: '',
+    nameEs: '',
+    sport: 'football',
+    modeKey: 'classic_argentinian_prode',
+    modeName: 'Classic Argentinian Prode',
+    modeNameEs: 'Prode Argentino Clasico',
+    status: 'upcoming',
+    prizesEnabled: false,
+    entryFee: 0,
+    currency: 'USD',
+    accessType: 'public',
+    joinCode: '',
+    startDate: '',
+    endDate: '',
+    closingDate: '',
+    groupsJson: DEFAULT_GROUPS_TEMPLATE,
+    roundsJson: DEFAULT_ROUNDS_TEMPLATE,
+  };
+}
+
+function buildBuilderFormFromTournament(tournament) {
+  return {
+    name: tournament?.name || '',
+    nameEs: tournament?.nameEs || '',
+    sport: tournament?.sport || 'football',
+    modeKey: tournament?.mode?.key || 'classic_argentinian_prode',
+    modeName: tournament?.mode?.name || 'Classic Argentinian Prode',
+    modeNameEs: tournament?.mode?.nameEs || 'Prode Argentino Clasico',
+    status: tournament?.status || 'upcoming',
+    prizesEnabled: Boolean(tournament?.prizesEnabled),
+    entryFee: tournament?.entryFee || 0,
+    currency: tournament?.currency || 'USD',
+    accessType: tournament?.accessType || 'public',
+    joinCode: tournament?.joinCode || '',
+    startDate: toDateTimeLocalValue(tournament?.startDate),
+    endDate: toDateTimeLocalValue(tournament?.endDate),
+    closingDate: toDateTimeLocalValue(tournament?.closingDate),
+    groupsJson: JSON.stringify(
+      (tournament?.groups || []).map((group) => ({
+        name: group.name,
+        teams: (group.teams || []).map((team) => ({
+          name: team.name,
+          nameEs: team.nameEs || '',
+          code: team.code || '',
+          flagUrl: team.flagUrl || '',
+        })),
+      })),
+      null,
+      2
+    ),
+    roundsJson: JSON.stringify(
+      (tournament?.rounds || []).map((round) => ({
+        name: round.name,
+        nameEs: round.nameEs || '',
+        order: round.order,
+        pointsPerCorrect: round.pointsPerCorrect,
+        matches: (round.matches || []).map((match) => ({
+          matchNumber: match.matchNumber,
+          homeLabel: match.homeLabel,
+          awayLabel: match.awayLabel,
+          matchDate: match.matchDate ? toDateTimeLocalValue(match.matchDate) : '',
+        })),
+      })),
+      null,
+      2
+    ),
+  };
+}
 
 export default function Admin() {
   const { t } = useLanguage();
@@ -34,12 +152,21 @@ export default function Admin() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [builderMode, setBuilderMode] = useState('create');
+  const [builderSaving, setBuilderSaving] = useState(false);
+  const [builderError, setBuilderError] = useState('');
+  const [builderForm, setBuilderForm] = useState(createEmptyBuilderForm);
+
+  const loadTournaments = async () => {
+    const data = await get('/tournaments');
+    setTournaments(data || []);
+    return data || [];
+  };
 
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const data = await get('/tournaments');
-        setTournaments(data || []);
+        await loadTournaments();
       } catch (err) {
         setError(err.message);
       } finally {
@@ -55,6 +182,9 @@ export default function Admin() {
       setTournament(null);
       setGroupResults({});
       setKnockoutResults({});
+      setBuilderMode('create');
+      setBuilderError('');
+      setBuilderForm(createEmptyBuilderForm());
       setSettings({
         prizesEnabled: false,
         entryFee: 0,
@@ -97,6 +227,9 @@ export default function Admin() {
 
         setGroupResults(nextGroupResults);
         setKnockoutResults(nextKnockoutResults);
+        setBuilderMode('edit');
+        setBuilderError('');
+        setBuilderForm(buildBuilderFormFromTournament(data));
         setSettings({
           prizesEnabled: Boolean(data.prizesEnabled),
           entryFee: data.entryFee || 0,
@@ -223,6 +356,86 @@ export default function Admin() {
     }
   };
 
+  const handleBuilderFieldChange = (field, value) => {
+    setBuilderForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const parseBuilderPayload = () => {
+    let groups;
+    let rounds;
+
+    try {
+      groups = JSON.parse(builderForm.groupsJson);
+    } catch {
+      throw new Error(`${t('admin.groupsJsonLabel')} must be valid JSON`);
+    }
+
+    try {
+      rounds = JSON.parse(builderForm.roundsJson);
+    } catch {
+      throw new Error(`${t('admin.roundsJsonLabel')} must be valid JSON`);
+    }
+
+    return {
+      name: builderForm.name,
+      nameEs: builderForm.nameEs,
+      sport: builderForm.sport,
+      modeKey: builderForm.modeKey,
+      modeName: builderForm.modeName,
+      modeNameEs: builderForm.modeNameEs,
+      status: builderForm.status,
+      prizesEnabled: builderForm.prizesEnabled,
+      entryFee: Number(builderForm.entryFee || 0),
+      currency: builderForm.currency,
+      accessType: builderForm.accessType,
+      joinCode: builderForm.joinCode,
+      startDate: builderForm.startDate || null,
+      endDate: builderForm.endDate || null,
+      closingDate: builderForm.closingDate || null,
+      groups,
+      rounds,
+    };
+  };
+
+  const handleSaveStructure = async () => {
+    setBuilderSaving(true);
+    setBuilderError('');
+    setError('');
+    setSuccess('');
+
+    try {
+      const payload = parseBuilderPayload();
+      const response =
+        builderMode === 'edit' && selectedTournament
+          ? await put(`/tournaments/${selectedTournament}/structure`, payload)
+          : await post('/tournaments', payload);
+
+      const refreshedTournaments = await loadTournaments();
+      const nextTournamentId = response?.tournament?.id || selectedTournament || refreshedTournaments[0]?.id || '';
+
+      if (nextTournamentId) {
+        setSelectedTournament(nextTournamentId);
+      }
+
+      if (response?.tournament) {
+        setTournament(response.tournament);
+        setBuilderMode('edit');
+        setBuilderForm(buildBuilderFormFromTournament(response.tournament));
+      }
+
+      setSuccess(
+        builderMode === 'edit' ? t('admin.structureSaved') : t('admin.structureCreated')
+      );
+    } catch (err) {
+      setBuilderError(err.message);
+    } finally {
+      setBuilderSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -241,6 +454,265 @@ export default function Admin() {
             {success}
           </div>
         ) : null}
+
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                {t('admin.tournamentBuilder')}
+              </h2>
+              <p className="text-gray-400 max-w-3xl">
+                {t('admin.tournamentBuilderHelp')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTournament('');
+                setBuilderMode('create');
+                setBuilderError('');
+                setBuilderForm(createEmptyBuilderForm());
+              }}
+              className="px-5 py-3 border-2 border-slate-600 text-white rounded-lg font-semibold hover:border-emerald-500 transition"
+            >
+              {t('admin.newTournament')}
+            </button>
+          </div>
+
+          {builderError ? (
+            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
+              {builderError}
+            </div>
+          ) : null}
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.tournamentName')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.name}
+                onChange={(event) => handleBuilderFieldChange('name', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.tournamentNameEs')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.nameEs}
+                onChange={(event) => handleBuilderFieldChange('nameEs', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.sportLabel')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.sport}
+                onChange={(event) => handleBuilderFieldChange('sport', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.statusLabel')}
+              </label>
+              <select
+                value={builderForm.status}
+                onChange={(event) => handleBuilderFieldChange('status', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="upcoming">{t('tournament.upcoming')}</option>
+                <option value="active">{t('tournament.active')}</option>
+                <option value="closed">{t('tournament.closed')}</option>
+                <option value="finished">{t('tournament.finished')}</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.modeKey')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.modeKey}
+                onChange={(event) => handleBuilderFieldChange('modeKey', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.modeName')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.modeName}
+                onChange={(event) => handleBuilderFieldChange('modeName', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.modeNameEs')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.modeNameEs}
+                onChange={(event) => handleBuilderFieldChange('modeNameEs', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.accessType')}
+              </label>
+              <select
+                value={builderForm.accessType}
+                onChange={(event) => handleBuilderFieldChange('accessType', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="public">{t('admin.publicAccess')}</option>
+                <option value="private">{t('admin.privateAccess')}</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.entryFeeLabel')}
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={builderForm.entryFee}
+                onChange={(event) => handleBuilderFieldChange('entryFee', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.currencyLabel')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.currency}
+                onChange={(event) => handleBuilderFieldChange('currency', event.target.value.toUpperCase())}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.joinCode')}
+              </label>
+              <input
+                type="text"
+                value={builderForm.joinCode}
+                onChange={(event) => handleBuilderFieldChange('joinCode', event.target.value.toUpperCase())}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <label className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-900 px-4 py-3">
+              <span className="text-white font-semibold">
+                {t('admin.prizesEnabled')}
+              </span>
+              <input
+                type="checkbox"
+                checked={builderForm.prizesEnabled}
+                onChange={(event) => handleBuilderFieldChange('prizesEnabled', event.target.checked)}
+                className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+              />
+            </label>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.startDateLabel')}
+              </label>
+              <input
+                type="datetime-local"
+                value={builderForm.startDate}
+                onChange={(event) => handleBuilderFieldChange('startDate', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.endDateLabel')}
+              </label>
+              <input
+                type="datetime-local"
+                value={builderForm.endDate}
+                onChange={(event) => handleBuilderFieldChange('endDate', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.closingDateLabel')}
+              </label>
+              <input
+                type="datetime-local"
+                value={builderForm.closingDate}
+                onChange={(event) => handleBuilderFieldChange('closingDate', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.groupsJsonLabel')}
+              </label>
+              <textarea
+                rows={16}
+                value={builderForm.groupsJson}
+                onChange={(event) => handleBuilderFieldChange('groupsJson', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm text-gray-400 mb-2">
+                {t('admin.roundsJsonLabel')}
+              </label>
+              <textarea
+                rows={18}
+                value={builderForm.roundsJson}
+                onChange={(event) => handleBuilderFieldChange('roundsJson', event.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleSaveStructure}
+              disabled={builderSaving}
+              className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+            >
+              {builderSaving
+                ? t('admin.saving')
+                : builderMode === 'edit'
+                  ? t('admin.updateStructure')
+                  : t('admin.createTournament')}
+            </button>
+          </div>
+        </div>
 
         <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
           <label className="block text-lg font-semibold text-white mb-4">

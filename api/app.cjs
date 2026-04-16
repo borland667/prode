@@ -35,6 +35,8 @@ const ROUND_CODES = {
   semi_finals: 'SF',
   final: 'FINAL',
 };
+const MIN_PASSWORD_LENGTH = 8;
+const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 
 const app = express();
 
@@ -108,6 +110,10 @@ function getCookieOptions() {
 
 function generateToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
 
 function serializeUser(user) {
@@ -225,6 +231,42 @@ function normalizeAccessType(accessType) {
 
 function isValidAccessType(accessType) {
   return accessType === 'public' || accessType === 'private';
+}
+
+function normalizeTournamentStatus(status) {
+  switch (String(status || '').trim().toLowerCase()) {
+    case 'active':
+    case 'closed':
+    case 'finished':
+    case 'upcoming':
+      return String(status).trim().toLowerCase();
+    default:
+      return 'upcoming';
+  }
+}
+
+function getTournamentLifecycle(tournament) {
+  const status = normalizeTournamentStatus(tournament.status);
+  const closingDate = tournament.closingDate ? new Date(tournament.closingDate) : null;
+  const hasClosedByDate = Boolean(closingDate) && closingDate.getTime() <= Date.now();
+  const predictionsLocked =
+    status === 'closed' || status === 'finished' || hasClosedByDate;
+
+  let lockedReason = null;
+  if (status === 'finished') {
+    lockedReason = 'finished';
+  } else if (status === 'closed') {
+    lockedReason = 'closed';
+  } else if (hasClosedByDate) {
+    lockedReason = 'closing_date_passed';
+  }
+
+  return {
+    status: predictionsLocked && status !== 'finished' ? 'closed' : status,
+    predictionsOpen: !predictionsLocked,
+    predictionsLocked,
+    lockedReason,
+  };
 }
 
 function normalizeJoinCode(joinCode) {
@@ -352,6 +394,234 @@ function buildRules(tournament, rounds) {
   };
 }
 
+function createHttpError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function parseOptionalDate(value, fieldName) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw createHttpError(400, `${fieldName} must be a valid date`);
+  }
+
+  return date;
+}
+
+function normalizeTournamentStructurePayload(body = {}) {
+  const name = String(body.name || '').trim();
+  if (!name) {
+    throw createHttpError(400, 'Tournament name is required');
+  }
+
+  const entryFee = Number(body.entryFee ?? 0);
+  if (Number.isNaN(entryFee) || entryFee < 0) {
+    throw createHttpError(400, 'Entry fee must be a non-negative number');
+  }
+
+  const currency = String(body.currency || 'USD').trim().toUpperCase();
+  if (!currency) {
+    throw createHttpError(400, 'Currency is required');
+  }
+
+  const accessType = normalizeAccessType(body.accessType);
+  const joinCode = normalizeJoinCode(body.joinCode);
+  if (accessType === 'private' && joinCode && joinCode.length < 4) {
+    throw createHttpError(400, 'Join code must be at least 4 characters');
+  }
+
+  const groups = Array.isArray(body.groups) ? body.groups : [];
+  if (!groups.length) {
+    throw createHttpError(400, 'At least one group is required');
+  }
+
+  const normalizedGroups = groups.map((group, index) => {
+    const groupName = String(group?.name || '').trim();
+    if (!groupName) {
+      throw createHttpError(400, `Group ${index + 1} must have a name`);
+    }
+
+    const teams = Array.isArray(group?.teams) ? group.teams : [];
+    if (!teams.length) {
+      throw createHttpError(400, `Group ${groupName} must include at least one team`);
+    }
+
+    const normalizedTeams = teams.map((team, teamIndex) => {
+      const teamName = String(team?.name || '').trim();
+      if (!teamName) {
+        throw createHttpError(400, `Team ${teamIndex + 1} in group ${groupName} must have a name`);
+      }
+
+      return {
+        name: teamName,
+        nameEs: String(team?.nameEs || '').trim() || null,
+        code: String(team?.code || '').trim().toUpperCase() || null,
+        flagUrl: String(team?.flagUrl || '').trim() || null,
+      };
+    });
+
+    const teamNames = normalizedTeams.map((team) => team.name.toLowerCase());
+    if (new Set(teamNames).size !== teamNames.length) {
+      throw createHttpError(400, `Group ${groupName} contains duplicate team names`);
+    }
+
+    return {
+      name: groupName,
+      teams: normalizedTeams,
+    };
+  });
+
+  const groupNames = normalizedGroups.map((group) => group.name.toLowerCase());
+  if (new Set(groupNames).size !== groupNames.length) {
+    throw createHttpError(400, 'Group names must be unique');
+  }
+
+  const rounds = Array.isArray(body.rounds) ? body.rounds : [];
+  if (!rounds.length) {
+    throw createHttpError(400, 'At least one knockout round is required');
+  }
+
+  const normalizedRounds = rounds.map((round, index) => {
+    const roundName = String(round?.name || '').trim();
+    if (!roundName) {
+      throw createHttpError(400, `Round ${index + 1} must have a name`);
+    }
+
+    const order = Number(round?.order ?? index + 1);
+    if (!Number.isInteger(order) || order < 1) {
+      throw createHttpError(400, `Round ${roundName} must have a positive integer order`);
+    }
+
+    const pointsPerCorrect = Number(round?.pointsPerCorrect ?? 0);
+    if (!Number.isInteger(pointsPerCorrect) || pointsPerCorrect < 0) {
+      throw createHttpError(400, `Round ${roundName} must have a non-negative integer points value`);
+    }
+
+    const matches = Array.isArray(round?.matches) ? round.matches : [];
+    if (!matches.length) {
+      throw createHttpError(400, `Round ${roundName} must include at least one match`);
+    }
+
+    const normalizedMatches = matches.map((match, matchIndex) => {
+      const matchNumber = Number(match?.matchNumber ?? matchIndex + 1);
+      if (!Number.isInteger(matchNumber) || matchNumber < 1) {
+        throw createHttpError(400, `Round ${roundName} has an invalid match number`);
+      }
+
+      const homeLabel = String(match?.homeLabel || '').trim();
+      const awayLabel = String(match?.awayLabel || '').trim();
+      if (!homeLabel || !awayLabel) {
+        throw createHttpError(400, `Round ${roundName} match ${matchNumber} must include home and away labels`);
+      }
+
+      return {
+        matchNumber,
+        homeLabel,
+        awayLabel,
+        matchDate: parseOptionalDate(match?.matchDate, `Round ${roundName} match ${matchNumber} date`),
+      };
+    });
+
+    const matchNumbers = normalizedMatches.map((match) => match.matchNumber);
+    if (new Set(matchNumbers).size !== matchNumbers.length) {
+      throw createHttpError(400, `Round ${roundName} contains duplicate match numbers`);
+    }
+
+    return {
+      name: roundName,
+      nameEs: String(round?.nameEs || '').trim() || null,
+      order,
+      pointsPerCorrect,
+      matches: normalizedMatches,
+    };
+  });
+
+  const roundNames = normalizedRounds.map((round) => round.name.toLowerCase());
+  if (new Set(roundNames).size !== roundNames.length) {
+    throw createHttpError(400, 'Round names must be unique');
+  }
+
+  const roundOrders = normalizedRounds.map((round) => round.order);
+  if (new Set(roundOrders).size !== roundOrders.length) {
+    throw createHttpError(400, 'Round order values must be unique');
+  }
+
+  return {
+    tournament: {
+      name,
+      nameEs: String(body.nameEs || '').trim() || null,
+      modeKey: String(body.modeKey || 'classic_argentinian_prode').trim() || 'classic_argentinian_prode',
+      modeName: String(body.modeName || 'Classic Argentinian Prode').trim() || 'Classic Argentinian Prode',
+      modeNameEs: String(body.modeNameEs || '').trim() || null,
+      sport: String(body.sport || 'football').trim() || 'football',
+      status: normalizeTournamentStatus(body.status),
+      prizesEnabled: Boolean(body.prizesEnabled),
+      entryFee,
+      currency,
+      accessType,
+      joinCode,
+      startDate: parseOptionalDate(body.startDate, 'Start date'),
+      endDate: parseOptionalDate(body.endDate, 'End date'),
+      closingDate: parseOptionalDate(body.closingDate, 'Closing date'),
+    },
+    groups: normalizedGroups,
+    rounds: normalizedRounds,
+  };
+}
+
+async function resolveTournamentJoinCode(tournamentData, existingTournament = null) {
+  if (tournamentData.accessType !== 'private') {
+    return null;
+  }
+
+  if (tournamentData.joinCode) {
+    return tournamentData.joinCode;
+  }
+
+  if (existingTournament?.joinCode) {
+    return existingTournament.joinCode;
+  }
+
+  return generateUniqueJoinCode();
+}
+
+async function ensureTournamentStructureEditable(tournamentId) {
+  const [
+    memberCount,
+    leagueCount,
+    groupPredictionCount,
+    knockoutPredictionCount,
+    groupResultCount,
+    scoreCount,
+  ] = await Promise.all([
+    prisma.tournamentMember.count({ where: { tournamentId } }),
+    prisma.tournamentLeague.count({ where: { tournamentId } }),
+    prisma.groupPrediction.count({ where: { tournamentId } }),
+    prisma.knockoutPrediction.count({ where: { tournamentId } }),
+    prisma.groupResult.count({ where: { tournamentId } }),
+    prisma.score.count({ where: { tournamentId } }),
+  ]);
+
+  if (
+    memberCount ||
+    leagueCount ||
+    groupPredictionCount ||
+    knockoutPredictionCount ||
+    groupResultCount ||
+    scoreCount
+  ) {
+    throw createHttpError(
+      400,
+      'Tournament structure can only be edited before participants, leagues, predictions, or results exist'
+    );
+  }
+}
+
 async function getParticipantCount(tournamentId) {
   const [members, groupParticipants, knockoutParticipants] = await Promise.all([
     prisma.tournamentMember.findMany({
@@ -384,6 +654,7 @@ async function getParticipantCount(tournamentId) {
 
 function buildTournamentAccess(tournament, viewer) {
   const accessType = normalizeAccessType(tournament.accessType);
+  const lifecycle = getTournamentLifecycle(tournament);
   const isPrivate = accessType === 'private';
   const isAdmin = viewer?.role === 'ADMIN';
   const isMember = isAdmin || Boolean((tournament.members || []).length);
@@ -394,11 +665,14 @@ function buildTournamentAccess(tournament, viewer) {
     isPrivate,
     isMember,
     isAdmin,
-    canJoin: Boolean(viewer?.id) && isPrivate && !isMember,
+    canJoin: Boolean(viewer?.id) && isPrivate && !isMember && lifecycle.predictionsOpen,
     requiresJoinCode: isPrivate,
     canViewLeaderboard: canParticipate,
     canViewPredictions: canParticipate,
-    canSubmitPredictions: canParticipate && Boolean(viewer?.id),
+    canSubmitPredictions: canParticipate && Boolean(viewer?.id) && lifecycle.predictionsOpen,
+    predictionWindowOpen: lifecycle.predictionsOpen,
+    predictionsLocked: lifecycle.predictionsLocked,
+    lockedReason: lifecycle.lockedReason,
   };
 }
 
@@ -407,6 +681,7 @@ function serializeTournament(tournament, counts, viewer) {
   const rounds = serializeRounds(tournament.rounds);
   const mode = serializeMode(tournament);
   const access = buildTournamentAccess(tournament, viewer);
+  const lifecycle = getTournamentLifecycle(tournament);
 
   return {
     id: tournament.id,
@@ -414,7 +689,7 @@ function serializeTournament(tournament, counts, viewer) {
     nameEs: tournament.nameEs,
     mode,
     sport: tournament.sport,
-    status: tournament.status,
+    status: lifecycle.status,
     prizesEnabled: tournament.prizesEnabled,
     entryFee: tournament.entryFee,
     currency: tournament.currency,
@@ -505,6 +780,8 @@ async function getTournamentAccessState(tournamentId, viewer) {
     where: { id: tournamentId },
     select: {
       id: true,
+      status: true,
+      closingDate: true,
       accessType: true,
       joinCode: true,
       ...(viewer?.id
@@ -539,6 +816,22 @@ async function ensureTournamentParticipationAccess(tournamentId, viewer) {
 
   if (!accessState.access.canViewPredictions) {
     const error = new Error('This private tournament is only available to members');
+    error.status = 403;
+    throw error;
+  }
+
+  return accessState;
+}
+
+async function ensureTournamentPredictionSubmissionAccess(tournamentId, viewer) {
+  const accessState = await ensureTournamentParticipationAccess(tournamentId, viewer);
+
+  if (!accessState.access.canSubmitPredictions) {
+    const error = new Error(
+      accessState.access.predictionsLocked
+        ? 'Predictions are closed for this tournament'
+        : 'You cannot submit predictions for this tournament'
+    );
     error.status = 403;
     throw error;
   }
@@ -607,6 +900,16 @@ async function ensureLeagueMembership(leagueId, viewer) {
   }
 
   return { league, access };
+}
+
+async function ensureLeagueOwner(leagueId, viewer) {
+  const membershipState = await ensureLeagueMembership(leagueId, viewer);
+
+  if (!membershipState.access.isOwner) {
+    throw createHttpError(403, 'Only the league owner can manage this league');
+  }
+
+  return membershipState;
 }
 
 function normalizeGroupPredictionMap(groupPredictions = []) {
@@ -790,12 +1093,138 @@ async function calculateLeaderboard(tournamentId, options = {}) {
   };
 }
 
+async function persistTournamentScores(tournamentId) {
+  const scoringContext = await getScoringContext(tournamentId);
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { groupPredictions: { some: { tournamentId } } },
+        { knockoutPredictions: { some: { tournamentId } } },
+        { scores: { some: { tournamentId } } },
+      ],
+    },
+    include: {
+      groupPredictions: {
+        where: { tournamentId },
+      },
+      knockoutPredictions: {
+        where: { tournamentId },
+      },
+    },
+  });
+
+  const scoreUpdates = users.map((user) => {
+    const score = calculateTotalScore(
+      user.groupPredictions.map((prediction) => ({
+        groupId: prediction.groupId,
+        predictions: {
+          first: prediction.first,
+          second: prediction.second,
+        },
+      })),
+      scoringContext.groupResults,
+      user.knockoutPredictions.map((prediction) => ({
+        matchId: prediction.matchId,
+        predictedWinner: prediction.predictedWinner,
+      })),
+      scoringContext.knockoutMatches,
+      scoringContext.roundPointsMap
+    );
+
+    return prisma.score.upsert({
+      where: {
+        userId_tournamentId: {
+          userId: user.id,
+          tournamentId,
+        },
+      },
+      update: {
+        groupScore: score.groupScore,
+        knockoutScore: score.knockoutScore,
+        totalScore: score.totalScore,
+      },
+      create: {
+        userId: user.id,
+        tournamentId,
+        groupScore: score.groupScore,
+        knockoutScore: score.knockoutScore,
+        totalScore: score.totalScore,
+      },
+    });
+  });
+
+  if (!scoreUpdates.length) {
+    return { updatedUsers: 0 };
+  }
+
+  await prisma.$transaction(scoreUpdates);
+  return { updatedUsers: scoreUpdates.length };
+}
+
+async function buildAccountProfile(userId) {
+  const [
+    user,
+    tournamentMemberships,
+    createdLeagues,
+    leagueMemberships,
+    totalScore,
+    groupPredictionCount,
+    knockoutPredictionCount,
+  ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+    }),
+    prisma.tournamentMember.findMany({
+      where: { userId },
+      select: { tournamentId: true },
+      distinct: ['tournamentId'],
+    }),
+    prisma.tournamentLeague.findMany({
+      where: { createdByUserId: userId },
+      select: { id: true },
+    }),
+    prisma.leagueMember.findMany({
+      where: { userId },
+      select: { leagueId: true },
+      distinct: ['leagueId'],
+    }),
+    prisma.score.aggregate({
+      where: { userId },
+      _sum: { totalScore: true },
+    }),
+    prisma.groupPrediction.count({
+      where: { userId },
+    }),
+    prisma.knockoutPrediction.count({
+      where: { userId },
+    }),
+  ]);
+
+  if (!user) {
+    throw createHttpError(404, 'User not found');
+  }
+
+  return {
+    user: serializeUser(user),
+    stats: {
+      tournamentCount: tournamentMemberships.length,
+      leagueCount: Math.max(leagueMemberships.length, createdLeagues.length),
+      totalScore: totalScore._sum.totalScore || 0,
+      savedPredictionCount: groupPredictionCount + knockoutPredictionCount,
+    },
+  };
+}
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    if (String(password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -868,14 +1297,175 @@ app.get(
 
 app.get('/api/auth/me', verifyToken, async (req, res) => {
   try {
+    res.json(await buildAccountProfile(req.user.id));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const genericResponse = {
+      message: 'If an account exists for that email, a password reset link has been generated',
+    };
+
+    if (!email) {
+      return res.json(genericResponse);
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.json(genericResponse);
+    }
+
+    const resetToken = crypto.randomBytes(24).toString('hex');
+    const tokenHash = hashToken(resetToken);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+
+    await prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id },
+    });
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    res.json({
+      ...genericResponse,
+      ...(process.env.NODE_ENV === 'production'
+        ? {}
+        : {
+            resetToken,
+            resetUrl: `${process.env.SITE_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`,
+          }),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const token = String(req.body.token || '').trim();
+    const password = String(req.body.password || '');
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash: hashToken(token) },
+    });
+
+    if (
+      !resetToken ||
+      resetToken.usedAt ||
+      new Date(resetToken.expiresAt).getTime() <= Date.now()
+    ) {
+      return res.status(400).json({ error: 'Reset token is invalid or expired' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { password: hashedPassword },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.passwordResetToken.deleteMany({
+        where: {
+          userId: resetToken.userId,
+          id: { not: resetToken.id },
+        },
+      }),
+    ]);
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/account/profile', verifyToken, async (req, res) => {
+  try {
+    res.json(await buildAccountProfile(req.user.id));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/account/profile', verifyToken, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const avatarUrl = String(req.body.avatarUrl || '').trim();
+
+    if (!name) {
+      return res.status(400).json({ error: 'Display name is required' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        name,
+        avatarUrl: avatarUrl || null,
+      },
+    });
+
+    res.json({ message: 'Profile updated successfully', user: serializeUser(user) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/account/change-password', verifyToken, async (req, res) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || '');
+    const newPassword = String(req.body.newPassword || '');
+
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user: serializeUser(user) });
+    if (user.password) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+
+      const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ message: 'Password updated successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -1013,7 +1603,7 @@ app.get('/api/tournaments/:id/my-predictions', verifyToken, async (req, res) => 
 
 app.post('/api/tournaments/:id/predictions', verifyToken, async (req, res) => {
   try {
-    await ensureTournamentParticipationAccess(req.params.id, req.user);
+    await ensureTournamentPredictionSubmissionAccess(req.params.id, req.user);
 
     const rounds = await prisma.round.findMany({
       where: { tournamentId: req.params.id },
@@ -1098,6 +1688,8 @@ app.post('/api/tournaments/:id/predictions', verifyToken, async (req, res) => {
       ),
     ]);
 
+    await persistTournamentScores(req.params.id);
+
     res.json({ message: 'Predictions saved successfully' });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -1119,6 +1711,10 @@ app.post('/api/tournaments/:id/join', verifyToken, async (req, res) => {
     if (accessState.access.isMember) {
       const tournament = await getTournamentDetails(req.params.id, req.user);
       return res.json({ message: 'Already a member', tournament });
+    }
+
+    if (!accessState.access.canJoin) {
+      return res.status(403).json({ error: 'This tournament is no longer accepting new participants' });
     }
 
     const providedJoinCode = normalizeJoinCode(req.body.joinCode);
@@ -1290,6 +1886,96 @@ app.get('/api/leagues/:id', verifyToken, async (req, res) => {
   }
 });
 
+app.patch('/api/leagues/:id', verifyToken, async (req, res) => {
+  try {
+    await ensureLeagueOwner(req.params.id, req.user);
+
+    const name = String(req.body.name || '').trim();
+    const description = String(req.body.description || '').trim();
+
+    if (!name) {
+      return res.status(400).json({ error: 'League name is required' });
+    }
+
+    await prisma.tournamentLeague.update({
+      where: { id: req.params.id },
+      data: {
+        name,
+        description: description || null,
+      },
+    });
+
+    const league = await getLeagueDetails(req.params.id, req.user);
+    res.json({ message: 'League updated successfully', league });
+  } catch (error) {
+    res.status(error.code === 'P2002' ? 400 : error.status || 500).json({
+      error:
+        error.code === 'P2002'
+          ? 'A league with that name already exists in this tournament'
+          : error.message,
+    });
+  }
+});
+
+app.post('/api/leagues/:id/regenerate-code', verifyToken, async (req, res) => {
+  try {
+    await ensureLeagueOwner(req.params.id, req.user);
+
+    const joinCode = await generateUniqueLeagueJoinCode();
+    await prisma.tournamentLeague.update({
+      where: { id: req.params.id },
+      data: { joinCode },
+    });
+
+    const league = await getLeagueDetails(req.params.id, req.user);
+    res.json({ message: 'League join code regenerated successfully', league });
+  } catch (error) {
+    res.status(error.code === 'P2002' ? 400 : error.status || 500).json({
+      error: error.code === 'P2002' ? 'That join code is already in use' : error.message,
+    });
+  }
+});
+
+app.delete('/api/leagues/:id/members/me', verifyToken, async (req, res) => {
+  try {
+    const { league, access } = await ensureLeagueMembership(req.params.id, req.user);
+
+    if (access.isOwner) {
+      return res.status(400).json({ error: 'League owners must delete the league instead of leaving it' });
+    }
+
+    await prisma.leagueMember.delete({
+      where: {
+        leagueId_userId: {
+          leagueId: req.params.id,
+          userId: req.user.id,
+        },
+      },
+    });
+
+    res.json({ message: 'Left league successfully', tournamentId: league.tournamentId });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/leagues/:id', verifyToken, async (req, res) => {
+  try {
+    const { league } = await ensureLeagueOwner(req.params.id, req.user);
+
+    await prisma.leagueMember.deleteMany({
+      where: { leagueId: req.params.id },
+    });
+    await prisma.tournamentLeague.delete({
+      where: { id: req.params.id },
+    });
+
+    res.json({ message: 'League deleted successfully', tournamentId: league.tournamentId });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 app.get('/api/leagues/:id/leaderboard', verifyToken, async (req, res) => {
   try {
     const { league } = await ensureLeagueMembership(req.params.id, req.user);
@@ -1310,6 +1996,124 @@ app.get('/api/leagues/:id/leaderboard', verifyToken, async (req, res) => {
     });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/tournaments', verifyToken, checkAdmin, async (req, res) => {
+  try {
+    const payload = normalizeTournamentStructurePayload(req.body);
+    const joinCode = await resolveTournamentJoinCode(payload.tournament);
+
+    const createdTournament = await prisma.tournament.create({
+      data: {
+        ...payload.tournament,
+        joinCode,
+        groups: {
+          create: payload.groups.map((group) => ({
+            name: group.name,
+            teams: {
+              create: group.teams,
+            },
+          })),
+        },
+        rounds: {
+          create: payload.rounds.map((round) => ({
+            name: round.name,
+            nameEs: round.nameEs,
+            order: round.order,
+            pointsPerCorrect: round.pointsPerCorrect,
+            matches: {
+              create: round.matches,
+            },
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    const tournament = await getTournamentDetails(createdTournament.id, req.user);
+    res.status(201).json({ message: 'Tournament created successfully', tournament });
+  } catch (error) {
+    res.status(error.code === 'P2002' ? 400 : error.status || 500).json({
+      error:
+        error.code === 'P2002'
+          ? 'That join code or tournament identifier is already in use'
+          : error.message,
+    });
+  }
+});
+
+app.put('/api/tournaments/:id/structure', verifyToken, checkAdmin, async (req, res) => {
+  try {
+    const existingTournament = await prisma.tournament.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, joinCode: true },
+    });
+
+    if (!existingTournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    await ensureTournamentStructureEditable(req.params.id);
+
+    const payload = normalizeTournamentStructurePayload(req.body);
+    const joinCode = await resolveTournamentJoinCode(payload.tournament, existingTournament);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.match.deleteMany({
+        where: {
+          round: {
+            tournamentId: req.params.id,
+          },
+        },
+      });
+      await tx.round.deleteMany({
+        where: { tournamentId: req.params.id },
+      });
+      await tx.team.deleteMany({
+        where: { tournamentId: req.params.id },
+      });
+      await tx.group.deleteMany({
+        where: { tournamentId: req.params.id },
+      });
+
+      await tx.tournament.update({
+        where: { id: req.params.id },
+        data: {
+          ...payload.tournament,
+          joinCode,
+          groups: {
+            create: payload.groups.map((group) => ({
+              name: group.name,
+              teams: {
+                create: group.teams,
+              },
+            })),
+          },
+          rounds: {
+            create: payload.rounds.map((round) => ({
+              name: round.name,
+              nameEs: round.nameEs,
+              order: round.order,
+              pointsPerCorrect: round.pointsPerCorrect,
+              matches: {
+                create: round.matches,
+              },
+            })),
+          },
+        },
+      });
+    });
+
+    const tournament = await getTournamentDetails(req.params.id, req.user);
+    res.json({ message: 'Tournament structure updated successfully', tournament });
+  } catch (error) {
+    res.status(error.code === 'P2002' ? 400 : error.status || 500).json({
+      error:
+        error.code === 'P2002'
+          ? 'That join code or tournament identifier is already in use'
+          : error.message,
+    });
   }
 });
 
@@ -1438,6 +2242,8 @@ app.post('/api/tournaments/:id/results/groups', verifyToken, checkAdmin, async (
       )
     );
 
+    await persistTournamentScores(req.params.id);
+
     res.json({ message: 'Group results saved successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1472,6 +2278,8 @@ app.post('/api/tournaments/:id/results/knockout', verifyToken, checkAdmin, async
       )
     );
 
+    await persistTournamentScores(req.params.id);
+
     res.json({ message: 'Knockout results saved successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1480,60 +2288,8 @@ app.post('/api/tournaments/:id/results/knockout', verifyToken, checkAdmin, async
 
 app.post('/api/tournaments/:id/calculate-scores', verifyToken, checkAdmin, async (req, res) => {
   try {
-    const scoringContext = await getScoringContext(req.params.id);
-    const users = await prisma.user.findMany({
-      include: {
-        groupPredictions: {
-          where: { tournamentId: req.params.id },
-        },
-        knockoutPredictions: {
-          where: { tournamentId: req.params.id },
-        },
-      },
-    });
-
-    const scoreUpdates = users.map((user) => {
-      const score = calculateTotalScore(
-        user.groupPredictions.map((prediction) => ({
-          groupId: prediction.groupId,
-          predictions: {
-            first: prediction.first,
-            second: prediction.second,
-          },
-        })),
-        scoringContext.groupResults,
-        user.knockoutPredictions.map((prediction) => ({
-          matchId: prediction.matchId,
-          predictedWinner: prediction.predictedWinner,
-        })),
-        scoringContext.knockoutMatches,
-        scoringContext.roundPointsMap
-      );
-
-      return prisma.score.upsert({
-        where: {
-          userId_tournamentId: {
-            userId: user.id,
-            tournamentId: req.params.id,
-          },
-        },
-        update: {
-          groupScore: score.groupScore,
-          knockoutScore: score.knockoutScore,
-          totalScore: score.totalScore,
-        },
-        create: {
-          userId: user.id,
-          tournamentId: req.params.id,
-          groupScore: score.groupScore,
-          knockoutScore: score.knockoutScore,
-          totalScore: score.totalScore,
-        },
-      });
-    });
-
-    await prisma.$transaction(scoreUpdates);
-    res.json({ message: 'Scores calculated and stored' });
+    const result = await persistTournamentScores(req.params.id);
+    res.json({ message: 'Scores calculated and stored', ...result });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

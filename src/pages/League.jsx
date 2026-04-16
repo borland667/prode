@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { get } from '../utils/api';
+import { del, get, patch, post } from '../utils/api';
 import { getRoundLabel } from '../utils/tournament';
 
 export default function League() {
   const { id } = useParams();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [league, setLeague] = useState(null);
   const [tournament, setTournament] = useState(null);
@@ -16,12 +17,22 @@ export default function League() {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [leagueForm, setLeagueForm] = useState({
+    name: '',
+    description: '',
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const leaderboardData = await get(`/leagues/${id}/leaderboard`);
         setLeague(leaderboardData?.league || null);
+        setLeagueForm({
+          name: leaderboardData?.league?.name || '',
+          description: leaderboardData?.league?.description || '',
+        });
         setPlayers(leaderboardData?.players || []);
         setRounds(leaderboardData?.rounds || []);
 
@@ -39,6 +50,66 @@ export default function League() {
     fetchData();
   }, [id]);
 
+  const handleUpdateLeague = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await patch(`/leagues/${id}`, leagueForm);
+      setLeague(response?.league || league);
+      setSuccess(response?.message || 'League updated successfully');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRegenerateCode = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await post(`/leagues/${id}/regenerate-code`, {});
+      setLeague(response?.league || league);
+      setSuccess(response?.message || 'League join code regenerated successfully');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLeaveLeague = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await del(`/leagues/${id}/members/me`);
+      navigate(`/tournament/${response?.tournamentId || tournament?.id || ''}`);
+    } catch (err) {
+      setError(err.message);
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteLeague = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await del(`/leagues/${id}`);
+      navigate(`/tournament/${response?.tournamentId || tournament?.id || ''}`);
+    } catch (err) {
+      setError(err.message);
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -54,6 +125,8 @@ export default function League() {
       </div>
     );
   }
+
+  const isOwner = Boolean(league?.access?.isOwner);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
@@ -84,6 +157,18 @@ export default function League() {
           ) : null}
         </div>
 
+        {error ? (
+          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-8">
+            {error}
+          </div>
+        ) : null}
+
+        {success ? (
+          <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded mb-8">
+            {success}
+          </div>
+        ) : null}
+
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
             <p className="text-gray-400 text-sm mb-2">
@@ -101,6 +186,80 @@ export default function League() {
               {league?.joinCode || '----'}
             </p>
           </div>
+        </div>
+
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-12">
+          <h2 className="text-2xl font-bold text-white mb-3">
+            {t('tournament.leagueSettings')}
+          </h2>
+          <p className="text-gray-400 mb-6">
+            {isOwner ? t('tournament.ownerLeagueHelp') : t('tournament.memberLeagueHelp')}
+          </p>
+
+          {isOwner ? (
+            <>
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">
+                    {t('tournament.leagueName')}
+                  </label>
+                  <input
+                    type="text"
+                    value={leagueForm.name}
+                    onChange={(event) =>
+                      setLeagueForm((prev) => ({ ...prev, name: event.target.value }))
+                    }
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">
+                    {t('tournament.leagueDescription')}
+                  </label>
+                  <input
+                    type="text"
+                    value={leagueForm.description}
+                    onChange={(event) =>
+                      setLeagueForm((prev) => ({ ...prev, description: event.target.value }))
+                    }
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={handleUpdateLeague}
+                  disabled={saving}
+                  className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+                >
+                  {saving ? t('admin.saving') : t('common.save')}
+                </button>
+                <button
+                  onClick={handleRegenerateCode}
+                  disabled={saving}
+                  className="px-6 py-3 border-2 border-emerald-500 text-emerald-400 rounded-lg font-semibold hover:bg-emerald-500 hover:text-white disabled:opacity-50 transition"
+                >
+                  {saving ? t('tournament.regeneratingCode') : t('tournament.regenerateLeagueCode')}
+                </button>
+                <button
+                  onClick={handleDeleteLeague}
+                  disabled={saving}
+                  className="px-6 py-3 border-2 border-red-500 text-red-300 rounded-lg font-semibold hover:bg-red-500 hover:text-white disabled:opacity-50 transition"
+                >
+                  {saving ? t('tournament.deletingLeague') : t('tournament.deleteLeague')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={handleLeaveLeague}
+              disabled={saving}
+              className="px-6 py-3 border-2 border-red-500 text-red-300 rounded-lg font-semibold hover:bg-red-500 hover:text-white disabled:opacity-50 transition"
+            >
+              {saving ? t('tournament.leavingLeague') : t('tournament.leaveLeague')}
+            </button>
+          )}
         </div>
 
         {players.length === 0 ? (

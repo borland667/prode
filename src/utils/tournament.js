@@ -64,6 +64,47 @@ export function getModeLabel(mode, language = 'en') {
   return mode.name || mode.nameEs || '';
 }
 
+export function getModeRuleSections({ mode, rules, language = 'en', t }) {
+  const modeKey = mode?.key || 'classic_argentinian_prode';
+  const knockoutRounds = rules?.knockout || [];
+
+  switch (modeKey) {
+    case 'classic_argentinian_prode':
+    default:
+      return {
+        summary: {
+          title: t('home.scoringMode'),
+          value: getModeLabel(mode, language),
+          note: rules?.totalMaximumPoints
+            ? `${t('home.maximumScore')}: ${rules.totalMaximumPoints}`
+            : '',
+        },
+        primary: {
+          id: 'group-stage',
+          title: t('home.groupStage'),
+          lines: [
+            t('home.groupStageRuleExact'),
+            t('home.groupStageRuleInverted'),
+            t('home.groupStageRuleOneRight'),
+            t('home.groupStageRuleOneWrong'),
+          ],
+          footer: rules?.groupStageSummary
+            ? `${t('home.maxPoints')} ${rules.groupStageSummary.maxPoints}`
+            : '',
+        },
+        secondary: knockoutRounds.map((round) => ({
+          id: round.round,
+          title: getRoundLabel(round, t),
+          lines: [
+            `${round.pointsPerCorrect} ${t('home.pointsPerCorrect')}`,
+            `${round.maxMatches} ${t('home.matchesForRound')}`,
+          ],
+          footer: `${t('home.maxPoints')} ${round.maxPoints}`,
+        })),
+      };
+  }
+}
+
 export function sortGroups(groups = []) {
   return [...groups].sort((a, b) => a.name.localeCompare(b.name));
 }

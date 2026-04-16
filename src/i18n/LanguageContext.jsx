@@ -3,13 +3,29 @@ import { createContext, useContext, useState } from 'react';
 import { EN, ES } from './translations';
 
 const LanguageContext = createContext();
+const SUPPORTED_LANGUAGES = new Set(['en', 'es']);
+
+function getInitialLanguage() {
+  const storedLanguage = localStorage.getItem('language');
+  if (SUPPORTED_LANGUAGES.has(storedLanguage)) {
+    return storedLanguage;
+  }
+
+  const browserLanguage = navigator.language?.split('-')[0]?.toLowerCase();
+  if (SUPPORTED_LANGUAGES.has(browserLanguage)) {
+    return browserLanguage;
+  }
+
+  return 'en';
+}
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguageState] = useState(() => localStorage.getItem('language') || 'en');
+  const [language, setLanguageState] = useState(getInitialLanguage);
 
   const setLanguage = (lang) => {
-    setLanguageState(lang);
-    localStorage.setItem('language', lang);
+    const nextLanguage = SUPPORTED_LANGUAGES.has(lang) ? lang : 'en';
+    setLanguageState(nextLanguage);
+    localStorage.setItem('language', nextLanguage);
   };
 
   const t = (key) => {

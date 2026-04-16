@@ -8,6 +8,31 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const refreshUser = async (providedToken) => {
+    const token = providedToken || localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+
+    const response = await fetch('/api/auth/me', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      localStorage.removeItem('token');
+      setUser(null);
+      return null;
+    }
+
+    const userData = await response.json();
+    const nextUser = userData.user || userData;
+    setUser(nextUser);
+    return nextUser;
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       const url = new URL(window.location.href);
@@ -22,18 +47,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await fetch('/api/auth/me', {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData.user || userData);
-          } else {
-            localStorage.removeItem('token');
-          }
+          await refreshUser(token);
         } catch (err) {
           console.error('Auth check failed:', err);
           localStorage.removeItem('token');
@@ -117,7 +131,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, login, register, loginWithGoogle, logout }}
+      value={{ user, loading, error, login, register, loginWithGoogle, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

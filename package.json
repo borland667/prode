@@ -7,7 +7,7 @@
     "node": "24.1.0"
   },
   "scripts": {
-    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev": "node scripts/dev.cjs",
     "dev:api": "node --watch api/server.cjs",
     "dev:web": "vite",
     "build": "node build.mjs",

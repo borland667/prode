@@ -39,7 +39,11 @@ export default function Predict() {
         setTournament(tournamentData);
 
         if (!tournamentData?.access?.canSubmitPredictions) {
-          setError(t('tournament.privateLocked'));
+          setError(
+            tournamentData?.access?.predictionsLocked
+              ? t('tournament.predictionsClosed')
+              : t('tournament.privateLocked')
+          );
           return;
         }
 
@@ -143,7 +147,11 @@ export default function Predict() {
       });
       navigate(`/tournament/${id}`);
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.status === 403 && tournament?.access?.predictionsLocked
+          ? t('tournament.predictionsClosed')
+          : err.message
+      );
     } finally {
       setSaving(false);
     }
