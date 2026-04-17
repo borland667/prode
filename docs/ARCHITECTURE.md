@@ -71,7 +71,7 @@ World Cup 2026 is seeded as the main official-style experience. The other footba
 - Pure league-table competitions without knockout brackets
 - Payments and payout automation
 - Official external data ingestion pipelines
-- Automated test coverage and CI enforcement
+- Deeper automated API and UI coverage beyond the current validation and unit-test baseline
 
 Those areas are product roadmap items rather than hidden support gaps.
 
@@ -407,7 +407,23 @@ For any schema change:
 
 The preferred workflow is migration-first, not `db push`.
 
-### 12.2 Local Reset
+### 12.2 Verification Baseline
+
+The repo now includes a lightweight operational verification path:
+
+- `npm run verify`
+- GitHub Actions workflow at `.github/workflows/ci.yml`
+
+Current automated checks cover:
+
+- ESLint
+- Prisma schema validation
+- unit tests for scoring and tournament utility logic
+- production build generation
+
+This is a deployment-safety baseline, not a replacement for broader API and UI test coverage.
+
+### 12.3 Local Reset
 
 For a clean local environment:
 
@@ -428,7 +444,7 @@ The main next-step work is:
 
 - add additional tournament engines beyond football group + knockout
 - support official external data imports and refresh workflows
-- add automated tests and CI coverage
+- add broader API/UI automated test coverage on top of the existing CI and unit-test baseline
 - add transactional prize and payment flows
 - expand notifications and tournament operations tooling
 

@@ -51,14 +51,14 @@ Next-step work:
 
 ### 3. Automated Testing And CI
 
-QA is currently manual and documented in `docs/QA_CHECKLIST.md`.
+QA is still largely manual and documented in `docs/QA_CHECKLIST.md`, but the repo now has a CI baseline for lint, Prisma schema validation, core unit tests, and production build verification.
 
 Next-step work:
 
 - add API tests for auth, tournament access, predictions, leagues, and scoring
 - add UI smoke tests for primary user flows
-- run lint, Prisma validation, and build in CI
-- block merges on failing checks
+- expand CI beyond the current unit-test layer into broader behavioral tests
+- block merges on failing checks where branch protection is enabled
 
 ### 4. Prize And Payment Operations
 

@@ -175,11 +175,14 @@ To test registration, create an account at http://localhost:5173/register.
 | `npm run dev:web` | Start only the Vite frontend |
 | `npm run dev:api` | Start only the Express API |
 | `npm run build` | Build for production (output in `dist/`) |
+| `npm test` | Run automated unit tests for scoring and tournament utilities |
+| `npm run verify` | Run lint, Prisma schema validation, tests, and production build |
 | `npm run db:migrate` | Create/apply a local development migration |
 | `npm run db:migrate:deploy` | Apply checked-in migrations without creating new ones |
 | `npm run db:migrate:status` | Show migration status |
 | `npm run db:push` | Push schema directly without a migration (use sparingly) |
 | `npm run db:generate` | Regenerate Prisma client |
+| `npm run db:validate` | Validate the Prisma schema |
 | `npm run db:seed` | Seed database with the current football tournament catalog |
 | `npm run db:studio` | Open Prisma Studio (visual DB editor) |
 
@@ -212,7 +215,7 @@ Current boundaries and known limitations:
 - Non-football formats such as NBA playoffs still need a separate format engine
 - Seed data outside World Cup 2026 is format-compatible template data, not a live official feed
 - Prize pools are configurable, but payment collection and payout settlement are still manual
-- QA is currently manual; automated test coverage and CI gates are still next-step work
+- QA still relies heavily on manual flow coverage; CI now validates lint, Prisma schema, core unit tests, and production build, but broader API/UI test coverage is still next-step work
 
 ### QA Checklist
 
@@ -299,6 +302,8 @@ npm run db:seed
 ### Development Notes
 
 - `npm run dev` uses [`scripts/dev.cjs`](scripts/dev.cjs) so the API and Vite dev server shut down cleanly with `Ctrl+C`
+- GitHub Actions now runs `npm run verify` on pushes to `main` and pull requests
+- The current automated test layer covers scoring and tournament utility logic with Node's built-in test runner
 - The production build uses the custom `build.mjs` script with esbuild instead of Vite's default production bundling
 - If you hit an `esbuild` architecture mismatch locally, run `npm rebuild esbuild` and retry the build
 
@@ -308,7 +313,7 @@ The highest-impact next steps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 - add additional tournament engines beyond football-style group + knockout
 - replace static seed templates with importable official tournament data pipelines
-- add automated tests and CI checks around auth, predictions, scoring, and admin flows
+- add automated tests around auth, predictions, scoring, and admin flows on top of the new CI baseline
 - add real transactional support for paid prize pools, invites, and notifications
 
 ---
