@@ -1,605 +1,435 @@
-# Prode — Architecture & Design Document
+# Prode — Architecture
 
-**Version:** 1.0
-**Date:** April 2026
-**Status:** MVP Implementation
-
----
+**Version:** 2026-04  
+**Status:** Active implementation snapshot
 
 ## 1. Overview
 
-Prode is a World Cup bracket prediction game inspired by the classic Argentine "prode" format. Users predict group stage outcomes and knockout round winners before the tournament begins, then earn points as real results come in. The platform supports multiple tournaments, bilingual UI (English/Spanish), and a flexible auth system designed for future migration to enterprise identity providers.
+Prode is a sports prediction platform centered on tournament-mode-driven Prode flows. Today, the production-ready engine supports football tournaments that follow a familiar shape:
 
-### 1.1 Goals
+- group-stage predictions
+- knockout-bracket predictions
+- optional best-third-place qualification handling
+- tournament-level access control
+- optional prize configuration
+- tournament-scoped private leagues
 
-- Deliver a functional World Cup 2026 prediction game with real-time scoring
-- Support both casual (free) and paid entry tournaments with prize pools
-- Build on a portable architecture: Netlify today, Kubernetes tomorrow
-- Zero vendor lock-in on database, auth, or hosting
+The current seeded catalog includes:
 
-### 1.2 Non-Goals (MVP)
+- FIFA World Cup 2026
+- UEFA Euro
+- Copa América
+- AFC Asian Cup
+- Africa Cup of Nations
 
-- Real-time match score predictions (match-by-match)
-- Mobile native apps (responsive web only)
-- Payment processing integration (tracked manually for now)
-- Push notifications
+World Cup 2026 is seeded as the main official-style experience. The other football tournaments are format-compatible seeds that fit the current engine.
 
----
+## 2. Product Capabilities
 
-## 2. Game Rules
+### 2.1 End-User Features
 
-Based on the traditional Argentine "Pronosticos Mundial" format.
+- Guest landing page with featured tournament, mode-aware rules, and active tournament discovery
+- Registration, login, logout, Google OAuth, forgot-password, and reset-password flows
+- Profile editing, avatar updates, account stats, and password change
+- Public tournaments and private tournaments with join codes
+- Group-stage and knockout predictions
+- Support for best-third-place slot assignment when a mode requires it
+- Tournament leaderboard with dynamic round columns and optional prize pool display
+- Tournament-scoped private leagues with join codes and league-only leaderboards
+- Spectator-friendly standings and knockout-progress views
+- English and Spanish UI with browser-language detection and English fallback
+- Light and dark themes with persisted preference
 
-### 2.1 Prediction Flow
+### 2.2 Admin Features
 
-Players complete their predictions before the tournament closing date. The flow is sequential — each stage feeds into the next:
+- Tournament builder for creating new tournaments without seeding
+- Safe structure editing before participants, predictions, leagues, or results exist
+- Tournament settings management:
+  - access type
+  - join code generation/regeneration
+  - prize enable/disable
+  - entry fee and currency
+- Group result entry
+- Knockout result entry
+- Automatic score recalculation on result updates
+- Manual score recalculation as a recovery tool
 
+## 3. Current Scope And Boundaries
+
+### 3.1 Supported Today
+
+- Football tournaments with groups plus knockout rounds
+- Tournament modes whose rules can be derived from:
+  - group placement scoring
+  - linearly scaled knockout scoring
+  - optional best-third-place qualification rules
+
+### 3.2 Not Yet Supported
+
+- Seeded playoff formats without groups
+- Best-of-series formats such as NBA or MLB playoffs
+- Pure league-table competitions without knockout brackets
+- Payments and payout automation
+- Official external data ingestion pipelines
+- Automated test coverage and CI enforcement
+
+Those areas are product roadmap items rather than hidden support gaps.
+
+## 4. High-Level Architecture
+
+```text
+React SPA (Vite)
+  ├─ AuthContext
+  ├─ ThemeContext
+  ├─ LanguageContext
+  ├─ Tournament / Prediction / League UI
+  └─ Admin UI
+          │
+          ▼
+Express API (/api/*)
+  ├─ Auth + JWT
+  ├─ Tournament access control
+  ├─ Prediction persistence
+  ├─ League management
+  ├─ Admin tournament builder
+  └─ Scoring orchestration
+          │
+          ▼
+Prisma ORM
+          │
+          ▼
+PostgreSQL
 ```
-Step 1: GROUP STAGE
-  → For each of the 12 groups (A–L), predict which team finishes 1st and 2nd
-  → For World Cup 2026 mode, also predict 3rd place so the best-third-place Round of 32 slots can be built
-
-Step 2: EARLIEST KNOCKOUT ROUND
-  → Qualified teams auto-populate from group picks
-  → When the bracket uses best-third-place slots, players assign the advancing third-placed teams into those eligible fixtures
-  → Predict the winner of each knockout match for the configured bracket size
-
-Step 3: QUARTER FINALS
-  → Teams auto-populate from the previous knockout round
-  → Predict 4 winners
-
-Step 4: SEMI FINALS
-  → 4 teams auto-populate from QF picks
-  → Predict 2 winners
-
-Step 5: FINAL
-  → 2 teams auto-populate from SF picks
-  → Pick the World Champion
-```
-
-### 2.2 Scoring System
-
-**Group Stage** (per group, max 4 pts × 12 groups = 48 pts):
-
-| Outcome | Points |
-|---------|--------|
-| Both teams correct, correct positions (1st/2nd) | 4 |
-| Both teams correct, positions inverted | 3 |
-| One team correct, in the right position | 2 |
-| One team correct, wrong position | 1 |
-| No teams correct | 0 |
-
-**Knockout Rounds** (per correct advancing team):
-
-- Points scale linearly from the earliest knockout round to the final
-- Default scaling step: `+2` points per round
-
-Current app-mode World Cup 2026 example:
-
-| Round | Points per Correct | Max Matches | Max Points |
-|-------|-------------------|-------------|------------|
-| Round of 32 | 2 | 16 | 32 |
-| Round of 16 | 4 | 8 | 32 |
-| Quarter Finals | 6 | 4 | 24 |
-| Semi Finals | 8 | 2 | 16 |
-| Final (Champion) | 10 | 1 | 10 |
-
-**Maximum possible score in the current 2026 app mode: 162 points**
-
-### 2.3 Entry & Prize Pool
-
-- Entry fee: configurable per tournament (default $20 USD)
-- A participant can submit multiple predictions (each costs one entry fee)
-- Prize pool = total entries × entry fee
-- Distribution: 70% to highest scorer, 30% to second highest
-- If tied for first: 100% split equally among tied participants
-
-### 2.4 Closing Date
-
-All predictions must be submitted before the tournament closing date. No modifications allowed after closing.
-
----
-
-## 3. Architecture
-
-### 3.1 High-Level Diagram
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     NETLIFY CDN                         │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │         React SPA (Vite + Tailwind)             │    │
-│  │  • Landing page      • Prediction bracket       │    │
-│  │  • Auth forms         • Leaderboard              │    │
-│  │  • Tournament view    • Admin panel              │    │
-│  │  • i18n (EN/ES)                                  │    │
-│  └────────────────────┬────────────────────────────┘    │
-│                       │ /api/*                          │
-│  ┌────────────────────▼────────────────────────────┐    │
-│  │         Netlify Functions (serverless)           │    │
-│  │  ┌──────────────────────────────────────────┐   │    │
-│  │  │        Express.js API                    │   │    │
-│  │  │  • Auth (JWT + Passport.js)              │   │    │
-│  │  │  • Tournament CRUD                       │   │    │
-│  │  │  • Predictions (group + knockout)        │   │    │
-│  │  │  • Scoring engine                        │   │    │
-│  │  │  • Leaderboard                           │   │    │
-│  │  │  • Admin endpoints                       │   │    │
-│  │  └──────────────────────────────────────────┘   │    │
-│  └────────────────────┬────────────────────────────┘    │
-│                       │                                  │
-└───────────────────────┼──────────────────────────────────┘
-                        │ Prisma ORM
-                        │
-              ┌─────────▼──────────┐
-              │   PostgreSQL       │
-              │   (Neon Cloud)     │
-              │                    │
-              │  Core tables:      │
-              │  User, Tournament, │
-              │  Team, Group,      │
-              │  Round, Match,     │
-              │  *Prediction,      │
-              │  *Result, Score    │
-              └────────────────────┘
-```
-
-### 3.2 Portability Design
-
-The Express API is wrapped with `serverless-http` for Netlify Functions, but it's a standard Express app. Migration to Kubernetes requires only:
-
-1. Deploy the Express app as a Docker container (use `api/server.cjs` as entrypoint)
-2. Point `DATABASE_URL` to any PostgreSQL instance
-3. Swap auth from Passport.js direct providers to Keycloak OIDC (see `docs/KEYCLOAK_MIGRATION.md`)
-
-```
-Phase 1 (Current)          Phase 2 (Future)
-─────────────────          ──────────────────
-Netlify CDN         →      Nginx / Ingress
-Netlify Functions   →      K8s Deployment (Express container)
-Neon Postgres       →      RDS / CloudSQL / Self-hosted PG
-Passport.js direct  →      Keycloak OIDC broker
-```
-
----
-
-## 4. Tech Stack
 
 ### 4.1 Frontend
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| React | UI framework | 19.x |
-| Vite | Build tool & dev server | 8.x |
-| esbuild | Production bundler (replaces Rollup) | 0.28.x |
-| React Router | Client-side routing | 7.x |
-| Tailwind CSS | Utility-first styling (CDN) | 4.x |
-| Lucide React | Icon library | 1.x |
-
-**Build:** esbuild is used for production builds instead of Vite's default Rollup/rolldown for better compatibility across environments. The custom `build.mjs` script handles bundling, CSS extraction, and HTML injection.
+- React 19
+- React Router 7
+- Vite 8 for development
+- Custom `build.mjs` production build using esbuild
+- Tailwind v4 plus custom CSS tokens in `src/index.css`
 
 ### 4.2 Backend
 
-| Technology | Purpose | Version |
-|-----------|---------|---------|
-| Express.js | HTTP API framework | 5.x |
-| Prisma | ORM + migrations | 7.x |
-| @prisma/adapter-pg | PostgreSQL driver adapter | 7.x |
-| jsonwebtoken | JWT token creation/verification | 9.x |
-| bcryptjs | Password hashing | 3.x |
-| Passport.js | OAuth2 strategy framework | 0.7.x |
-| passport-google-oauth20 | Google login | 2.x |
-| serverless-http | Express → Lambda adapter | 4.x |
+- Express 5 app in [`api/app.cjs`](../api/app.cjs)
+- Local dev entrypoint in [`api/server.cjs`](../api/server.cjs)
+- Netlify function wrapper in `netlify/functions/api.cjs`
+- JWT-based auth with optional Google OAuth via Passport
+- Prisma 7 with PostgreSQL
 
-### 4.3 Database
+### 4.3 Local Development Process Model
 
-| Technology | Purpose |
-|-----------|---------|
-| PostgreSQL 16 | Relational database |
-| Neon | Serverless Postgres hosting (production) |
-| Docker postgres:16-alpine | Local development |
+`npm run dev` uses [`scripts/dev.cjs`](../scripts/dev.cjs) to supervise:
 
-### 4.4 Infrastructure
+- `node --watch api/server.cjs`
+- `vite`
 
-| Technology | Purpose |
-|-----------|---------|
-| Netlify | Hosting (CDN + Functions) |
-| GitHub | Source control + CI trigger |
-| Neon | Database hosting |
+That wrapper exists so local shutdown is reliable with `Ctrl+C`.
 
----
+## 5. Frontend Architecture
 
-## 5. Database Schema
+### 5.1 Providers
 
-### 5.1 Entity Relationship Diagram
+The app root in [`src/App.jsx`](../src/App.jsx) is composed as:
 
-```
-User ─────────────┬──── GroupPrediction ────── Group ──── Tournament
-  │                │          │                  │            │
-  │                │          └──────────────────┘            │
-  │                │                                          │
-  │                ├──── KnockoutPrediction ── Match ── Round─┘
-  │                │                                          │
-  │                └──── Score ───────────────── Tournament───┘
-  │
-  └── (role: USER | ADMIN)
-
-Tournament ──┬── Group ──── Team
-             ├── Round ──── Match
-             ├── GroupResult
-             └── Score
+```text
+Router
+└─ ThemeProvider
+   └─ AuthProvider
+      └─ LanguageProvider
+         ├─ Navbar
+         └─ Routes
 ```
 
-### 5.2 Models
+### 5.2 Core Routes
+
+- `/` — landing page, featured tournament, mode-aware rules, active tournaments
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/reset-password`
+- `/tournament/:id`
+- `/tournament/:id/predict`
+- `/leaderboard/:id`
+- `/league/:id`
+- `/profile`
+- `/admin`
+
+### 5.3 Frontend State Strategy
+
+- `AuthContext` manages current user and token-backed refresh/login/register/logout actions
+- `ThemeContext` resolves stored preference first, then OS color scheme
+- `LanguageContext` resolves stored language first, then browser locale
+- Page-level data is fetched per route with React hooks and `src/utils/api.js`
 
-**User** — Authenticated players and admins.
-- `id`, `email` (unique), `name`, `password` (nullable for OAuth users), `googleId` (unique), `avatarUrl`, `role` (USER/ADMIN)
+### 5.4 Home Page Model
+
+The landing page in [`src/pages/Home.jsx`](../src/pages/Home.jsx):
 
-**Tournament** — A competition instance (e.g., "FIFA World Cup 2026").
-- `id`, `name`, `nameEs`, `modeKey`, `modeName`, `modeNameEs`, `sport`, `status` (upcoming/active/finished), `prizesEnabled`, `entryFee`, `currency`, `accessType`, `joinCode`, `startDate`, `endDate`, `closingDate`
+- loads active and upcoming tournaments
+- highlights one featured tournament
+- renders mode-aware scoring/rules sections
+- links users into predictions or leaderboards
+- exposes public tournament discovery for guests
+
+### 5.5 Prediction Flow Model
 
-**Team** — A participating team, belonging to a group.
-- `id`, `name`, `nameEs`, `code` (e.g., "ARG"), `flagUrl`, `groupId`, `tournamentId`
+The prediction UI assumes a tournament mode can describe:
 
-**Group** — Tournament group (A through L for WC2026).
-- `id`, `name`, `tournamentId`
-- Unique constraint: `[tournamentId, name]`
+- groups
+- advancing placements
+- knockout rounds
+- optional best-third-place slot logic
 
-**Round** — Tournament stage with scoring rules.
-- `id`, `name` (group_stage/round_of_32/round_of_16/quarter_finals/semi_finals/final), `nameEs`, `order`, `pointsPerCorrect`, `tournamentId`
-- Unique constraint: `[tournamentId, name]`
+The flow is:
 
-**Match** — A knockout round match.
-- `id`, `roundId`, `matchNumber`, `homeLabel`, `awayLabel`, `selectedHomeTeamId`, `selectedAwayTeamId`, `winner`, `status` (scheduled/live/finished), `matchDate`
+1. pick group standings
+2. resolve qualified teams
+3. place best-third teams if the mode requires it
+4. pick winners round by round
+5. persist one prediction set per user per tournament
 
-**GroupPrediction** — A user's group stage prediction.
-- `id`, `userId`, `tournamentId`, `groupId`, `first`, `second`, `third`
-- Unique constraint: `[userId, tournamentId, groupId]`
-
-**KnockoutPrediction** — A user's knockout match prediction.
-- `id`, `userId`, `tournamentId`, `matchId`, `predictedWinner`, `selectedHomeTeamId`, `selectedAwayTeamId`
-- Unique constraint: `[userId, matchId]`
+## 6. Backend Architecture
 
-**GroupResult** — Admin-entered actual group results.
-- `id`, `tournamentId`, `groupId`, `first`, `second`, `third`
-- Unique constraint: `[tournamentId, groupId]`
+### 6.1 Main Responsibilities
 
-**Score** — Calculated user scores.
-- `id`, `userId`, `tournamentId`, `groupScore`, `knockoutScore`, `totalScore`
-- Unique constraint: `[userId, tournamentId]`
+[`api/app.cjs`](../api/app.cjs) currently handles:
 
----
+- auth and current-user lookup
+- password reset token lifecycle
+- tournament listing and detail serialization
+- tournament join flow for private tournaments
+- prediction save/load flow
+- league CRUD and league membership
+- leaderboard serialization
+- admin tournament creation and safe structure updates
+- admin settings and result entry
+- score calculation triggers
 
-## 6. API Design
+### 6.2 Authentication Model
 
-All endpoints are prefixed with `/api/`.
+- Email/password users store bcrypt-hashed passwords
+- Google OAuth users can authenticate through Passport
+- The frontend stores the returned JWT token in `localStorage`
+- Protected API calls send `Authorization: Bearer <token>`
+- Password reset uses one-time hashed reset tokens in the database
 
-### 6.1 Authentication
+### 6.3 Access Control Model
 
-| Method | Endpoint | Auth | Description |
-|--------|---------|------|-------------|
-| POST | `/auth/register` | Public | Register with email + password |
-| POST | `/auth/login` | Public | Login with email + password |
-| GET | `/auth/google` | Public | Redirect to Google OAuth |
-| GET | `/auth/google/callback` | Public | Google OAuth callback → JWT |
-| GET | `/auth/me` | JWT | Get current user profile |
-| POST | `/auth/logout` | Public | Clear auth cookie |
+Tournament access is evaluated from:
 
-**Auth flow:** All endpoints return a JWT token (7-day expiry) set as an HTTP-only cookie and in the response body. The frontend stores the token and sends it as `Authorization: Bearer <token>` on subsequent requests.
+- tournament `accessType`
+- tournament membership
+- admin role
+- tournament closing state
 
-**Google OAuth flow:**
-1. Frontend redirects to `/api/auth/google`
-2. Express redirects to Google consent screen
-3. Google callbacks to `/api/auth/google/callback`
-4. Express creates/finds user, generates JWT, redirects to frontend with token
-
-### 6.2 Tournaments
+League access is evaluated from:
 
-| Method | Endpoint | Auth | Description |
-|--------|---------|------|-------------|
-| GET | `/tournaments` | Public | List all tournaments with groups and rounds |
-| GET | `/tournaments/:id` | Public | Tournament detail with teams, matches |
+- ownership
+- membership
+- tournament participation access
 
-### 6.3 Predictions
+## 7. Domain Model
 
-| Method | Endpoint | Auth | Description |
-|--------|---------|------|-------------|
-| POST | `/predictions/group` | JWT | Save/update group prediction |
-| POST | `/predictions/knockout` | JWT | Save/update knockout prediction |
-| GET | `/predictions/my/:tournamentId` | JWT | Get current user's predictions |
-| GET | `/predictions/all/:tournamentId` | Public | All predictions (for leaderboard) |
+The Prisma schema in [`prisma/schema.prisma`](../prisma/schema.prisma) currently models:
 
-### 6.4 Admin
+- `User`
+- `Tournament`
+- `Group`
+- `Team`
+- `Round`
+- `Match`
+- `GroupPrediction`
+- `KnockoutPrediction`
+- `GroupResult`
+- `Score`
+- `TournamentMember`
+- `TournamentLeague`
+- `LeagueMember`
+- `PasswordResetToken`
 
-| Method | Endpoint | Auth | Description |
-|--------|---------|------|-------------|
-| POST | `/admin/tournaments` | Admin | Create tournament |
-| POST | `/admin/tournaments/:id/groups` | Admin | Add group |
-| POST | `/admin/tournaments/:id/teams` | Admin | Add team to group |
-| POST | `/admin/results` | Admin | Enter group or knockout results |
-| POST | `/admin/calculate-scores` | Admin | Trigger score calculation |
+### 7.1 Important Domain Rules
 
-### 6.5 Leaderboard
+- One prediction set per user per tournament
+- One score row per user per tournament
+- Tournament structure is editable only before meaningful activity exists
+- Private tournaments require join-code membership before participation
+- League leaderboards are derived from tournament scores filtered to league members
 
-| Method | Endpoint | Auth | Description |
-|--------|---------|------|-------------|
-| GET | `/leaderboard/:tournamentId` | Public | Rankings sorted by total score |
+### 7.2 Tournament Mode Metadata
 
-### 6.6 Health
+`Tournament` stores:
 
-| Method | Endpoint | Description |
-|--------|---------|-------------|
-| GET | `/health` | Returns `{ status: "ok" }` |
+- `modeKey`
+- `modeName`
+- `modeNameEs`
+- `sport`
 
----
+The UI and seed layer use those fields to drive:
 
-## 7. Frontend Architecture
+- rule labels
+- scoring summaries
+- bracket behavior
+- tournament presentation
 
-### 7.1 Component Tree
+The current engine still assumes those mode values map to the football-style Prode implementation in `src/utils/tournament.js` and `api/scoring.cjs`.
 
-```
-App
-├── LanguageProvider (i18n context)
-│   └── AuthProvider (auth context)
-│       ├── Navbar
-│       │   ├── Logo + Nav links
-│       │   ├── Language toggle (EN/ES)
-│       │   └── Auth controls (login/register or avatar/logout)
-│       │
-│       └── Routes
-│           ├── / ─────────── Home (landing, how-it-works, scoring rules)
-│           ├── /login ────── Login (email/password + Google OAuth)
-│           ├── /register ─── Register (name, email, password + Google)
-│           ├── /tournament/:id ── Tournament (groups, teams, status)
-│           ├── /tournament/:id/predict ── Predict (5-step bracket)
-│           ├── /leaderboard/:id ───────── Leaderboard (rankings + prizes)
-│           ├── /profile ──── Profile (user stats)
-│           └── /admin ────── Admin (results entry, score calculation)
-```
+## 8. Scoring Model
 
-### 7.2 State Management
+### 8.1 Group Scoring
 
-No external state library — React Context handles global state:
+Per group:
 
-- **AuthContext** — User object, JWT token, login/register/logout functions. Token persisted in localStorage.
-- **LanguageContext** — Current language (en/es), `t(key)` translation function. Language persisted in localStorage.
+- 4 points: both teams correct in correct positions
+- 3 points: both teams correct in inverted positions
+- 2 points: one team correct in the correct position
+- 1 point: one team correct in the wrong position
+- 0 points: no correct teams
 
-Page-level state uses React's `useState` and `useEffect` hooks for API data fetching.
+When a tournament mode uses best-third-place qualification, the `third` pick is used to build the knockout bracket, but the base group score still comes from first and second.
 
-### 7.3 Prediction Page (Core UI)
+### 8.2 Knockout Scoring
 
-The prediction page is the heart of the app — a 5-step wizard with a visual bracket:
+Rounds store `pointsPerCorrect` directly on the `Round` model. The current seeded tournaments use a linear scale from the earliest knockout round to the final.
 
-**Step 1 — Group Stage:**
-- Grid of 12 group cards (A–L)
-- Each card shows 4 teams with dropdowns to select 1st and 2nd place
-- Teams displayed with flag icons and names
+Example for World Cup 2026:
 
-**Steps 2–5 — Knockout Bracket:**
-- Visual bracket tree with connecting lines
-- Matches auto-populate from previous round selections
-- Click a team to select them as the winner
-- Cascading updates: changing an earlier pick clears downstream selections
+- Round of 32: 2
+- Round of 16: 4
+- Quarter-finals: 6
+- Semi-finals: 8
+- Final: 10
 
-**State flow:**
-```
-groupPicks (12 groups × {first, second})
-    ↓ auto-populate
-r16Picks (12 matches × winner)
-    ↓ auto-populate
-qfPicks (4 matches × winner)
-    ↓ auto-populate
-sfPicks (2 matches × winner)
-    ↓ auto-populate
-finalPick (1 match × champion)
-```
+### 8.3 Score Persistence
 
-### 7.4 Internationalization (i18n)
+Scores are stored in `Score` rows:
 
-Custom lightweight i18n — no external library:
+- `groupScore`
+- `knockoutScore`
+- `totalScore`
 
-- `translations.js` — Flat key-value objects for EN and ES
-- `LanguageContext` — Provides `t(key)` function that looks up the current language's translation
-- Language toggle in Navbar switches between EN/ES flag buttons
-- All user-facing strings go through `t()` — no hardcoded text in components
+Admin result entry triggers recalculation automatically, and a manual recalc endpoint exists for repair/re-sync use.
 
-### 7.5 Design System
+## 9. API Surface
 
-- **Theme:** Dark sports aesthetic — slate-900 background, emerald-500 accents, white text
-- **Typography:** System font stack (Apple, Segoe UI, Roboto)
-- **Cards:** Slate-800 backgrounds with subtle borders
-- **Buttons:** Emerald-600 primary, slate-700 secondary
-- **Responsive:** Mobile-first, hamburger nav on small screens
+All endpoints are prefixed with `/api`.
 
----
+### 9.1 Auth
 
-## 8. Scoring Engine
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/google`
+- `GET /auth/google/callback`
+- `GET /auth/me`
+- `POST /auth/logout`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
 
-Located in `api/scoring.cjs`. Three exported functions:
+### 9.2 Tournaments
 
-### 8.1 `scoreGroupPrediction(prediction, result)`
+- `GET /tournaments`
+- `GET /tournaments/:id`
+- `GET /tournaments/:id/groups`
+- `GET /tournaments/:id/my-predictions`
+- `POST /tournaments/:id/predictions`
+- `POST /tournaments/:id/join`
+- `GET /tournaments/:id/leagues`
+- `POST /tournaments/:id/leagues`
+- `POST /tournaments/:id/leagues/join`
+- `GET /tournaments/:id/leaderboard`
 
-Compares predicted {first, second} against actual {first, second}:
+### 9.3 Leagues
 
-```
-prediction = { first: "ARG", second: "GER" }
-result     = { first: "ARG", second: "GER" }
-→ 4 points (both correct, correct positions)
+- `GET /leagues/:id`
+- `PATCH /leagues/:id`
+- `POST /leagues/:id/regenerate-code`
+- `DELETE /leagues/:id/members/me`
+- `DELETE /leagues/:id`
+- `GET /leagues/:id/leaderboard`
 
-prediction = { first: "GER", second: "ARG" }
-result     = { first: "ARG", second: "GER" }
-→ 3 points (both correct, inverted)
+### 9.4 Admin
 
-prediction = { first: "ARG", second: "BRA" }
-result     = { first: "ARG", second: "GER" }
-→ 2 points (one correct in right position)
+- `POST /tournaments`
+- `PUT /tournaments/:id/structure`
+- `PATCH /tournaments/:id/settings`
+- `POST /tournaments/:id/results/groups`
+- `POST /tournaments/:id/results/knockout`
+- `POST /tournaments/:id/calculate-scores`
 
-prediction = { first: "BRA", second: "ARG" }
-result     = { first: "ARG", second: "GER" }
-→ 1 point (one correct, wrong position)
+### 9.5 Ops
 
-prediction = { first: "BRA", second: "FRA" }
-result     = { first: "ARG", second: "GER" }
-→ 0 points
-```
+- `GET /health`
 
-### 8.2 `scoreKnockoutPrediction(predictedWinner, actualWinner, pointsPerCorrect)`
+## 10. Seeding And Modes
 
-Binary match: correct winner = `pointsPerCorrect`, wrong = 0.
+The seed script in [`api/seed.cjs`](../api/seed.cjs):
 
-### 8.3 `calculateTotalScore(groupPredictions, groupResults, knockoutPredictions, knockoutMatches, roundPointsMap)`
+- seeds the current football tournament catalog
+- replaces matching seeded tournaments by name when rerun locally
+- defines tournament rounds and knockout slots explicitly
+- supports best-third-place slot labeling for World Cup and UEFA-style formats
 
-Aggregates all predictions for a user across all rounds. Returns `{ groupScore, knockoutScore, totalScore }`.
+The seed currently serves two purposes:
 
----
+- local/demo data bootstrap
+- reference examples for supported tournament shapes
 
-## 9. Security
+It is not yet an official live-data ingestion pipeline.
 
-### 9.1 Authentication
+## 11. Deployment Model
 
-- Passwords hashed with bcrypt (10 rounds)
-- JWT tokens with 7-day expiry, signed with HS256
-- HTTP-only cookies for session persistence
-- CORS restricted to `SITE_URL`
+### 11.1 Current
 
-### 9.2 Authorization
+- Frontend built to `dist/`
+- Express app wrapped for Netlify Functions
+- PostgreSQL hosted anywhere Prisma can reach
 
-- JWT verification middleware on protected routes
-- Admin role check middleware on admin routes
-- Users can only modify their own predictions
+### 11.2 Portability Goal
 
-### 9.3 Data Protection
+The stack is intentionally portable:
 
-- No passwords stored in plaintext
-- Google OAuth: only email, name, and profile picture accessed
-- Database credentials stored in environment variables, never in code
-- `.env` excluded from git
+- Express can run directly from `api/server.cjs`
+- Postgres is provider-agnostic
+- Auth can later move to Keycloak
 
----
+See [`docs/KEYCLOAK_MIGRATION.md`](./KEYCLOAK_MIGRATION.md) for the future auth migration path.
 
-## 10. Deployment
+## 12. Operational Notes
 
-### 10.1 Netlify (Current)
+### 12.1 Schema Changes
 
-```
-netlify.toml:
-  build command: npm run build
-  publish: dist/
-  functions: netlify/functions/
+For any schema change:
 
-Redirects:
-  /api/* → /.netlify/functions/api/:splat (200)
-  /*     → /index.html (200, SPA fallback)
-```
+1. update `prisma/schema.prisma`
+2. create a checked-in migration
+3. regenerate Prisma client if needed
+4. validate and test before committing
 
-**Environment variables required:**
-- `DATABASE_URL` — Neon connection string
-- `JWT_SECRET` — Random secret for token signing
-- `GOOGLE_CLIENT_ID` — Google Cloud Console
-- `GOOGLE_CLIENT_SECRET` — Google Cloud Console
-- `GOOGLE_CALLBACK_URL` — `https://your-site.netlify.app/api/auth/google/callback`
-- `SITE_URL` — `https://your-site.netlify.app`
+The preferred workflow is migration-first, not `db push`.
 
-### 10.2 Kubernetes (Future)
+### 12.2 Local Reset
 
-See `docs/KEYCLOAK_MIGRATION.md` for the full migration guide. Key changes:
-
-- Express app deployed as a container (`api/server.cjs` entrypoint)
-- Keycloak replaces Passport.js direct OAuth
-- Database moves to RDS/CloudSQL/self-hosted Postgres
-- Frontend served by Nginx or S3+CloudFront
-
----
-
-## 11. Development Workflow
-
-### 11.1 Local Setup
+For a clean local environment:
 
 ```bash
-# Start Postgres
-docker run -d --name prode-postgres \
-  -e POSTGRES_USER=prode -e POSTGRES_PASSWORD=prode123 -e POSTGRES_DB=prode \
-  -p 5432:5432 postgres:16-alpine
+npx prisma migrate reset
+```
 
-# Install, configure, seed
-npm install
-cp .env.example .env   # edit DATABASE_URL for local
-npx prisma db push
-npx prisma generate
+or:
+
+```bash
+npx prisma migrate reset --skip-seed
 npm run db:seed
-
-# Run (frontend :5173 + API :3001)
-npm run dev
 ```
 
-### 11.2 Project Structure
+## 13. Roadmap Snapshot
 
-```
-prode/
-├── api/                    # Backend (CommonJS)
-│   ├── app.cjs             # Express routes (19 endpoints)
-│   ├── db.cjs              # Prisma client with pg adapter
-│   ├── scoring.cjs         # Scoring engine
-│   ├── seed.cjs            # Database seeder (WC2026 data)
-│   └── server.cjs          # Local dev server
-├── docs/
-│   ├── ARCHITECTURE.md     # This document
-│   └── KEYCLOAK_MIGRATION.md
-├── netlify/
-│   └── functions/
-│       └── api.cjs         # serverless-http wrapper
-├── prisma/
-│   └── schema.prisma       # 8 models
-├── src/                    # Frontend (ESM/JSX)
-│   ├── components/
-│   │   └── Navbar.jsx
-│   ├── context/
-│   │   └── AuthContext.jsx
-│   ├── i18n/
-│   │   ├── translations.js # EN + ES strings
-│   │   └── LanguageContext.jsx
-│   ├── pages/
-│   │   ├── Home.jsx        # Landing page
-│   │   ├── Login.jsx       # Email + Google auth
-│   │   ├── Register.jsx    # Registration form
-│   │   ├── Tournament.jsx  # Tournament detail
-│   │   ├── Predict.jsx     # 5-step bracket wizard (core UI)
-│   │   ├── Leaderboard.jsx # Rankings + prize pool
-│   │   ├── Admin.jsx       # Results + score calculation
-│   │   └── Profile.jsx     # User profile
-│   ├── utils/
-│   │   └── api.js          # Fetch wrapper with auth
-│   ├── App.jsx             # Router + providers
-│   ├── main.jsx            # Entry point
-│   └── index.css           # Global styles
-├── build.mjs               # esbuild production bundler
-├── netlify.toml            # Netlify config
-├── package.json
-└── .env.example
-```
+The main next-step work is:
 
----
+- add additional tournament engines beyond football group + knockout
+- support official external data imports and refresh workflows
+- add automated tests and CI coverage
+- add transactional prize and payment flows
+- expand notifications and tournament operations tooling
 
-## 12. Future Enhancements
-
-### Phase 2 — Post-MVP
-- Real-time score updates via WebSocket or SSE
-- Push notifications (match reminders, score alerts)
-- Payment integration (Stripe/MercadoPago) for entry fees
-- Social features: private leagues with invite codes, group chat
-- User avatars and profile customization
-- Email verification and password reset
-
-### Phase 3 — Platform
-- Multi-tournament support (Copa America, Champions League, NBA Playoffs)
-- Custom scoring rules per tournament
-- Tournament creation by any user (not just admins)
-- API for third-party integrations
-- Mobile apps (React Native)
-
-### Phase 4 — Infrastructure
-- Keycloak migration (see `docs/KEYCLOAK_MIGRATION.md`)
-- Kubernetes deployment
-- CI/CD pipeline (GitHub Actions → Docker → K8s)
-- Monitoring and observability (Prometheus, Grafana)
-- Database read replicas for leaderboard queries
+See [`docs/ROADMAP.md`](./ROADMAP.md) for the maintained next-step list.

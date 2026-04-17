@@ -6,12 +6,15 @@ A sports prediction app centered on Prode-style tournament picks, where users pr
 
 - **Bracket Predictions** — Predict 1st/2nd in each group, then winners through the knockout rounds configured for the tournament
 - **Scoring System** — Group stage stays 4/3/2/1 pts, while knockout rounds scale linearly by tournament size
-- **Auth** — Email/password registration + Google OAuth (Auth.js, migrateable to Keycloak)
-- **Bilingual** — English and Spanish (i18n)
+- **Tournament Modes** — Rules, maximum score, and bracket behavior come from the tournament mode
+- **Auth** — Email/password registration, password reset, profile editing, and Google OAuth
+- **Bilingual** — English and Spanish, with browser-language detection and English fallback
+- **Themes** — Sports-oriented dark and light modes with persisted preference
 - **Leaderboard** — Live rankings with optional prize pool calculation (70/30 split when prizes are enabled)
 - **Private Groups** — Run tournaments as public competitions or closed groups with join codes
 - **Private Leagues** — Create invite-only leagues inside a tournament, each with its own join code and filtered leaderboard
-- **Admin Panel** — Enter results, calculate scores, and manage tournament settings
+- **Admin Panel** — Create tournaments, edit safe structures, enter results, calculate scores, and manage tournament settings
+- **Spectator Views** — Tournament pages show current standings and knockout progress once results are entered
 - **Portable** — Netlify Functions now, Kubernetes later (see `docs/KEYCLOAK_MIGRATION.md`)
 
 ## Tech Stack
@@ -180,6 +183,37 @@ To test registration, create an account at http://localhost:5173/register.
 | `npm run db:seed` | Seed database with the current football tournament catalog |
 | `npm run db:studio` | Open Prisma Studio (visual DB editor) |
 
+### Documentation
+
+- [README.md](README.md) — local setup, current feature summary, and operational notes
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — current architecture, data model, routes, and system boundaries
+- [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md) — manual QA and release smoke test checklist
+- [docs/ROADMAP.md](docs/ROADMAP.md) — next-step roadmap and product gaps still to close
+- [docs/KEYCLOAK_MIGRATION.md](docs/KEYCLOAK_MIGRATION.md) — future auth/infrastructure portability path
+
+### Current Product Status
+
+What is implemented today:
+
+- Public and private tournaments with join codes
+- Private leagues inside a tournament
+- Tournament-mode-aware scoring and rules display
+- World Cup 2026 best-third-place Round of 32 handling
+- Additional seeded football tournaments that fit the current Prode engine
+- Password reset and profile/account management
+- Automatic score updates when admins save results
+- Admin tournament builder with structure safety checks
+- Guest browsing plus spectator progress views
+- Browser language detection and persisted light/dark theme preference
+
+Current boundaries and known limitations:
+
+- The core engine still assumes football-style group stage plus knockout progression
+- Non-football formats such as NBA playoffs still need a separate format engine
+- Seed data outside World Cup 2026 is format-compatible template data, not a live official feed
+- Prize pools are configurable, but payment collection and payout settlement are still manual
+- QA is currently manual; automated test coverage and CI gates are still next-step work
+
 ### QA Checklist
 
 For end-to-end manual testing, use [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md).
@@ -261,6 +295,21 @@ docker run -d \
 npm run db:migrate
 npm run db:seed
 ```
+
+### Development Notes
+
+- `npm run dev` uses [`scripts/dev.cjs`](scripts/dev.cjs) so the API and Vite dev server shut down cleanly with `Ctrl+C`
+- The production build uses the custom `build.mjs` script with esbuild instead of Vite's default production bundling
+- If you hit an `esbuild` architecture mismatch locally, run `npm rebuild esbuild` and retry the build
+
+### Next Steps
+
+The highest-impact next steps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md). The main product work still ahead is:
+
+- add additional tournament engines beyond football-style group + knockout
+- replace static seed templates with importable official tournament data pipelines
+- add automated tests and CI checks around auth, predictions, scoring, and admin flows
+- add real transactional support for paid prize pools, invites, and notifications
 
 ---
 
