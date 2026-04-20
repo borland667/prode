@@ -9,6 +9,24 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: prode
+          POSTGRES_PASSWORD: prode123
+          POSTGRES_DB: prode
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prode -d prode"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://prode:prode123@127.0.0.1:5432/prode
+      JWT_SECRET: ci-test-secret
+      SITE_URL: http://localhost:5173
 
     steps:
       - name: Check out repository

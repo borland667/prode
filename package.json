@@ -7,13 +7,14 @@
     "node": "24.1.0"
   },
   "scripts": {
+    "postinstall": "npx prisma generate",
     "dev": "node scripts/dev.cjs",
     "dev:api": "node --watch api/server.cjs",
     "dev:web": "vite",
     "build": "node build.mjs",
     "lint": "eslint .",
     "test": "node --test",
-    "verify": "npm run lint && npm run db:validate && npm run test && npm run build",
+    "verify": "npm run lint && npm run db:generate && npm run db:validate && npm run test && npm run build",
     "preview": "vite preview",
     "db:generate": "npx prisma generate",
     "db:validate": "npx prisma validate",

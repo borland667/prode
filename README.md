@@ -103,6 +103,10 @@ Edit `.env` with your local settings:
 # Local Docker Postgres
 DATABASE_URL=postgresql://prode:prode123@localhost:5432/prode
 
+# Dedicated integration-test database target
+# Recommended: point this at your local Docker Postgres even if DATABASE_URL uses a remote DB
+TEST_DATABASE_URL=postgresql://prode:prode123@127.0.0.1:5432/prode
+
 # JWT secret (any random string for local dev)
 JWT_SECRET=local-dev-secret-change-me
 
@@ -304,6 +308,7 @@ npm run db:seed
 - `npm run dev` uses [`scripts/dev.cjs`](scripts/dev.cjs) so the API and Vite dev server shut down cleanly with `Ctrl+C`
 - GitHub Actions now runs `npm run verify` on pushes to `main` and pull requests
 - The current automated test layer covers scoring and tournament utility logic with Node's built-in test runner
+- API integration tests use `TEST_DATABASE_URL` first and create an isolated temporary Postgres database per run
 - The production build uses the custom `build.mjs` script with esbuild instead of Vite's default production bundling
 - If you hit an `esbuild` architecture mismatch locally, run `npm rebuild esbuild` and retry the build
 

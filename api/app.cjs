@@ -590,6 +590,28 @@ async function resolveTournamentJoinCode(tournamentData, existingTournament = nu
   return generateUniqueJoinCode();
 }
 
+async function createTournamentGroupsAndTeams(tx, tournamentId, groups) {
+  for (const group of groups) {
+    const createdGroup = await tx.group.create({
+      data: {
+        tournamentId,
+        name: group.name,
+      },
+    });
+
+    await tx.team.createMany({
+      data: group.teams.map((team) => ({
+        tournamentId,
+        groupId: createdGroup.id,
+        name: team.name,
+        nameEs: team.nameEs,
+        code: team.code,
+        flagUrl: team.flagUrl,
+      })),
+    });
+  }
+}
+
 async function ensureTournamentStructureEditable(tournamentId) {
   const [
     memberCount,
@@ -2004,31 +2026,29 @@ app.post('/api/tournaments', verifyToken, checkAdmin, async (req, res) => {
     const payload = normalizeTournamentStructurePayload(req.body);
     const joinCode = await resolveTournamentJoinCode(payload.tournament);
 
-    const createdTournament = await prisma.tournament.create({
-      data: {
-        ...payload.tournament,
-        joinCode,
-        groups: {
-          create: payload.groups.map((group) => ({
-            name: group.name,
-            teams: {
-              create: group.teams,
-            },
-          })),
+    const createdTournament = await prisma.$transaction(async (tx) => {
+      const tournament = await tx.tournament.create({
+        data: {
+          ...payload.tournament,
+          joinCode,
+          rounds: {
+            create: payload.rounds.map((round) => ({
+              name: round.name,
+              nameEs: round.nameEs,
+              order: round.order,
+              pointsPerCorrect: round.pointsPerCorrect,
+              matches: {
+                create: round.matches,
+              },
+            })),
+          },
         },
-        rounds: {
-          create: payload.rounds.map((round) => ({
-            name: round.name,
-            nameEs: round.nameEs,
-            order: round.order,
-            pointsPerCorrect: round.pointsPerCorrect,
-            matches: {
-              create: round.matches,
-            },
-          })),
-        },
-      },
-      select: { id: true },
+        select: { id: true },
+      });
+
+      await createTournamentGroupsAndTeams(tx, tournament.id, payload.groups);
+
+      return tournament;
     });
 
     const tournament = await getTournamentDetails(createdTournament.id, req.user);
@@ -2082,14 +2102,6 @@ app.put('/api/tournaments/:id/structure', verifyToken, checkAdmin, async (req, r
         data: {
           ...payload.tournament,
           joinCode,
-          groups: {
-            create: payload.groups.map((group) => ({
-              name: group.name,
-              teams: {
-                create: group.teams,
-              },
-            })),
-          },
           rounds: {
             create: payload.rounds.map((round) => ({
               name: round.name,
@@ -2103,6 +2115,8 @@ app.put('/api/tournaments/:id/structure', verifyToken, checkAdmin, async (req, r
           },
         },
       });
+
+      await createTournamentGroupsAndTeams(tx, req.params.id, payload.groups);
     });
 
     const tournament = await getTournamentDetails(req.params.id, req.user);
