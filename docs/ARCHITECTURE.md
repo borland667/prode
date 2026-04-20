@@ -212,7 +212,7 @@ The flow is:
 - Google OAuth users can authenticate through Passport
 - The frontend stores the returned JWT token in `localStorage`
 - Protected API calls send `Authorization: Bearer <token>`
-- Password reset uses one-time hashed reset tokens in the database
+- Password reset uses one-time hashed reset tokens in the database and can deliver reset links through SMTP when configured
 
 ### 6.3 Access Control Model
 

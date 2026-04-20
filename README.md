@@ -117,6 +117,17 @@ GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
 
 # Site URL
 SITE_URL=http://localhost:5173
+
+# Transactional email / password reset delivery
+# In local development you can leave SMTP unset and use the returned resetUrl.
+# In production, configure SMTP so forgot-password can deliver real email.
+EMAIL_FROM_ADDRESS=noreply@example.com
+EMAIL_FROM_NAME=Prode
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASSWORD=
 ```
 
 ### 5. Set up the database
@@ -309,6 +320,7 @@ npm run db:seed
 - GitHub Actions now runs `npm run verify` on pushes to `main` and pull requests
 - The current automated test layer covers scoring and tournament utility logic with Node's built-in test runner
 - API integration tests use `TEST_DATABASE_URL` first and create an isolated temporary Postgres database per run
+- Password reset emails use SMTP when `SMTP_HOST`, `SMTP_PORT`, and `EMAIL_FROM_ADDRESS` are configured
 - The production build uses the custom `build.mjs` script with esbuild instead of Vite's default production bundling
 - If you hit an `esbuild` architecture mismatch locally, run `npm rebuild esbuild` and retry the build
 

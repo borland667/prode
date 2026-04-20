@@ -10,6 +10,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const prisma = require('./db.cjs');
 const { calculateTotalScore } = require('./scoring.cjs');
+const { hasEmailTransportConfig, sendPasswordResetEmail } = require('./email.cjs');
 
 const DEFAULT_GROUP_STAGE_RULES = {
   exactOrder: 4,
@@ -1356,13 +1357,33 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       },
     });
 
+    const resetUrl = `${process.env.SITE_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    const shouldAttemptEmailDelivery =
+      process.env.NODE_ENV === 'production' || hasEmailTransportConfig(process.env);
+
+    if (shouldAttemptEmailDelivery) {
+      try {
+        await sendPasswordResetEmail({
+          toEmail: user.email,
+          toName: user.name,
+          resetUrl,
+          expiresInMinutes: Math.round(PASSWORD_RESET_TOKEN_TTL_MS / 60000),
+        });
+      } catch (error) {
+        console.error('Failed to send password reset email:', error);
+        await prisma.passwordResetToken.deleteMany({
+          where: { userId: user.id },
+        });
+      }
+    }
+
     res.json({
       ...genericResponse,
       ...(process.env.NODE_ENV === 'production'
         ? {}
         : {
             resetToken,
-            resetUrl: `${process.env.SITE_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`,
+            resetUrl,
           }),
     });
   } catch (error) {
