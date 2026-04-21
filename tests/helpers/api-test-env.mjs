@@ -38,6 +38,10 @@ function runPrismaMigrate(databaseUrl) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function createApiTestEnvironment() {
   const adminDatabaseUrl = process.env.TEST_DATABASE_URL
     || (isLocalDatabaseUrl(process.env.DATABASE_URL) ? process.env.DATABASE_URL : null)
@@ -87,13 +91,29 @@ export async function createApiTestEnvironment() {
       if (prisma.__pool?.end) {
         await prisma.__pool.end();
       }
-      await adminPool.query(`
-        SELECT pg_terminate_backend(pid)
-        FROM pg_stat_activity
-        WHERE datname = $1
-          AND pid <> pg_backend_pid()
-      `, [databaseName]);
-      await adminPool.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
+
+      let dropped = false;
+      let lastError = null;
+
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        try {
+          await adminPool.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
+          dropped = true;
+          break;
+        } catch (error) {
+          lastError = error;
+          if (error.code !== '55006') {
+            throw error;
+          }
+
+          await sleep(100 * (attempt + 1));
+        }
+      }
+
+      if (!dropped && lastError) {
+        throw lastError;
+      }
+
       await adminPool.end();
     },
   };

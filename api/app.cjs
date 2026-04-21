@@ -38,6 +38,11 @@ const ROUND_CODES = {
 };
 const MIN_PASSWORD_LENGTH = 8;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
+const GOOGLE_AUTH_CONFIGURED = Boolean(
+  process.env.GOOGLE_CLIENT_ID &&
+  process.env.GOOGLE_CLIENT_SECRET &&
+  process.env.GOOGLE_CALLBACK_URL
+);
 
 const app = express();
 
@@ -51,53 +56,55 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        let user = await prisma.user.findUnique({
-          where: { googleId: profile.id },
-        });
+if (GOOGLE_AUTH_CONFIGURED) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          let user = await prisma.user.findUnique({
+            where: { googleId: profile.id },
+          });
 
-        if (!user) {
-          const email = profile.emails?.[0]?.value;
+          if (!user) {
+            const email = profile.emails?.[0]?.value;
 
-          if (email) {
-            user = await prisma.user.findUnique({ where: { email } });
+            if (email) {
+              user = await prisma.user.findUnique({ where: { email } });
+            }
+
+            if (user) {
+              user = await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                  googleId: profile.id,
+                  name: user.name || profile.displayName,
+                },
+              });
+            } else {
+              user = await prisma.user.create({
+                data: {
+                  googleId: profile.id,
+                  email: email || `google_${profile.id}@prode.local`,
+                  name: profile.displayName,
+                  role: 'USER',
+                },
+              });
+            }
           }
 
-          if (user) {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                googleId: profile.id,
-                name: user.name || profile.displayName,
-              },
-            });
-          } else {
-            user = await prisma.user.create({
-              data: {
-                googleId: profile.id,
-                email: email || `google_${profile.id}@prode.local`,
-                name: profile.displayName,
-                role: 'USER',
-              },
-            });
-          }
+          done(null, user);
+        } catch (error) {
+          done(error, null);
         }
-
-        done(null, user);
-      } catch (error) {
-        done(error, null);
       }
-    }
-  )
-);
+    )
+  );
+}
 
 app.use(passport.initialize());
 
@@ -1299,24 +1306,37 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get(
-  '/api/auth/google',
-  passport.authenticate('google', { session: false, scope: ['profile', 'email'] })
-);
-
-app.get(
-  '/api/auth/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/login' }),
-  (req, res) => {
-    try {
-      const token = generateToken(req.user.id);
-      res.cookie('token', token, getCookieOptions());
-      res.redirect(`${process.env.SITE_URL || 'http://localhost:5173'}/?token=${token}`);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+app.get('/api/auth/google', (req, res, next) => {
+  if (!GOOGLE_AUTH_CONFIGURED) {
+    return res.status(503).json({ error: 'Google OAuth is not configured' });
   }
-);
+
+  return passport.authenticate('google', { session: false, scope: ['profile', 'email'] })(
+    req,
+    res,
+    next
+  );
+});
+
+app.get('/api/auth/google/callback', (req, res, next) => {
+  if (!GOOGLE_AUTH_CONFIGURED) {
+    return res.status(503).json({ error: 'Google OAuth is not configured' });
+  }
+
+  return passport.authenticate('google', { session: false, failureRedirect: '/login' })(
+    req,
+    res,
+    () => {
+      try {
+        const token = generateToken(req.user.id);
+        res.cookie('token', token, getCookieOptions());
+        res.redirect(`${process.env.SITE_URL || 'http://localhost:5173'}/?token=${token}`);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  );
+});
 
 app.get('/api/auth/me', verifyToken, async (req, res) => {
   try {
