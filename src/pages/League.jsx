@@ -183,7 +183,7 @@ export default function League() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="page-shell">
         <div className="app-page-header">
           <div className="app-page-kicker score-pill text-cyan-300">
             {t('nav.myLeagues')}
@@ -240,7 +240,7 @@ export default function League() {
             </p>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className="text-white font-bold text-2xl tracking-[0.2em]">
+                <p className="text-2xl font-bold tracking-overline-wide text-white">
                   {league?.joinCode || '----'}
                 </p>
                 {league?.joinCode ? (
@@ -256,7 +256,7 @@ export default function League() {
               </div>
               {league?.joinCode ? (
                 <div className="account-subtle-panel">
-                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">
+                  <p className="mb-2 text-xs uppercase tracking-overline text-gray-500">
                     {t('tournament.inviteLink')}
                   </p>
                   <div className="flex items-start gap-3">
@@ -438,7 +438,7 @@ export default function League() {
                         </td>
                         <td>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 font-bold">
+                            <div className="surface-accent-gradient flex h-10 w-10 items-center justify-center rounded-full font-bold">
                               {player.name?.[0] || 'U'}
                             </div>
                             <div>

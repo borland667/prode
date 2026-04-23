@@ -106,9 +106,8 @@ PostgreSQL
 
 - React 19
 - React Router 7
-- Vite 8 for development
-- Custom `build.mjs` production build using esbuild
-- Tailwind v4 plus custom CSS tokens in `src/index.css`
+- Vite 8 for development and production (`vite build`)
+- Tailwind v4 plus custom CSS tokens in `src/index.css` (`:root` / `[data-theme='light']`, `@theme` for shared radii/shadows/typography scales, and component classes such as `sport-panel`, `surface-accent-gradient`)
 
 ### 4.2 Backend
 
@@ -123,7 +122,7 @@ PostgreSQL
 `npm run dev` uses [`scripts/dev.cjs`](../scripts/dev.cjs) to supervise:
 
 - `node --watch api/server.cjs`
-- `vite`
+- `node node_modules/vite/bin/vite.js` (local Vite dev server; same as `npm run dev:web`)
 
 That wrapper exists so local shutdown is reliable with `Ctrl+C`.
 

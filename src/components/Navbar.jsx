@@ -53,14 +53,14 @@ function NavDropdown({
     <div className="relative group after:absolute after:left-0 after:right-0 after:top-full after:h-4 after:content-['']">
       <button
         type="button"
-        className="score-pill text-slate-200 hover:border-emerald-400/60 hover:text-white transition focus-visible:border-emerald-400/60 focus-visible:text-white focus-visible:outline-none"
+        className="nav-pill-button"
       >
         <Icon size={14} />
         <span>{label}</span>
       </button>
 
-      <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-[24rem] pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
-        <div className="sport-panel-strong rounded-[1.6rem] p-4 shadow-[0_24px_60px_rgba(2,6,23,0.35)]">
+      <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-96 pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
+        <div className="sport-panel-strong rounded-panel-md p-4 shadow-ds-popover">
           <div className="flex items-center justify-between mb-3">
             <p className="sport-display text-lg text-white">{title}</p>
             {footerTo ? (
@@ -268,8 +268,8 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50">
       <div className="border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.24em] text-slate-400">
+        <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6 lg:px-8">
+          <div className="flex min-h-9 items-center justify-between text-xs uppercase tracking-marquee text-slate-400 md:text-sm">
             <div className="flex items-center gap-2">
               <Activity size={12} className="text-emerald-400" />
               <span className="sport-display">Matchday Live</span>
@@ -307,12 +307,12 @@ export default function Navbar() {
               to="/"
               className="flex items-center gap-3 text-white transition hover:text-emerald-300"
             >
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-slate-950 shadow-[0_12px_30px_rgba(16,185,129,0.28)]">
+              <div className="surface-accent-gradient flex h-11 w-11 items-center justify-center rounded-2xl shadow-ds-brand-mark">
                 <Shield size={22} />
               </div>
               <div className="leading-none">
                 <div className="sport-display text-2xl">PRODE</div>
-                <div className="text-[10px] uppercase tracking-[0.32em] text-slate-400">
+                <div className="text-kicker-tight uppercase tracking-marquee-tight text-slate-400">
                   Prediction Club
                 </div>
               </div>
@@ -353,7 +353,7 @@ export default function Navbar() {
               <Link
                 to={leaderboardLink}
                 onClick={handleLeaderboardClick}
-                className="score-pill text-slate-200 hover:border-emerald-400/60 hover:text-white transition"
+                className="nav-pill-button"
               >
                 <Trophy size={14} />
                 <span>{t('nav.leaderboard')}</span>
@@ -362,7 +362,7 @@ export default function Navbar() {
               {user ? (
                 <Link
                   to="/leaderboard/global"
-                  className="score-pill text-slate-200 hover:border-emerald-400/60 hover:text-white transition"
+                  className="nav-pill-button"
                 >
                   <Trophy size={14} />
                   <span>{t('nav.globalLeaderboard')}</span>
@@ -372,7 +372,7 @@ export default function Navbar() {
               {user?.isAdmin ? (
                 <Link
                   to="/admin"
-                  className="score-pill text-slate-200 hover:border-emerald-400/60 hover:text-white transition"
+                  className="nav-pill-button"
                 >
                   {t('nav.admin')}
                 </Link>
@@ -381,7 +381,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="score-pill text-slate-200 hover:border-emerald-400/60 hover:text-white transition"
+                className="nav-pill-button"
                 aria-label={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
                 title={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
               >
@@ -389,23 +389,23 @@ export default function Navbar() {
                 <span>{theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}</span>
               </button>
 
-              <div className="flex items-center border-l border-white/10 pl-5 space-x-2">
+              <div className="nav-segment">
                 <button
                   onClick={() => setLanguage('en')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                  className={`nav-segment-button ${
                     language === 'en'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      ? 'is-active'
+                      : ''
                   }`}
                 >
                   EN
                 </button>
                 <button
                   onClick={() => setLanguage('es')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                  className={`nav-segment-button ${
                     language === 'es'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      ? 'is-active'
+                      : ''
                   }`}
                 >
                   ES
@@ -416,16 +416,16 @@ export default function Navbar() {
                 <div className="flex items-center space-x-4 border-l border-white/10 pl-5">
                   <Link
                     to="/profile"
-                    className="flex items-center space-x-3 text-gray-300 hover:text-white transition"
+                    className="nav-profile-link"
                   >
-                    <div className="w-9 h-9 bg-gradient-to-br from-amber-300 to-emerald-500 rounded-full flex items-center justify-center text-slate-950 text-sm font-bold">
+                    <div className="surface-user-initial flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold">
                       {user.name?.[0] || 'U'}
                     </div>
                     <span className="hidden xl:inline font-semibold">{user.name}</span>
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-2 rounded-full text-gray-300 hover:text-white hover:bg-white/5 transition"
+                    className="nav-quiet-button"
                   >
                     {t('nav.logout')}
                   </button>
@@ -434,13 +434,13 @@ export default function Navbar() {
                 <div className="flex items-center space-x-3 border-l border-white/10 pl-5">
                   <Link
                     to="/login"
-                    className="px-4 py-2 rounded-full text-gray-300 hover:text-white hover:bg-white/5 transition"
+                    className="nav-quiet-button"
                   >
                     {t('nav.login')}
                   </Link>
                   <Link
                     to="/register"
-                    className="sport-button px-5 py-2.5 rounded-full text-slate-950 font-bold transition hover:scale-[1.02]"
+                    className="sport-button rounded-full px-5 py-2.5 font-bold text-slate-950 transition"
                   >
                     {t('nav.register')}
                   </Link>
@@ -493,7 +493,7 @@ export default function Navbar() {
 
           {isOpen ? (
             <div className="md:hidden pb-5 space-y-4">
-              <div className="sport-panel rounded-[1.5rem] p-4 space-y-3">
+              <div className="sport-panel rounded-panel-sm p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="sport-display text-lg text-white">{t('nav.tournaments')}</p>
                   <Link
@@ -522,7 +522,7 @@ export default function Navbar() {
               </div>
 
               {user ? (
-                <div className="sport-panel rounded-[1.5rem] p-4 space-y-3">
+                <div className="sport-panel rounded-panel-sm p-4 space-y-3">
                   <p className="sport-display text-lg text-white">{t('nav.myLeagues')}</p>
                   {leagueQuickLinks.length === 0 ? (
                     <p className="text-sm text-slate-400">{t('nav.noLeaguesYet')}</p>

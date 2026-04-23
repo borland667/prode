@@ -245,7 +245,7 @@ export default function Tournament() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="page-shell">
         <div className="mb-12">
           <div className="score-pill mb-5 text-emerald-200">
             {getSportLabel(tournament.sport, language)}
@@ -255,7 +255,7 @@ export default function Tournament() {
           </h1>
 
           <div className="grid md:grid-cols-6 gap-6 mb-8">
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.mode')}
               </p>
@@ -264,7 +264,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.access')}
               </p>
@@ -273,7 +273,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.status')}
               </p>
@@ -282,7 +282,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.closingDate')}
               </p>
@@ -291,7 +291,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {isPrivate ? t('tournament.members') : t('tournament.participants')}
               </p>
@@ -300,7 +300,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.prizes')}
               </p>
@@ -316,7 +316,7 @@ export default function Tournament() {
               ) : null}
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2">
                 {t('tournament.predictionWindow')}
               </p>
@@ -325,7 +325,7 @@ export default function Tournament() {
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-gray-400 text-sm mb-2 flex items-center gap-2">
                 <Clock size={16} />
                 {t('home.tournamentEndsIn')}
@@ -358,7 +358,7 @@ export default function Tournament() {
             </p>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.18em] text-gray-500 mb-2">
+                <p className="mb-2 text-sm uppercase tracking-overline text-gray-500">
                   {t('tournament.currentPrimaryEntry')}
                 </p>
                 <p className="text-white font-semibold text-xl">
@@ -376,7 +376,7 @@ export default function Tournament() {
                     !canChangePrimaryEntry ||
                     currentPrimaryOption?.scopeKey === 'tournament'
                   }
-                  className="app-button-secondary sm:w-auto"
+                  className="app-button-secondary tournament-cta-button"
                 >
                   {currentPrimaryOption?.scopeKey === 'tournament'
                     ? t('tournament.currentPrimaryEntry')
@@ -393,7 +393,7 @@ export default function Tournament() {
         ) : null}
 
         {isPrivate && !isMember ? (
-            <div className="sport-panel-strong rounded-[1.75rem] border border-amber-500/60 p-6 mb-8">
+            <div className="sport-panel-strong rounded-panel-lg border border-amber-500/60 p-6 mb-8">
               <h2 className="text-2xl font-bold text-white mb-3">
                 {t('tournament.joinTournament')}
               </h2>
@@ -409,18 +409,18 @@ export default function Tournament() {
                   {t('tournament.joinClosed')}
                 </p>
               ) : user ? (
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="tournament-inline-form">
                   <input
                     type="text"
                     value={joinCode}
                     onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
                     placeholder={t('tournament.joinCode')}
-                    className="app-input flex-1"
+                    className="app-input"
                   />
                   <button
                     onClick={handleJoinTournament}
                     disabled={joining}
-                    className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] disabled:opacity-50 transition"
+                    className="app-button-primary tournament-inline-submit"
                   >
                     {joining ? t('tournament.joining') : t('tournament.joinNow')}
                   </button>
@@ -428,7 +428,7 @@ export default function Tournament() {
               ) : (
                 <Link
                   to="/login"
-                  className="sport-button inline-flex px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] transition"
+                  className="app-button-primary tournament-cta-button"
                 >
                   {t('auth.login')}
                 </Link>
@@ -441,10 +441,10 @@ export default function Tournament() {
           ) : null}
 
           {canSubmitPredictions ? (
-            <div className="flex gap-4">
+            <div className="tournament-action-row">
               <button
                 onClick={() => navigate(`/tournament/${id}/predict`)}
-                className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] transition"
+                className="app-button-primary tournament-cta-button"
               >
                 {hasPredictions ? t('predict.makePredictions') : t('home.enterPredictions')}
               </button>
@@ -452,14 +452,14 @@ export default function Tournament() {
               {hasPredictions && (
                 <Link
                   to={`/leaderboard/${id}`}
-                  className="sport-button-secondary px-6 py-3 text-emerald-300 rounded-full font-bold hover:bg-white/5 transition"
+                  className="app-button-secondary tournament-cta-button"
                 >
                   {t('home.viewLeaderboard')}
                 </Link>
               )}
             </div>
           ) : user && isMember && predictionsLocked ? (
-            <div className="sport-panel rounded-[1.75rem] border border-amber-500/30 p-6">
+            <div className="sport-panel rounded-panel-lg border border-amber-500/30 p-6">
               <h2 className="text-2xl font-bold text-white mb-3">
                 {t('tournament.predictionsClosed')}
               </h2>
@@ -470,7 +470,7 @@ export default function Tournament() {
                 {hasPredictions ? (
                   <Link
                     to={`/leaderboard/${id}`}
-                    className="sport-button-secondary px-6 py-3 text-emerald-300 rounded-full font-bold hover:bg-white/5 transition"
+                    className="app-button-secondary tournament-cta-button"
                   >
                     {t('home.viewLeaderboard')}
                   </Link>
@@ -487,7 +487,7 @@ export default function Tournament() {
             </h2>
 
             <div className="grid lg:grid-cols-2 gap-8 mb-8">
-              <div className="sport-panel rounded-[1.75rem] p-6">
+              <div className="sport-panel rounded-panel-lg p-6">
                 <h3 className="sport-display text-2xl text-white mb-3">
                   {t('tournament.createLeague')}
                 </h3>
@@ -512,32 +512,32 @@ export default function Tournament() {
                   <button
                     onClick={handleCreateLeague}
                     disabled={creatingLeague}
-                    className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] disabled:opacity-50 transition"
+                    className="app-button-primary tournament-submit-button"
                   >
                     {creatingLeague ? t('tournament.creatingLeague') : t('tournament.createLeagueNow')}
                   </button>
                 </div>
               </div>
 
-              <div className="sport-panel rounded-[1.75rem] p-6">
+              <div className="sport-panel rounded-panel-lg p-6">
                 <h3 className="sport-display text-2xl text-white mb-3">
                   {t('tournament.joinLeague')}
                 </h3>
                 <p className="text-gray-400 mb-6">
                   {t('tournament.joinLeagueHelp')}
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="tournament-inline-form">
                   <input
                     type="text"
                     value={leagueJoinCode}
                     onChange={(event) => setLeagueJoinCode(event.target.value.toUpperCase())}
                     placeholder={t('tournament.joinCode')}
-                    className="app-input flex-1"
+                    className="app-input"
                   />
                   <button
                     onClick={handleJoinLeague}
                     disabled={joiningLeague}
-                    className="sport-button px-6 py-3 text-slate-950 rounded-full font-bold hover:scale-[1.02] disabled:opacity-50 transition"
+                    className="app-button-primary tournament-inline-submit"
                   >
                     {joiningLeague ? t('tournament.joining') : t('tournament.joinLeagueNow')}
                   </button>
@@ -545,7 +545,7 @@ export default function Tournament() {
               </div>
             </div>
 
-            <div className="sport-panel rounded-[1.75rem] p-6">
+            <div className="sport-panel rounded-panel-lg p-6">
               <h3 className="sport-display text-2xl text-white mb-6">
                 {t('tournament.yourLeagues')}
               </h3>
@@ -556,7 +556,7 @@ export default function Tournament() {
                   {leagues.map((league) => (
                     <div
                       key={league.id}
-                      className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-5"
+                      className="rounded-panel-sm border border-white/8 bg-white/3 p-5"
                     >
                       <h4 className="sport-display text-xl text-white mb-2">{league.name}</h4>
                       {league.description ? (
@@ -567,7 +567,7 @@ export default function Tournament() {
                           {t('tournament.leagueMembers')}: {formatNumber(league.memberCount || 0)}
                         </p>
                         <p>
-                          {t('tournament.joinCode')}: <span className="tracking-[0.2em]">{league.joinCode}</span>
+                          {t('tournament.joinCode')}: <span className="tracking-overline-wide">{league.joinCode}</span>
                         </p>
                         {currentPrimaryOption?.scopeKey === `league:${league.id}` ? (
                           <p className="text-emerald-300">
@@ -578,14 +578,14 @@ export default function Tournament() {
                       <div className="flex flex-wrap gap-3">
                         <Link
                           to={`/league/${league.id}`}
-                          className="sport-button-secondary inline-flex px-4 py-2 rounded-full text-emerald-300 font-bold hover:bg-white/5 transition"
+                          className="app-button-secondary tournament-cta-button"
                         >
                           {t('tournament.openLeague')}
                         </Link>
                         {canSubmitPredictions ? (
                           <Link
                             to={`/league/${league.id}/predict`}
-                            className="sport-button inline-flex px-4 py-2 rounded-full text-slate-950 font-bold transition"
+                            className="app-button-primary tournament-cta-button"
                           >
                             {t('tournament.openLeaguePredictions')}
                           </Link>
@@ -603,7 +603,7 @@ export default function Tournament() {
                               !canChangePrimaryEntry ||
                               currentPrimaryOption?.scopeKey === `league:${league.id}`
                             }
-                            className="app-button-secondary sm:w-auto"
+                            className="app-button-secondary tournament-cta-button"
                           >
                             {currentPrimaryOption?.scopeKey === `league:${league.id}`
                               ? t('tournament.currentPrimaryEntry')
@@ -628,7 +628,7 @@ export default function Tournament() {
             {groups.map((group) => (
               <div
                 key={group.id}
-                className="sport-panel sport-pitch rounded-[1.75rem] p-6"
+                className="sport-panel rounded-panel-lg p-6"
               >
                 <div className="score-pill mb-4 text-emerald-200">
                   {group.name}
@@ -672,7 +672,7 @@ export default function Tournament() {
 
             <div className="space-y-8">
               {rounds.map((round) => (
-                <div key={round.id} className="sport-panel rounded-[1.75rem] p-6">
+                <div key={round.id} className="sport-panel rounded-panel-lg p-6">
                   <h3 className="sport-display text-2xl text-white mb-6">
                     {getRoundLabel(round, t)}
                   </h3>
@@ -694,7 +694,7 @@ export default function Tournament() {
                       return (
                         <div
                           key={match.id}
-                          className="rounded-[1.5rem] border border-white/8 bg-slate-950/60 p-5"
+                          className="rounded-panel-sm border border-white/8 bg-slate-950/60 p-5"
                         >
                           <div className="flex items-center justify-between mb-4">
                             <span className="score-pill text-emerald-200">{match.code}</span>
@@ -704,7 +704,7 @@ export default function Tournament() {
                           </div>
 
                           <div className="space-y-3 mb-4">
-                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.home.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/[0.02]'}`}>
+                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.home.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/2'}`}>
                               <span className="text-white">
                                 {matchup.home.teamName || matchup.home.slotLabel || match.homeLabel}
                               </span>
@@ -714,7 +714,7 @@ export default function Tournament() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.away.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/[0.02]'}`}>
+                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.away.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/2'}`}>
                               <span className="text-white">
                                 {matchup.away.teamName || matchup.away.slotLabel || match.awayLabel}
                               </span>
@@ -736,7 +736,7 @@ export default function Tournament() {
         ) : null}
 
         {canSubmitPredictions && !hasPredictions && (
-          <div className="sport-panel-strong rounded-[2rem] p-12 text-center">
+          <div className="sport-panel-strong rounded-panel-2xl p-12 text-center">
             <h3 className="sport-display text-4xl text-white mb-4">
               {t('tournament.makeYourPredictions')}
             </h3>
@@ -745,7 +745,7 @@ export default function Tournament() {
             </p>
             <button
               onClick={() => navigate(`/tournament/${id}/predict`)}
-              className="sport-button px-8 py-4 text-slate-950 rounded-full font-bold hover:scale-[1.02] transition"
+              className="app-button-primary tournament-cta-button"
             >
               {t('tournament.startPredicting')}
             </button>

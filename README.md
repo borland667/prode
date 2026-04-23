@@ -323,13 +323,15 @@ npm run db:seed
 
 ### Development Notes
 
-- `npm run dev` uses [`scripts/dev.cjs`](scripts/dev.cjs) so the API and Vite dev server shut down cleanly with `Ctrl+C`
+- `npm run dev` uses [`scripts/dev.cjs`](scripts/dev.cjs) so the API and Vite dev server shut down cleanly with `Ctrl+C`; the script starts the local `vite` CLI from `node_modules` with the project root as cwd (same toolchain as `npm run dev:web` and `vite build`, including Tailwind)
 - GitHub Actions now runs `npm run verify` on pushes to `main` and pull requests
 - The current automated test layer covers scoring and tournament utility logic with Node's built-in test runner
 - API integration tests use `TEST_DATABASE_URL` first and create an isolated temporary Postgres database per run
 - Password reset emails use SMTP when `SMTP_HOST`, `SMTP_PORT`, and `EMAIL_FROM_ADDRESS` are configured
-- The production build uses the custom `build.mjs` script with esbuild instead of Vite's default production bundling
-- If you hit an `esbuild` architecture mismatch locally, run `npm rebuild esbuild` and retry the build
+- Production builds use `vite build` so Tailwind v4 is compiled the same way as in dev
+- UI tokens: shared radii, shadows, tracking, and kicker text sizes live in `@theme` in `src/index.css` (use `rounded-panel-*`, `shadow-ds-*`, `tracking-overline`, etc.); reusable surfaces use classes like `surface-accent-gradient` and `sport-button` / `sport-panel` instead of one-off arbitrary values where possible
+- Page layout: route bodies use `page-shell` (default max width), `page-shell-narrow` (profile), or `page-shell-md` (league invite); large inner panels use `page-panel-pad` / `page-panel-pad-md` for consistent padding. Combine `page-panel-pad` with `page-panel-pad-loft-top` when headings need extra clearance from the panel top curve. Override vertical spacing with Tailwind utilities (for example `pt-0`, `md:pb-16`) when a section needs a different rhythm
+- Home metrics: the hero stat row and featured sidebar stat tiles share `home-metric-tile` + `home-metric-tile__kicker` on `sport-panel` (top-weighted padding, top-aligned content, shared kicker layout)
 
 ### Next Steps
 
@@ -367,7 +369,6 @@ prode/
 ├── docs/
 │   └── KEYCLOAK_MIGRATION.md
 ├── netlify.toml         # Netlify deploy config
-├── build.mjs            # Production build script (esbuild)
 └── package.json
 ```
 

@@ -65,9 +65,9 @@ export default function GlobalLeaderboard() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-start mb-10">
-          <div className="sport-panel-strong rounded-[2rem] p-8">
+      <div className="page-shell">
+        <div className="mb-10 grid items-start gap-8 xl:grid-cols-[1.3fr_0.92fr] xl:gap-10">
+          <div className="sport-panel-strong rounded-panel-2xl page-panel-pad">
             <div className="score-pill mb-4 text-emerald-200">
               {t('nav.globalLeaderboard')}
             </div>
@@ -80,7 +80,7 @@ export default function GlobalLeaderboard() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-sm text-slate-400 mb-2">
                 {t('leaderboard.visiblePlayers')}
               </p>
@@ -88,7 +88,7 @@ export default function GlobalLeaderboard() {
                 {formatNumber(summary?.visiblePlayerCount || players.length)}
               </p>
             </div>
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel rounded-panel-md p-6">
               <p className="text-sm text-slate-400 mb-2">
                 {t('leaderboard.yourRank')}
               </p>
@@ -102,7 +102,7 @@ export default function GlobalLeaderboard() {
         </div>
 
         {!currentUser?.isVisible ? (
-          <div className="sport-panel rounded-[1.6rem] p-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="sport-panel rounded-panel-md p-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <p className="text-slate-300">
               {t('leaderboard.visibilityOff')}
             </p>
@@ -173,7 +173,7 @@ export default function GlobalLeaderboard() {
                                 className="w-10 h-10 rounded-full object-cover border border-white/10"
                               />
                             ) : (
-                              <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 font-bold">
+                              <div className="surface-accent-gradient flex h-10 w-10 items-center justify-center rounded-full font-bold">
                                 {player.name?.[0] || 'U'}
                               </div>
                             )}

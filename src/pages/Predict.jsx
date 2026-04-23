@@ -240,7 +240,7 @@ export default function Predict() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="page-shell">
         <div className="app-page-header">
           <div className="app-page-kicker score-pill text-emerald-200">
             {league?.name || getLocalizedName(tournament, language, tournament.name)}
@@ -254,7 +254,7 @@ export default function Predict() {
               : t('predict.tournamentPredictionHelp')}
           </p>
           {isLeagueScope ? (
-            <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
+            <p className="text-sm uppercase tracking-overline-wide text-gray-500">
               {getLocalizedName(tournament, language, tournament.name)}
             </p>
           ) : null}

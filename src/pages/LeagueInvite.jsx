@@ -72,8 +72,8 @@ export default function LeagueInvite() {
 
   if (error && !invite) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center px-4">
-        <div className="sport-panel rounded-[1.75rem] p-8 max-w-2xl w-full">
+      <div className="sport-shell flex min-h-screen items-center justify-center px-4">
+        <div className="sport-panel w-full max-w-2xl rounded-panel-lg page-panel-pad">
           <p className="text-red-400 text-lg">{error}</p>
         </div>
       </div>
@@ -89,8 +89,8 @@ export default function LeagueInvite() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <div className="sport-panel-strong rounded-[2rem] p-8 md:p-10">
+      <div className="page-shell-md">
+        <div className="sport-panel-strong rounded-panel-2xl page-panel-pad">
           <div className="score-pill mb-5 text-emerald-200">
             {t('tournament.leagueInviteResolved')}
           </div>
@@ -102,19 +102,19 @@ export default function LeagueInvite() {
           </p>
 
           {success ? (
-            <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded mb-6">
+            <div className="app-alert app-alert-success mb-6">
               {success}
             </div>
           ) : null}
 
           {error ? (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
+            <div className="app-alert app-alert-error mb-6">
               {error}
             </div>
           ) : null}
 
           <div className="grid md:grid-cols-3 gap-4 mb-8">
-            <div className="sport-panel rounded-[1.4rem] p-5">
+            <div className="sport-panel rounded-panel-xs p-5">
               <div className="flex items-center gap-3 text-emerald-300 mb-3">
                 <Users size={18} />
                 <span className="score-pill">{t('tournament.leagueMembers')}</span>
@@ -123,7 +123,7 @@ export default function LeagueInvite() {
                 {formatNumber(invite.league?.memberCount || 0)}
               </p>
             </div>
-            <div className="sport-panel rounded-[1.4rem] p-5">
+            <div className="sport-panel rounded-panel-xs p-5">
               <div className="flex items-center gap-3 text-cyan-300 mb-3">
                 <Shield size={18} />
                 <span className="score-pill">{t('tournament.access')}</span>
@@ -132,7 +132,7 @@ export default function LeagueInvite() {
                 {invite.tournament?.accessType || 'public'}
               </p>
             </div>
-            <div className="sport-panel rounded-[1.4rem] p-5">
+            <div className="sport-panel rounded-panel-xs p-5">
               <div className="flex items-center gap-3 text-amber-300 mb-3">
                 <Trophy size={18} />
                 <span className="score-pill">{t('nav.tournaments')}</span>
@@ -144,7 +144,7 @@ export default function LeagueInvite() {
           </div>
 
           {!user ? (
-            <div className="sport-panel rounded-[1.6rem] p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.signInToJoinLeague')}
               </p>
@@ -164,7 +164,7 @@ export default function LeagueInvite() {
               </div>
             </div>
           ) : invite.access?.requiresTournamentJoin ? (
-            <div className="sport-panel rounded-[1.6rem] p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.needTournamentAccessFirst')}
               </p>
@@ -176,7 +176,7 @@ export default function LeagueInvite() {
               </Link>
             </div>
           ) : invite.access?.isLeagueMember ? (
-            <div className="sport-panel rounded-[1.6rem] p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.joinedLeague')}
               </p>
@@ -188,7 +188,7 @@ export default function LeagueInvite() {
               </Link>
             </div>
           ) : (
-            <div className="sport-panel rounded-[1.6rem] p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.joinLeagueInviteHelp')}
               </p>

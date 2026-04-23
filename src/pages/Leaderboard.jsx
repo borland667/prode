@@ -67,7 +67,7 @@ export default function Leaderboard() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="page-shell">
         <div className="app-page-header">
           <div className="app-page-kicker score-pill text-emerald-200">
             Standings
@@ -180,7 +180,7 @@ export default function Leaderboard() {
                         </td>
                         <td>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 font-bold">
+                            <div className="surface-accent-gradient flex h-10 w-10 items-center justify-center rounded-full font-bold">
                               {player.name?.[0] || 'U'}
                             </div>
                             <div>

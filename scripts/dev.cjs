@@ -1,7 +1,10 @@
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const isWindows = process.platform === 'win32';
-const npmCommand = isWindows ? 'npm.cmd' : 'npm';
+const projectRoot = path.join(__dirname, '..');
+const viteCli = path.join(projectRoot, 'node_modules', 'vite', 'bin', 'vite.js');
+
 const childProcesses = new Set();
 let shuttingDown = false;
 let exitCode = 0;
@@ -24,6 +27,7 @@ function spawnProcess(name, command, args) {
   const child = spawn(command, args, {
     stdio: 'inherit',
     env: process.env,
+    cwd: projectRoot,
   });
 
   childProcesses.add(child);
@@ -123,5 +127,12 @@ process.on('SIGTERM', () => {
   shutdown('SIGTERM');
 });
 
+if (!fs.existsSync(viteCli)) {
+  console.error('[dev] Missing Vite CLI. From the project root, run: npm install');
+  process.exit(1);
+}
+
 spawnProcess('api', process.execPath, ['--watch', 'api/server.cjs']);
-spawnProcess('web', npmCommand, ['run', 'dev:web']);
+// Run the local Vite binary (same as `npm run dev:web`) so cwd and plugins
+// like @tailwindcss/vite resolve reliably; avoids nested `npm run`.
+spawnProcess('web', process.execPath, [viteCli]);

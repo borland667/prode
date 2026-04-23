@@ -158,18 +158,18 @@ export default function Profile() {
 
   return (
     <div className="sport-shell min-h-screen">
-      <div className="max-w-6xl mx-auto px-4 py-10 md:py-12">
-        <div className="sport-panel-strong rounded-[2rem] p-6 md:p-8 mb-8">
+      <div className="page-shell-narrow">
+        <div className="sport-panel-strong mb-8 rounded-panel-2xl page-panel-pad">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-5">
               {profileForm.avatarUrl ? (
                 <img
                   src={profileForm.avatarUrl}
                   alt={profile?.user?.name || user.name}
-                  className="w-24 h-24 rounded-[1.75rem] object-cover border border-white/10 shadow-[0_16px_40px_rgba(18,194,127,0.16)]"
+                  className="h-24 w-24 rounded-panel-lg border border-white/10 object-cover shadow-ds-profile-photo"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-[1.75rem] bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-slate-950 text-5xl font-bold shadow-[0_18px_42px_rgba(18,194,127,0.22)]">
+                <div className="surface-accent-gradient flex h-24 w-24 items-center justify-center rounded-panel-lg text-5xl font-bold shadow-ds-profile-avatar">
                   {profile?.user?.name?.[0] || user.name?.[0] || 'U'}
                 </div>
               )}
@@ -219,7 +219,7 @@ export default function Profile() {
             const Icon = stat.icon;
 
             return (
-              <div key={stat.key} className="sport-panel rounded-[1.5rem] p-5">
+              <div key={stat.key} className="sport-panel rounded-panel-sm p-5">
                 <div className={`flex items-center gap-3 mb-3 ${stat.tone}`}>
                   <Icon size={18} />
                   <span className="score-pill">{stat.label}</span>
@@ -232,8 +232,8 @@ export default function Profile() {
           })}
         </div>
 
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
-          <div className="sport-panel-strong rounded-[1.75rem] p-6 md:p-7 space-y-5">
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_0.92fr] lg:gap-10">
+          <div className="sport-panel-strong space-y-5 rounded-panel-lg page-panel-pad">
             <h2 className="sport-display text-3xl text-white">
               {t('profile.profileDetails')}
             </h2>
@@ -307,7 +307,7 @@ export default function Profile() {
           </div>
 
           <div className="space-y-6">
-            <div className="sport-panel rounded-[1.75rem] p-6 md:p-7 space-y-5">
+            <div className="sport-panel space-y-5 rounded-panel-lg page-panel-pad">
               <h2 className="sport-display text-3xl text-white">
                 {t('profile.rankingPrivacy')}
               </h2>
@@ -323,7 +323,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="sport-panel-strong rounded-[1.75rem] p-6 md:p-7 space-y-5">
+            <div className="sport-panel-strong space-y-5 rounded-panel-lg page-panel-pad">
               <h2 className="sport-display text-3xl text-white">
                 {t('profile.security')}
               </h2>
