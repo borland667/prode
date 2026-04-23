@@ -340,7 +340,7 @@ CI:
 - GitHub Actions runs `npm run verify`
 - CI provisions PostgreSQL for the test suite
 - on pushes to `main`, GitHub Actions also runs `npm run db:migrate:deploy` for production when the `PRODUCTION_DATABASE_URL` GitHub secret is configured
-- if `PRODUCTION_DATABASE_URL` is not present, the production migration job is skipped without failing CI
+- if `PRODUCTION_DATABASE_URL` is not set, the `migrate-production` job is skipped (a prior gate job reads it from `env` and exposes a boolean output) without failing CI
 
 ## Deployment And Production Migrations
 
@@ -350,9 +350,9 @@ Current production deployment expectation:
 
 - pushing to `main` triggers `.github/workflows/ci.yml`
 - the `verify` job must pass first
-- after `verify`, the `migrate-production` job runs `npm run db:migrate:deploy`
-- the migration job only runs when the GitHub secret `PRODUCTION_DATABASE_URL` is configured
-- if that secret is absent, the migration job is skipped and the workflow still completes successfully
+- after `verify`, on pushes to `main`, `check-production-migrate` sets `run_migrate` from whether `PRODUCTION_DATABASE_URL` is non-empty (secret injected into step `env`, never logged)
+- the `migrate-production` job runs only when that output is `true`, then runs `npm run db:migrate:deploy`
+- if the secret is absent, `migrate-production` is skipped and the workflow still completes successfully
 
 Required GitHub secret:
 

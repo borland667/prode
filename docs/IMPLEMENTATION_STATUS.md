@@ -143,7 +143,7 @@ npm run verify
 CI:
 
 - GitHub Actions workflow runs `npm run verify`
-- pushes to `main` also run a secret-gated production Prisma migration job when `PRODUCTION_DATABASE_URL` is configured
+- pushes to `main` also run `check-production-migrate` then `migrate-production` only when `PRODUCTION_DATABASE_URL` is set (gate job reads secret via `env` and outputs a boolean; migrate job `if` uses `needs` outputs)
 - CI provisions PostgreSQL for tests
 
 ## 4. Design System State

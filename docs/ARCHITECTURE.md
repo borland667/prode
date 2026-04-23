@@ -556,7 +556,7 @@ CI:
 - GitHub Actions workflow in `.github/workflows/ci.yml`
 - PostgreSQL service in CI
 - `npm run verify`
-- secret-gated production migration job on pushes to `main`
+- production migration on pushes to `main`: a gate job derives `run_migrate` from `PRODUCTION_DATABASE_URL` via `env`, then `migrate-production` runs only when that output is true
 
 Verification baseline:
 
@@ -596,9 +596,9 @@ Current automation contract:
 
 - workflow: `.github/workflows/ci.yml`
 - trigger: push to `main`
-- gate: runs only when GitHub secret `PRODUCTION_DATABASE_URL` is configured
-- order: `migrate-production` waits for `verify`
-- command: `npm run db:migrate:deploy`
+- gate: `check-production-migrate` sets job output `run_migrate` from step `env` (`PRODUCTION_DATABASE_URL`); `migrate-production` uses `needs.*.outputs` in its `if` (secrets are not valid in job-level `if`)
+- order: `check-production-migrate` and `migrate-production` wait for `verify`
+- command: `npm run db:migrate:deploy` (migrate job only)
 
 This keeps the migration path explicit and checked-in while allowing repositories without configured production secrets to keep using the same CI workflow safely.
 
