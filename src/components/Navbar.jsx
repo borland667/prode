@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   Menu,
   Moon,
+  Plus,
   Shield,
   Sun,
   Trophy,
@@ -38,6 +39,7 @@ function NavDropdown({
   emptyLabel,
   footerLabel,
   footerTo,
+  headerAction,
   onNavigate,
   renderMeta,
 }) {
@@ -65,18 +67,34 @@ function NavDropdown({
         <Panel variant="strong" radius="md" className="nav-dropdown-panel ds-panel-pad-compact shadow-ds-popover">
           <div className="nav-dropdown-header">
             <DisplayText as="p" className="nav-dropdown-title text-white">{title}</DisplayText>
-            {footerTo ? (
-              <Button
-                as={Link}
-                to={footerTo}
-                onClick={handleNavigate}
-                variant="secondary"
-                size="sm"
-                className="nav-dropdown-footer"
-              >
-                {footerLabel}
-              </Button>
-            ) : null}
+            <div className="nav-dropdown-header-actions">
+              {headerAction ? (
+                <Button
+                  as={Link}
+                  to={headerAction.to}
+                  onClick={handleNavigate}
+                  variant="secondary"
+                  size="sm"
+                  className="nav-dropdown-header-action"
+                  aria-label={headerAction.label}
+                  title={headerAction.label}
+                >
+                  <Plus size={16} />
+                </Button>
+              ) : null}
+              {footerTo ? (
+                <Button
+                  as={Link}
+                  to={footerTo}
+                  onClick={handleNavigate}
+                  variant="secondary"
+                  size="sm"
+                  className="nav-dropdown-footer"
+                >
+                  {footerLabel}
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           <div className="nav-dropdown-list">
@@ -112,7 +130,6 @@ function NavDropdown({
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [leaderboardLink, setLeaderboardLink] = useState('/');
   const [featuredTournament, setFeaturedTournament] = useState(null);
   const [availableTournaments, setAvailableTournaments] = useState([]);
   const [navCollections, setNavCollections] = useState({ tournaments: [], leagues: [] });
@@ -128,11 +145,6 @@ export default function Navbar() {
         const tournaments = await get('/tournaments?status=active,upcoming');
         setAvailableTournaments(tournaments || []);
         setFeaturedTournament(tournaments?.[0] || null);
-        if (tournaments?.length) {
-          setLeaderboardLink(`/leaderboard/${tournaments[0].id}`);
-        } else {
-          setLeaderboardLink('/');
-        }
       } catch (err) {
         console.error('Failed to load navigation tournaments:', err);
         setAvailableTournaments([]);
@@ -185,6 +197,13 @@ export default function Navbar() {
     : [];
 
   const userNavCollections = user ? navCollections : { tournaments: [], leagues: [] };
+  const leaderboardLink = availableTournaments.length > 0 ? '/leaderboard' : '/';
+  const currentTournamentMatch = location.pathname.match(/^\/tournament\/([^/]+)/);
+  const createLeagueTo = currentTournamentMatch?.[1]
+    ? `/tournament/${currentTournamentMatch[1]}#league-create`
+    : featuredTournament
+      ? `/tournament/${featuredTournament.id}#league-create`
+      : null;
 
   const tournamentQuickLinks = useMemo(() => {
     return (availableTournaments || []).map((entry) => {
@@ -252,7 +271,7 @@ export default function Navbar() {
   const handleLeaderboardClick = (event) => {
     setIsOpen(false);
 
-    if (leaderboardLink !== '/') {
+    if (availableTournaments.length > 0) {
       return;
     }
 
@@ -267,7 +286,7 @@ export default function Navbar() {
 
   return (
     <nav className="nav-frame sticky top-0 z-50">
-      <div className="border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
+      <div className="nav-strip border-b">
         <div className="mx-auto max-w-7xl px-4 py-1.5 sm:px-6 lg:px-8">
           <div className="flex min-h-9 items-center justify-between text-xs uppercase tracking-marquee text-slate-400 md:text-sm">
             <div className="flex items-center gap-2">
@@ -300,7 +319,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="border-b border-white/5 bg-slate-950/75 backdrop-blur-xl">
+      <div className="nav-main-bar border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center min-h-[4.5rem] gap-5">
             <Link
@@ -342,6 +361,14 @@ export default function Navbar() {
                   title={t('nav.myLeagues')}
                   items={leagueQuickLinks}
                   emptyLabel={t('nav.noLeaguesYet')}
+                  headerAction={
+                    createLeagueTo
+                      ? {
+                          to: createLeagueTo,
+                          label: t('tournament.createLeague'),
+                        }
+                      : null
+                  }
                   renderMeta={(item) =>
                     item.isOwner ? (
                       <Pill compact className="nav-dropdown-meta text-cyan-300">{t('tournament.leagueSettings')}</Pill>

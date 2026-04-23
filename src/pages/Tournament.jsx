@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,7 @@ export default function Tournament() {
   const { id } = useParams();
   const { language, t, formatDate, formatNumber, formatCurrency } = useLanguage();
   const { user } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const [tournament, setTournament] = useState(null);
@@ -71,6 +72,23 @@ export default function Tournament() {
 
     fetchData();
   }, [id, user]);
+
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+
+    const targetId = location.hash.replace('#', '');
+    const scrollToTarget = () => {
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    const timeoutId = window.setTimeout(scrollToTarget, 80);
+    return () => window.clearTimeout(timeoutId);
+  }, [location.hash, loading]);
 
   const handleJoinTournament = async () => {
     if (!joinCode.trim()) {
@@ -460,7 +478,12 @@ export default function Tournament() {
             </DisplayText>
 
             <div className="tournament-league-grid">
-              <Panel padding="normal" radius="xl" className="tournament-section">
+              <Panel
+                id="league-create"
+                padding="normal"
+                radius="xl"
+                className="tournament-section"
+              >
                 <DisplayText as="h3" className="text-2xl text-white">
                   {t('tournament.createLeague')}
                 </DisplayText>

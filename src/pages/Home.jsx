@@ -99,7 +99,7 @@ export default function Home() {
       description: t('home.step1Desc'),
       icon: Zap,
       iconSurfaceClass: 'home-step-icon-primary',
-      stepClassName: 'text-emerald-200',
+      stepClassName: 'home-step-badge home-step-badge--primary',
     },
     {
       key: '02',
@@ -107,7 +107,7 @@ export default function Home() {
       description: t('home.step2Desc'),
       icon: Users,
       iconSurfaceClass: 'home-step-icon-warm',
-      stepClassName: 'text-amber-100',
+      stepClassName: 'home-step-badge home-step-badge--warm',
     },
     {
       key: '03',
@@ -115,7 +115,7 @@ export default function Home() {
       description: t('home.step3Desc'),
       icon: Trophy,
       iconSurfaceClass: 'home-step-icon-cool',
-      stepClassName: 'text-cyan-100',
+      stepClassName: 'home-step-badge home-step-badge--cool',
     },
   ];
 

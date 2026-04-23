@@ -35,6 +35,7 @@ function App() {
                 <Route path="/tournament/:id/predict" element={<Predict />} />
                 <Route path="/league/:id/predict" element={<Predict />} />
                 <Route path="/leaderboard/global" element={<GlobalLeaderboard />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/leaderboard/:id" element={<Leaderboard />} />
                 <Route path="/league/:id" element={<League />} />
                 <Route path="/league/invite/:joinCode" element={<LeagueInvite />} />

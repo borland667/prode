@@ -396,7 +396,7 @@ const WORLD_CUP_2026_DEF = {
     modeNameEs: 'Prode Argentino Clasico Escalado',
     sport: 'football',
     status: 'upcoming',
-    prizesEnabled: true,
+    prizesEnabled: false,
     entryFee: 20,
     currency: 'USD',
     accessType: 'public',

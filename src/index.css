@@ -39,6 +39,9 @@
   --ds-shadow-brand-mark: 0 12px 30px rgb(16 185 129 / 0.28);
   --ds-shadow-profile-photo: 0 16px 40px rgb(18 194 127 / 0.16);
   --ds-shadow-profile-avatar: 0 18px 42px rgb(18 194 127 / 0.22);
+  --nav-strip-bg: rgba(7, 17, 31, 0.9);
+  --nav-main-bg: rgba(7, 17, 31, 0.75);
+  --nav-border: rgba(255, 255, 255, 0.08);
   --scale-interaction-hover: 1.02;
   --scale-interaction-hover-subtle: 1.01;
 }
@@ -67,6 +70,9 @@
   --ds-shadow-brand-mark: 0 10px 28px rgb(13 165 103 / 0.22);
   --ds-shadow-profile-photo: 0 12px 32px rgb(13 165 103 / 0.14);
   --ds-shadow-profile-avatar: 0 14px 36px rgb(13 165 103 / 0.18);
+  --nav-strip-bg: rgba(251, 253, 255, 0.96);
+  --nav-main-bg: rgba(249, 252, 255, 0.98);
+  --nav-border: rgba(16, 32, 51, 0.08);
 }
 
 @theme {
@@ -561,6 +567,21 @@ html {
   padding-inline: 0.7rem;
 }
 
+.nav-strip,
+.nav-main-bar {
+  border-color: var(--nav-border);
+}
+
+.nav-strip {
+  background: var(--nav-strip-bg);
+  backdrop-filter: blur(18px);
+}
+
+.nav-main-bar {
+  background: var(--nav-main-bg);
+  backdrop-filter: blur(18px);
+}
+
 @media (min-width: 640px) {
   .nav-frame {
     padding-inline: 1rem;
@@ -585,9 +606,27 @@ html {
   margin-bottom: 0.9rem;
 }
 
+.nav-dropdown-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
 .nav-dropdown-title {
   font-size: 1.55rem;
   line-height: 0.92;
+}
+
+.nav-dropdown-header-action {
+  min-width: 2.2rem;
+  width: 2.2rem;
+  padding-inline: 0;
+}
+
+.nav-dropdown-header-action svg {
+  flex-shrink: 0;
 }
 
 .nav-dropdown-footer {
@@ -896,6 +935,45 @@ html {
 .home-step-card {
   min-height: 100%;
   padding: 1.35rem;
+}
+
+.home-step-badge {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.home-step-badge--primary {
+  color: #34d399;
+}
+
+.home-step-badge--warm {
+  color: #d97706;
+}
+
+.home-step-badge--cool {
+  color: #0891b2;
+}
+
+:root[data-theme='light'] .home-step-badge {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(241, 245, 249, 0.94);
+}
+
+:root[data-theme='light'] .home-step-badge--primary {
+  color: #0f9f6e;
+}
+
+:root[data-theme='light'] .home-step-badge--warm {
+  color: #b45309;
+}
+
+:root[data-theme='light'] .home-step-badge--cool {
+  color: #0f766e;
+}
+
+:root[data-theme='light'] .nav-strip,
+:root[data-theme='light'] .nav-main-bar {
+  backdrop-filter: none;
 }
 
 @media (min-width: 768px) {
@@ -1366,6 +1444,69 @@ html {
   justify-self: start;
 }
 
+.leaderboard-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.leaderboard-hero {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+.leaderboard-hero__copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.leaderboard-title {
+  font-size: clamp(3rem, 6vw, 5.2rem);
+  line-height: 0.9;
+}
+
+.leaderboard-summary {
+  display: grid;
+  gap: 1rem;
+}
+
+.leaderboard-stat {
+  min-height: 100%;
+}
+
+.leaderboard-callout {
+  display: grid;
+  align-items: center;
+  padding-block: 1.1rem;
+}
+
+.leaderboard-switcher {
+  display: grid;
+  gap: 1rem;
+}
+
+.leaderboard-switcher__header {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.leaderboard-switcher__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.leaderboard-switcher__item {
+  max-width: 100%;
+}
+
+.leaderboard-empty {
+  min-height: 10rem;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
 .tournament-page {
   display: grid;
   gap: 1.75rem;
@@ -1647,6 +1788,10 @@ html {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .leaderboard-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .tournament-section__header--split {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -1685,6 +1830,10 @@ html {
   }
 
   .global-leaderboard-page {
+    gap: 1.75rem;
+  }
+
+  .leaderboard-page {
     gap: 1.75rem;
   }
 
@@ -1746,6 +1895,15 @@ html {
 
   .global-leaderboard-summary {
     grid-template-columns: 1fr;
+  }
+
+  .leaderboard-hero {
+    grid-template-columns: minmax(0, 1.08fr) minmax(20rem, 0.92fr);
+    gap: 1.5rem;
+  }
+
+  .leaderboard-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .global-leaderboard-callout {
