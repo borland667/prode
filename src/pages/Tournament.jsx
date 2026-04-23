@@ -598,133 +598,153 @@ export default function Tournament() {
         ) : null}
 
         <section className="tournament-section">
-          <div className="tournament-section__header">
-            <DisplayText as="h2" className="text-4xl text-white">
-              {t('tournament.groups')}
-            </DisplayText>
-          </div>
-
-          <div className="tournament-groups-grid">
-            {groups.map((group) => (
-              <Panel
-                key={group.id}
-                padding="normal"
-                radius="xl"
-                className="tournament-group-card"
-              >
-                <div className="tournament-group-card__header">
-                  <Pill className="text-emerald-200">
-                    {group.name}
-                  </Pill>
-                  <span className="tournament-group-card__count">
-                    {formatNumber(group.teams?.length || 0)}
-                  </span>
-                </div>
-
-                <div className="tournament-group-list">
-                  {group.teams?.length ? (
-                    getGroupDisplayTeams(group, actualGroupSelections, teamMap).map((team, index) => (
-                      <div
-                        key={team.id}
-                        className="tournament-group-row"
-                      >
-                        <div className="tournament-group-row__main">
-                          <span className="tournament-group-row__rank">
-                            {formatNumber(index + 1)}
-                          </span>
-                          <span className="tournament-group-row__name">
-                            {getLocalizedName(team, language, team.name)}
-                          </span>
-                        </div>
-                        <span className="tournament-group-row__meta">
-                          {group.result && index < 3 ? positionLabel(index) : team.code || ''}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400">{t('common.noResults')}</p>
-                  )}
-                </div>
-              </Panel>
-            ))}
-          </div>
-        </section>
-
-        {rounds.length ? (
-          <section className="tournament-section">
-            <div className="tournament-section__header">
-              <DisplayText as="h2" className="text-4xl text-white">
-                {t('tournament.knockoutBracket')}
-              </DisplayText>
+          <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
+            <div className="tournament-section__header tournament-section__header--split">
+              <div className="tournament-section__title-group">
+                <Pill className="text-emerald-200">
+                  {t('tournament.groups')}
+                </Pill>
+                <DisplayText as="h2" className="text-4xl text-white">
+                  {t('tournament.groups')}
+                </DisplayText>
+              </div>
+              <Pill compact className="text-cyan-200">
+                {formatNumber(groups.length)} {groups.length === 1 ? 'group' : 'groups'}
+              </Pill>
             </div>
 
-            <div className="space-y-8">
-              {rounds.map((round) => (
-                <Panel key={round.id} padding="normal" radius="xl" className="tournament-section">
-                  <div className="tournament-round-header">
-                    <DisplayText as="h3" className="text-2xl text-white">
-                      {getRoundLabel(round, t)}
-                    </DisplayText>
-                    <Pill compact className="text-cyan-200">
-                      {formatNumber(round.matches?.length || 0)}
+            <div className="tournament-groups-grid">
+              {groups.map((group) => (
+                <Panel
+                  key={group.id}
+                  padding="compact"
+                  radius="xl"
+                  className="tournament-group-card"
+                >
+                  <div className="tournament-group-card__header">
+                    <Pill compact className="text-emerald-200">
+                      {group.name}
                     </Pill>
+                    <span className="tournament-group-card__count">
+                      {formatNumber(group.teams?.length || 0)} teams
+                    </span>
                   </div>
-                  <div className="tournament-knockout-grid">
-                    {(round.matches || []).map((match) => {
-                      const matchup = resolveMatchParticipants({
-                        match,
-                        groups,
-                        rounds,
-                        groupSelections: actualGroupSelections,
-                        knockoutSelections: actualKnockoutSelections,
-                        slotSelections: {
-                          [match.homeLabel]: match.selectedHomeTeamId || '',
-                          [match.awayLabel]: match.selectedAwayTeamId || '',
-                        },
-                        teamMap,
-                      });
 
-                      return (
+                  <div className="tournament-group-list">
+                    {group.teams?.length ? (
+                      getGroupDisplayTeams(group, actualGroupSelections, teamMap).map((team, index) => (
                         <div
-                          key={match.id}
-                          className="tournament-match-card"
+                          key={team.id}
+                          className="tournament-group-row"
                         >
-                          <div className="tournament-match-card__header">
-                            <Pill compact className="text-emerald-200">{match.code}</Pill>
-                            <span className="tournament-match-card__status">
-                              {match.status}
+                          <div className="tournament-group-row__main">
+                            <span className="tournament-group-row__rank">
+                              {formatNumber(index + 1)}
+                            </span>
+                            <span className="tournament-group-row__name">
+                              {getLocalizedName(team, language, team.name)}
                             </span>
                           </div>
-
-                          <div className="tournament-match-card__teams">
-                            <div className={`tournament-match-row ${match.winner === matchup.home.teamId ? 'is-winner' : ''}`}>
-                              <span className="tournament-match-row__name">
-                                {matchup.home.teamName || matchup.home.slotLabel || match.homeLabel}
-                              </span>
-                              {match.winner === matchup.home.teamId ? (
-                                <Pill compact className="tournament-match-row__winner">
-                                  {t('tournament.winner')}
-                                </Pill>
-                              ) : null}
-                            </div>
-                            <div className={`tournament-match-row ${match.winner === matchup.away.teamId ? 'is-winner' : ''}`}>
-                              <span className="tournament-match-row__name">
-                                {matchup.away.teamName || matchup.away.slotLabel || match.awayLabel}
-                              </span>
-                              {match.winner === matchup.away.teamId ? (
-                                <Pill compact className="tournament-match-row__winner">
-                                  {t('tournament.winner')}
-                                </Pill>
-                              ) : null}
-                            </div>
-                          </div>
+                          <span className="tournament-group-row__meta">
+                            {group.result && index < 3 ? positionLabel(index) : team.code || ''}
+                          </span>
                         </div>
-                      );
-                    })}
+                      ))
+                    ) : (
+                      <p className="text-gray-400">{t('common.noResults')}</p>
+                    )}
                   </div>
                 </Panel>
               ))}
             </div>
+          </Panel>
+        </section>
+
+        {rounds.length ? (
+          <section className="tournament-section">
+            <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
+              <div className="tournament-section__header tournament-section__header--split">
+                <div className="tournament-section__title-group">
+                  <Pill className="text-cyan-200">
+                    {t('tournament.knockoutBracket')}
+                  </Pill>
+                  <DisplayText as="h2" className="text-4xl text-white">
+                    {t('tournament.knockoutBracket')}
+                  </DisplayText>
+                </div>
+                <Pill compact className="text-emerald-200">
+                  {formatNumber(rounds.reduce((total, round) => total + (round.matches?.length || 0), 0))} matches
+                </Pill>
+              </div>
+
+              <div className="space-y-6">
+                {rounds.map((round) => (
+                  <Panel key={round.id} padding="compact" radius="xl" className="tournament-round-panel">
+                    <div className="tournament-round-header">
+                      <DisplayText as="h3" className="text-2xl text-white">
+                        {getRoundLabel(round, t)}
+                      </DisplayText>
+                      <Pill compact className="text-cyan-200">
+                        {formatNumber(round.matches?.length || 0)} matches
+                      </Pill>
+                    </div>
+                    <div className="tournament-knockout-grid">
+                      {(round.matches || []).map((match) => {
+                        const matchup = resolveMatchParticipants({
+                          match,
+                          groups,
+                          rounds,
+                          groupSelections: actualGroupSelections,
+                          knockoutSelections: actualKnockoutSelections,
+                          slotSelections: {
+                            [match.homeLabel]: match.selectedHomeTeamId || '',
+                            [match.awayLabel]: match.selectedAwayTeamId || '',
+                          },
+                          teamMap,
+                        });
+
+                        return (
+                          <div
+                            key={match.id}
+                            className="tournament-match-card"
+                          >
+                            <div className="tournament-match-card__header">
+                              <Pill compact className="text-emerald-200">{match.code}</Pill>
+                              <span className="tournament-match-card__status">
+                                {match.status}
+                              </span>
+                            </div>
+
+                            <div className="tournament-match-card__teams">
+                              <div className={`tournament-match-row ${match.winner === matchup.home.teamId ? 'is-winner' : ''}`}>
+                                <span className="tournament-match-row__name">
+                                  {matchup.home.teamName || matchup.home.slotLabel || match.homeLabel}
+                                </span>
+                                {match.winner === matchup.home.teamId ? (
+                                  <Pill compact className="tournament-match-row__winner">
+                                    {t('tournament.winner')}
+                                  </Pill>
+                                ) : null}
+                              </div>
+                              <div className={`tournament-match-row ${match.winner === matchup.away.teamId ? 'is-winner' : ''}`}>
+                                <span className="tournament-match-row__name">
+                                  {matchup.away.teamName || matchup.away.slotLabel || match.awayLabel}
+                                </span>
+                                {match.winner === matchup.away.teamId ? (
+                                  <Pill compact className="tournament-match-row__winner">
+                                    {t('tournament.winner')}
+                                  </Pill>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Panel>
+                ))}
+              </div>
+            </Panel>
           </section>
         ) : null}
 
