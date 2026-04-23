@@ -5,7 +5,9 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  # Function must not be named "api": it collides with the /api source directory
+  # in the Lambda bundle (ERR_UNSUPPORTED_DIR_IMPORT on Node ESM).
+  to = "/.netlify/functions/prode-http/:splat"
   status = 200
 
 [[redirects]]

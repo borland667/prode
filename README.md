@@ -348,6 +348,7 @@ Netlify remains the production host shape for the SPA and serverless API. Produc
 
 Current production deployment expectation:
 
+- the Netlify function that wraps Express is `prode-http` (see `netlify.toml`): it cannot be named `api` because that collides with the repository `api/` directory in the serverless bundle and breaks Node ESM resolution
 - pushing to `main` triggers `.github/workflows/ci.yml`
 - the `verify` job must pass first
 - after `verify`, on pushes to `main`, `check-production-migrate` sets `run_migrate` from whether `PRODUCTION_DATABASE_URL` is non-empty (secret injected into step `env`, never logged)

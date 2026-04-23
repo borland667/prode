@@ -164,7 +164,7 @@ The backend is a single Express app in `api/app.cjs` with:
 Runtime entry points:
 
 - local server: `api/server.cjs`
-- Netlify wrapper: `netlify/functions/api.cjs`
+- Netlify wrapper: `netlify/functions/prode-http.cjs` (not `api`, to avoid clashing with the `api/` app folder in the function bundle)
 
 ## 5. Authentication And Session Model
 
