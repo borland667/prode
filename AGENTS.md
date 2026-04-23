@@ -87,16 +87,19 @@ Reference:
 
 ## 6. Localization Standards
 
-The app is bilingual and locale-aware.
+The app is multilingual and locale-aware.
 
 Rules:
 
-- all user-facing copy should support English and Spanish
+- all user-facing copy should support English, Spanish, Portuguese, Italian, and Dutch
 - browser language detection should still fall back to English
-- dates and numbers should be locale-aware
+- dates and numbers should use a regional locale when the browser provides one (for example `en-GB`, `pt-PT`); otherwise use sensible defaults per UI language
 - terminology should remain audience-correct:
   - English: `soccer`
   - Spanish: `futbol`
+  - Portuguese: `futebol`
+  - Italian: `calcio`
+  - Dutch: `voetbal`
 - translated tournament, round, mode, and team names should be respected when available
 
 If new product copy is added, update translations.

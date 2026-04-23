@@ -460,27 +460,22 @@ export default function Navbar() {
                 <span>{theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}</span>
               </Button>
 
-              <div className="nav-segment">
-                <button
-                  onClick={() => setLanguage('en')}
-                  className={`nav-segment-button ${
-                    language === 'en'
-                      ? 'is-active'
-                      : ''
-                  }`}
+              <div className="nav-segment flex items-center">
+                <label htmlFor="nav-language-desktop" className="sr-only">
+                  {t('nav.language')}
+                </label>
+                <select
+                  id="nav-language-desktop"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="nav-language-select"
                 >
-                  EN
-                </button>
-                <button
-                  onClick={() => setLanguage('es')}
-                  className={`nav-segment-button ${
-                    language === 'es'
-                      ? 'is-active'
-                      : ''
-                  }`}
-                >
-                  ES
-                </button>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                  <option value="pt">Português</option>
+                  <option value="it">Italiano</option>
+                  <option value="nl">Nederlands</option>
+                </select>
               </div>
 
               {user ? (
@@ -533,27 +528,22 @@ export default function Navbar() {
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              <div className="flex items-center space-x-1 rounded-full border border-white/10 bg-white/5 p-1">
-                <button
-                  onClick={() => setLanguage('en')}
-                  className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
-                    language === 'en'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-gray-400'
-                  }`}
+              <div className="flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                <label htmlFor="nav-language-mobile" className="sr-only">
+                  {t('nav.language')}
+                </label>
+                <select
+                  id="nav-language-mobile"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="nav-language-select nav-language-select--compact max-w-[9.5rem]"
                 >
-                  EN
-                </button>
-                <button
-                  onClick={() => setLanguage('es')}
-                  className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
-                    language === 'es'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-gray-400'
-                  }`}
-                >
-                  ES
-                </button>
+                  <option value="en">EN</option>
+                  <option value="es">ES</option>
+                  <option value="pt">PT</option>
+                  <option value="it">IT</option>
+                  <option value="nl">NL</option>
+                </select>
               </div>
 
               <button

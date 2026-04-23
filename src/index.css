@@ -895,6 +895,36 @@ html {
   color: #04111d;
 }
 
+.nav-language-select {
+  min-height: 2.5rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav-language-select--compact {
+  min-height: 2.25rem;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.75rem;
+  border: none;
+  background: transparent;
+}
+
+.nav-language-select:focus-visible {
+  outline: 2px solid rgba(18, 194, 127, 0.55);
+  outline-offset: 2px;
+}
+
+.nav-language-select option {
+  color: #0f172a;
+  background: #f8fafc;
+}
+
 .nav-quiet-button {
   display: inline-flex;
   align-items: center;

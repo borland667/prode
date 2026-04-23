@@ -16,12 +16,13 @@ const TOURNAMENT_NAME_ES_BY_NAME = {
 };
 
 const MODE_NAME_ES_BY_KEY = {
-  classic_argentinian_prode: 'Prode Argentino Clasico',
+  classic_argentinian_prode: 'Prode Clasico',
 };
 
 const MODE_NAME_ES_BY_NAME = {
-  'Classic Argentinian Prode': 'Prode Argentino Clasico',
-  'Classic Argentinian Prode (Scaled)': 'Prode Argentino Clasico Escalado',
+  'Classic Prode': 'Prode Clasico',
+  'Classic Argentinian Prode': 'Prode Clasico',
+  'Classic Argentinian Prode (Scaled)': 'Prode Clasico',
 };
 
 const TEAM_NAME_ES_BY_CODE = {

@@ -76,15 +76,23 @@ export function getLocalizedName(entity, language = 'en', fallback = '') {
   return entity.name || entity.nameEs || fallback;
 }
 
+const FOOTBALL_AUDIENCE_LABEL = {
+  en: 'soccer',
+  es: 'futbol',
+  pt: 'futebol',
+  it: 'calcio',
+  nl: 'voetbal',
+};
+
 export function getSportLabel(sport, language = 'en') {
   const normalizedSport = String(sport || '').trim().toLowerCase();
 
   if (!normalizedSport) {
-    return language === 'es' ? 'futbol' : 'soccer';
+    return FOOTBALL_AUDIENCE_LABEL[language] || FOOTBALL_AUDIENCE_LABEL.en;
   }
 
   if (normalizedSport === 'football') {
-    return language === 'es' ? 'futbol' : 'soccer';
+    return FOOTBALL_AUDIENCE_LABEL[language] || FOOTBALL_AUDIENCE_LABEL.en;
   }
 
   return titleize(normalizedSport);

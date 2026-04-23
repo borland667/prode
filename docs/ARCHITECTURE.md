@@ -535,6 +535,11 @@ Terminology should stay audience-aware:
 
 - English: “soccer”
 - Spanish: “futbol”
+- Portuguese: “futebol”
+- Italian: “calcio”
+- Dutch: “voetbal”
+
+`LanguageProvider` picks the **UI language** from `navigator.languages` in order: the first tag whose language subtag is one of the supported UI languages (ignoring unsupported languages such as French that may appear earlier in the list). **Date and number formatting** use a BCP47 locale that matches the active UI language: the first matching entry from `navigator.languages` that includes a region (for example `pt-PT`, `es-MX`, `en-GB`) is preferred; bare tags such as `pt` are normalized to a regional default (`pt-BR`, `es-AR`, `en-US`, `it-IT`, `nl-NL`). The `languagechange` event triggers a refresh so formatting tracks updated browser preferences without a full reload.
 
 ## 14. Testing And Verification
 

@@ -32,8 +32,8 @@ model Tournament {
   name                 String
   nameEs               String?
   modeKey              String               @default("classic_argentinian_prode")
-  modeName             String               @default("Classic Argentinian Prode")
-  modeNameEs           String?              @default("Prode Argentino Clasico")
+  modeName             String               @default("Classic Prode")
+  modeNameEs           String?              @default("Prode Clasico")
   sport                String               @default("football")
   status               String               @default("upcoming")
   prizesEnabled        Boolean              @default(false)

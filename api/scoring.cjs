@@ -10,7 +10,7 @@
  *
  * Knockout Rounds:
  *   - Points are driven by the tournament's round configuration
- *   - For the current scaled Prode mode, rounds increase linearly by +2
+ *   - For the classic Prode mode, rounds increase linearly by +2
  */
 
 /**

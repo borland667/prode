@@ -1,6 +1,6 @@
 # Prode
 
-Prode is a bilingual sports prediction app centered on Prode-style tournament picks. The current product is production-shaped around football tournaments that have:
+Prode is a multilingual sports prediction app centered on Prode-style tournament picks (English, Spanish, Portuguese, Italian, and Dutch UI). The current product is production-shaped around football tournaments that have:
 
 - a group stage
 - a knockout bracket
@@ -23,8 +23,8 @@ Implemented today:
 - league leaderboard based on the corresponding league scope only
 - authenticated global rankings based on each user’s official primary entry and opt-in visibility setting
 - registration, login, logout, Google OAuth, forgot-password, reset-password, and profile management
-- browser language detection with English fallback
-- browser locale-aware date and number formatting
+- browser language detection with English fallback (uses `navigator.languages` order among supported UI languages)
+- regional date and number formatting from the browser locale when it matches the active UI language (for example `es-MX`, `pt-PT`, `en-GB`), with regional defaults otherwise
 - dark and light themes with persisted preference
 - World Cup 2026 support including best-third-place Round of 32 handling
 - seeded football tournament catalog beyond World Cup 2026

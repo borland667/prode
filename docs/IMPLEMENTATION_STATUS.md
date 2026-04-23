@@ -114,9 +114,9 @@ Working:
 
 Working:
 
-- English and Spanish translation support
-- browser language detection
-- browser-locale formatting for dates and numbers
+- English, Spanish, Portuguese, Italian, and Dutch UI translation support
+- browser language detection (first supported UI language in `navigator.languages`)
+- regional locale formatting for dates and numbers when the browser supplies a matching regional tag; `languagechange` refreshes formatting
 - English fallback
 - dark and light themes
 - persisted theme preference

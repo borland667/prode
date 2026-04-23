@@ -15,8 +15,12 @@ const {
 test('translation helpers derive spanish values for known seeded entities', () => {
   assert.equal(getTournamentNameEs({ name: 'FIFA World Cup 2026' }), 'Copa Mundial FIFA 2026');
   assert.equal(
+    getModeNameEs({ modeKey: 'classic_argentinian_prode', modeName: 'Classic Prode' }),
+    'Prode Clasico'
+  );
+  assert.equal(
     getModeNameEs({ modeKey: 'classic_argentinian_prode', modeName: 'Classic Argentinian Prode (Scaled)' }),
-    'Prode Argentino Clasico Escalado'
+    'Prode Clasico'
   );
   assert.equal(getRoundNameEs({ name: 'quarter_finals' }), 'cuartos_de_final');
   assert.equal(getTeamNameEs({ code: 'USA' }), 'Estados Unidos');

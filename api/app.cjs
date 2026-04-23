@@ -331,8 +331,8 @@ async function generateUniqueLeagueJoinCode() {
 function serializeMode(tournament) {
   return {
     key: tournament.modeKey || 'classic_argentinian_prode',
-    name: tournament.modeName || 'Classic Argentinian Prode (Scaled)',
-    nameEs: tournament.modeNameEs || 'Prode Argentino Clasico Escalado',
+    name: tournament.modeName || 'Classic Prode',
+    nameEs: tournament.modeNameEs || 'Prode Clasico',
   };
 }
 
@@ -580,7 +580,7 @@ function normalizeTournamentStructurePayload(body = {}) {
   }
 
   const modeKey = String(body.modeKey || 'classic_argentinian_prode').trim() || 'classic_argentinian_prode';
-  const modeName = String(body.modeName || 'Classic Argentinian Prode').trim() || 'Classic Argentinian Prode';
+  const modeName = String(body.modeName || 'Classic Prode').trim() || 'Classic Prode';
 
   return {
     tournament: {
