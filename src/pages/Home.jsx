@@ -56,9 +56,12 @@ export default function Home() {
   }, [location.hash, loading]);
 
   const featuredTournament = tournaments[0] || null;
+  const featuredTournamentName = featuredTournament
+    ? getLocalizedName(featuredTournament, language, featuredTournament.name)
+    : t('home.featuredTournamentFallback');
   const featuredClosingDate = featuredTournament?.closingDate
     ? formatDate(featuredTournament.closingDate)
-    : 'TBD';
+    : t('home.tbd');
   const featuredTournamentLink = featuredTournament ? `/tournament/${featuredTournament.id}` : '/';
   const featuredLeaderboardLink = featuredTournament ? `/leaderboard/${featuredTournament.id}` : '/';
   const modeRuleSections = getModeRuleSections({
@@ -69,19 +72,19 @@ export default function Home() {
   });
   const heroStats = [
     {
-      label: 'Players',
+      label: t('home.metricPlayers'),
       value: formatNumber(featuredTournament?.participantCount || 0),
       icon: Users,
       tone: 'text-emerald-300',
     },
     {
-      label: 'Format',
+      label: t('home.metricFormat'),
       value: `${featuredTournament?.groups?.length || 12}G`,
       icon: Shield,
       tone: 'text-amber-300',
     },
     {
-      label: 'Max',
+      label: t('home.metricMax'),
       value: featuredTournament?.rules?.totalMaximumPoints
         ? formatNumber(featuredTournament.rules.totalMaximumPoints)
         : '--',
@@ -124,7 +127,7 @@ export default function Home() {
             <div className="relative z-10 flex flex-col">
               <div className="space-y-5">
                 <div className="ds-pill ds-pill--compact text-emerald-200">
-                  {getLocalizedName(featuredTournament, language, 'World Cup 2026')}
+                  {featuredTournamentName}
                 </div>
                 <h1 className="ds-display max-w-4xl text-5xl leading-display-tight text-white md:text-7xl">
                   {t('home.tagline')}
@@ -200,10 +203,10 @@ export default function Home() {
               <div className="home-featured-header">
                 <div>
                   <p className="ds-display mb-2 text-xs text-emerald-300">
-                    Featured Tournament
+                    {t('home.featuredTournament')}
                   </p>
                   <h2 className="text-2xl font-bold leading-tight text-white md:text-3xl">
-                    {getLocalizedName(featuredTournament, language, 'World Cup 2026')}
+                    {featuredTournamentName}
                   </h2>
                 </div>
                 <div className="home-featured-icon">
@@ -292,7 +295,7 @@ export default function Home() {
                 {t('home.howItWorks')}
               </h2>
               <div className="hidden shrink-0 md:flex md:pt-1">
-                <span className="ds-pill text-emerald-200">Match Flow</span>
+                <span className="ds-pill text-emerald-200">{t('home.matchFlow')}</span>
               </div>
             </div>
 
@@ -395,7 +398,7 @@ export default function Home() {
                 ) : (
                   <div className="ds-panel home-rule-card rounded-panel-lg sm:col-span-2">
                     <h3 className="ds-display home-rule-card__title">
-                      Knockout
+                      {t('home.knockout')}
                     </h3>
                     <p className="home-rule-card__line">
                       {t('home.enterPredictions')} {t('home.currentMode').toLowerCase()}.
@@ -421,7 +424,7 @@ export default function Home() {
             </p>
           </div>
           <div className="hidden md:flex ds-pill text-emerald-200">
-            {formatNumber(tournaments.length)} live boards
+            {formatNumber(tournaments.length)} {t('home.liveBoards').toLowerCase()}
           </div>
         </div>
 
@@ -433,7 +436,7 @@ export default function Home() {
           <Panel variant="strong" padding="normal" radius="xl" className="home-tournament-empty">
             <div className="home-tournament-empty__copy">
               <Pill className="text-emerald-200">
-                Tournament Center
+                {t('home.tournamentCenter')}
               </Pill>
               <DisplayText as="h3" className="text-3xl md:text-4xl text-white">
                 {t('home.noTournaments')}
@@ -446,15 +449,15 @@ export default function Home() {
             <div className="home-tournament-empty__aside">
               <Panel radius="md" className="home-tournament-empty__stat">
                 <p className="text-xs uppercase tracking-overline text-slate-500 mb-2">
-                  Private Leagues
+                  {t('home.privateLeagues')}
                 </p>
-                <p className="ds-display text-2xl text-white">On</p>
+                <p className="ds-display text-2xl text-white">{t('common.enabled')}</p>
               </Panel>
               <Panel radius="md" className="home-tournament-empty__stat">
                 <p className="text-xs uppercase tracking-overline text-slate-500 mb-2">
-                  Prize Pools
+                  {t('home.prizePools')}
                 </p>
-                <p className="ds-display text-2xl text-white">Optional</p>
+                <p className="ds-display text-2xl text-white">{t('home.optional')}</p>
               </Panel>
               <Panel radius="md" className="home-tournament-empty__cta">
                 <Button
@@ -528,7 +531,7 @@ export default function Home() {
                       </strong>{' '}
                       {tournament.closingDate
                         ? formatDate(tournament.closingDate)
-                        : 'TBD'}
+                        : t('home.tbd')}
                     </p>
                     <p>
                       <strong>

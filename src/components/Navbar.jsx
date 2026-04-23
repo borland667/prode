@@ -17,7 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { get } from '../utils/api';
 import { getLocalizedName, getModeLabel } from '../utils/tournament';
-import { Button, DisplayText, Panel } from './ui/DesignSystem';
+import { Button, DisplayText, Panel, Pill } from './ui/DesignSystem';
 
 function formatClosingDate(dateValue, formatDate) {
   if (!dateValue) {
@@ -55,22 +55,22 @@ function NavDropdown({
       <Button
         variant="ghost"
         size="sm"
-        className="nav-button"
+        className="nav-button nav-button--dropdown"
       >
         <Icon size={14} />
         <span>{label}</span>
       </Button>
 
       <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-96 pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
-        <Panel variant="strong" radius="md" className="nav-dropdown-panel p-4 shadow-ds-popover">
-          <div className="flex items-center justify-between mb-3">
-            <DisplayText as="p" className="text-lg text-white">{title}</DisplayText>
+        <Panel variant="strong" radius="md" className="nav-dropdown-panel ds-panel-pad-compact shadow-ds-popover">
+          <div className="nav-dropdown-header">
+            <DisplayText as="p" className="nav-dropdown-title text-white">{title}</DisplayText>
             {footerTo ? (
               <Button
                 as={Link}
                 to={footerTo}
                 onClick={handleNavigate}
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 className="nav-dropdown-footer"
               >
@@ -79,11 +79,11 @@ function NavDropdown({
             ) : null}
           </div>
 
-          <div className="space-y-2">
+          <div className="nav-dropdown-list">
             {items.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-400">
+              <Panel radius="md" className="nav-dropdown-empty">
                 {emptyLabel}
-              </div>
+              </Panel>
             ) : (
               items.map((item) => (
                 <Link
@@ -92,11 +92,11 @@ function NavDropdown({
                   onClick={handleNavigate}
                   className="nav-dropdown-link"
                 >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-white truncate">{item.title}</p>
-                    <p className="text-sm text-slate-400 truncate">{item.subtitle}</p>
+                  <div className="nav-dropdown-link__copy">
+                    <p className="nav-dropdown-link__title">{item.title}</p>
+                    <p className="nav-dropdown-link__subtitle">{item.subtitle}</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="nav-dropdown-link__meta">
                     {renderMeta ? renderMeta(item) : null}
                     <ChevronRight size={16} className="text-slate-500" />
                   </div>
@@ -114,6 +114,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [leaderboardLink, setLeaderboardLink] = useState('/');
   const [featuredTournament, setFeaturedTournament] = useState(null);
+  const [availableTournaments, setAvailableTournaments] = useState([]);
   const [navCollections, setNavCollections] = useState({ tournaments: [], leagues: [] });
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -125,6 +126,7 @@ export default function Navbar() {
     const loadTournamentLinks = async () => {
       try {
         const tournaments = await get('/tournaments?status=active,upcoming');
+        setAvailableTournaments(tournaments || []);
         setFeaturedTournament(tournaments?.[0] || null);
         if (tournaments?.length) {
           setLeaderboardLink(`/leaderboard/${tournaments[0].id}`);
@@ -133,6 +135,7 @@ export default function Navbar() {
         }
       } catch (err) {
         console.error('Failed to load navigation tournaments:', err);
+        setAvailableTournaments([]);
       }
     };
 
@@ -184,32 +187,24 @@ export default function Navbar() {
   const userNavCollections = user ? navCollections : { tournaments: [], leagues: [] };
 
   const tournamentQuickLinks = useMemo(() => {
-    const featured = featuredTournament
-      ? [
-          {
-            id: `featured-${featuredTournament.id}`,
-            to: `/tournament/${featuredTournament.id}`,
-            title: getLocalizedName(featuredTournament, language, featuredTournament.name),
-            subtitle: `${t('nav.featured')} • ${featuredModeLabel}`,
-            status: featuredTournament.status,
-            accessType: featuredTournament.accessType,
-          },
-        ]
-      : [];
+    return (availableTournaments || []).map((entry) => {
+      const isFeatured = entry.id === featuredTournament?.id;
+      const modeLabel = entry.mode ? getModeLabel(entry.mode, language) : '--';
+      const accessLabel =
+        entry.accessType === 'private' ? t('tournament.privateAccess') : t('tournament.publicAccess');
 
-    const joined = (userNavCollections.tournaments || [])
-      .filter((entry) => entry.id !== featuredTournament?.id)
-      .map((entry) => ({
+      return {
         id: entry.id,
         to: `/tournament/${entry.id}`,
         title: getLocalizedName(entry, language, entry.name),
-        subtitle: `${entry.accessType === 'private' ? t('tournament.privateAccess') : t('tournament.publicAccess')} • ${formatClosingDate(entry.closingDate, formatDate)}`,
+        subtitle: isFeatured
+          ? `${t('nav.featured')} • ${modeLabel}`
+          : `${accessLabel} • ${formatClosingDate(entry.closingDate, formatDate)}`,
         status: entry.status,
         accessType: entry.accessType,
-      }));
-
-    return [...featured, ...joined].slice(0, 6);
-  }, [featuredTournament, userNavCollections.tournaments, featuredModeLabel, formatDate, language, t]);
+      };
+    });
+  }, [availableTournaments, featuredTournament?.id, formatDate, language, t]);
 
   const leagueQuickLinks = useMemo(
     () =>
@@ -334,9 +329,9 @@ export default function Navbar() {
                 footerTo="/#active-tournaments"
                 onNavigate={() => setIsOpen(false)}
                 renderMeta={(item) => (
-                  <span className={`nav-dropdown-meta ${item.accessType === 'private' ? 'is-private text-amber-300' : 'is-public text-emerald-300'}`}>
+                  <Pill compact className={`nav-dropdown-meta ${item.accessType === 'private' ? 'is-private text-amber-300' : 'is-public text-emerald-300'}`}>
                     {item.accessType === 'private' ? t('tournament.privateAccess') : t('tournament.publicAccess')}
-                  </span>
+                  </Pill>
                 )}
               />
 
@@ -349,7 +344,7 @@ export default function Navbar() {
                   emptyLabel={t('nav.noLeaguesYet')}
                   renderMeta={(item) =>
                     item.isOwner ? (
-                      <span className="nav-dropdown-meta text-cyan-300">{t('tournament.leagueSettings')}</span>
+                      <Pill compact className="nav-dropdown-meta text-cyan-300">{t('tournament.leagueSettings')}</Pill>
                     ) : null
                   }
                 />
