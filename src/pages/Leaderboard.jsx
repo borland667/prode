@@ -3,11 +3,11 @@ import { useParams } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
-import { getRoundLabel } from '../utils/tournament';
+import { getLocalizedName, getRoundLabel } from '../utils/tournament';
 
 export default function Leaderboard() {
   const { id } = useParams();
-  const { language, t } = useLanguage();
+  const { language, t, formatNumber, formatCurrency } = useLanguage();
   const { user } = useAuth();
 
   const [players, setPlayers] = useState([]);
@@ -43,7 +43,7 @@ export default function Leaderboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -51,8 +51,10 @@ export default function Leaderboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <p className="text-red-400">{error}</p>
+      <div className="sport-shell min-h-screen flex items-center justify-center px-4">
+        <div className="sport-panel app-empty max-w-2xl w-full">
+          <p className="text-red-400">{error}</p>
+        </div>
       </div>
     );
   }
@@ -62,101 +64,102 @@ export default function Leaderboard() {
   const totalPrize = entryFee * totalParticipants;
   const firstPlacePrize = Math.round(totalPrize * 0.7);
   const secondPlacePrize = Math.round(totalPrize * 0.3);
-  const currencyFormatter = new Intl.NumberFormat(language === 'es' ? 'es-AR' : 'en-US', {
-    style: 'currency',
-    currency: tournament?.currency || 'USD',
-    maximumFractionDigits: 0,
-  });
 
   return (
     <div className="sport-shell min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="mb-12">
-          <div className="score-pill mb-5 text-emerald-200">
+        <div className="app-page-header">
+          <div className="app-page-kicker score-pill text-emerald-200">
             Standings
           </div>
-          <h1 className="sport-display text-5xl md:text-6xl text-white mb-6">
+          <h1 className="app-page-title sport-display">
             {t('leaderboard.leaderboard')}
           </h1>
-          <p className="text-gray-400 text-lg">
-            {tournament?.name}
+          <p className="app-page-description">
+            {getLocalizedName(tournament, language, tournament?.name || '')}
           </p>
         </div>
 
         {tournament?.prizesEnabled && tournament?.entryFee ? (
           <div className="grid md:grid-cols-4 gap-6 mb-12">
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel app-card">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.prizePool')}
               </p>
               <p className="text-white font-bold text-2xl">
-                {currencyFormatter.format(totalPrize)}
+                {formatCurrency(totalPrize, tournament?.currency || 'USD', {
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel app-card">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.participants')}
               </p>
               <p className="text-white font-bold text-2xl">
-                {totalParticipants}
+                {formatNumber(totalParticipants)}
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel app-card">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.firstPlace')}
               </p>
               <p className="text-emerald-400 font-bold text-2xl">
-                {currencyFormatter.format(firstPlacePrize)}
+                {formatCurrency(firstPlacePrize, tournament?.currency || 'USD', {
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
 
-            <div className="sport-panel rounded-[1.6rem] p-6">
+            <div className="sport-panel app-card">
               <p className="text-gray-400 text-sm mb-2">
                 {t('leaderboard.secondPlace')}
               </p>
               <p className="text-emerald-400 font-bold text-2xl">
-                {currencyFormatter.format(secondPlacePrize)}
+                {formatCurrency(secondPlacePrize, tournament?.currency || 'USD', {
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
           </div>
         ) : tournament ? (
-          <div className="sport-panel rounded-[1.6rem] p-6 mb-12">
+          <div className="sport-panel app-card mb-12">
             <p className="text-gray-300">{t('leaderboard.prizesDisabled')}</p>
           </div>
         ) : null}
 
         {players.length === 0 ? (
-          <div className="sport-panel rounded-[1.75rem] p-12 text-center">
+          <div className="sport-panel app-empty">
             <p className="text-gray-400 text-lg">
               {t('leaderboard.noPlayers')}
             </p>
           </div>
         ) : (
-          <div className="sport-panel-strong rounded-[1.9rem] overflow-hidden">
+          <div className="sport-panel-strong app-table-shell">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="app-table">
                 <thead>
-                  <tr className="border-b border-white/10 bg-slate-950/80">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                  <tr>
+                    <th>
                       {t('leaderboard.rank')}
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                    <th>
                       {t('leaderboard.player')}
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">
+                    <th className="text-center">
                       {t('leaderboard.groupPts')}
                     </th>
                     {rounds.map((round) => (
                       <th
                         key={round.id}
-                        className="px-6 py-4 text-center text-sm font-semibold text-gray-300"
+                        className="text-center"
                       >
                         {getRoundLabel(round, t)}
                       </th>
                     ))}
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-emerald-400">
+                    <th className="text-center text-emerald-400">
                       {t('leaderboard.total')}
                     </th>
                   </tr>
@@ -168,18 +171,14 @@ export default function Leaderboard() {
                     return (
                       <tr
                         key={player.id}
-                        className={`border-b border-slate-700 transition ${
-                          isCurrentUser
-                            ? 'bg-emerald-900 bg-opacity-20'
-                            : 'hover:bg-slate-700'
-                        }`}
+                        className={`app-table-row ${isCurrentUser ? 'app-table-row-current' : ''}`}
                       >
-                        <td className="px-6 py-4">
+                        <td>
                           <span className="font-bold text-white text-lg">
-                            {index + 1}
+                            {formatNumber(index + 1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 font-bold">
                               {player.name?.[0] || 'U'}
@@ -196,19 +195,19 @@ export default function Leaderboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center text-white font-semibold">
-                          {player.groupScore || 0}
+                        <td className="text-center font-semibold">
+                          {formatNumber(player.groupScore || 0)}
                         </td>
                         {rounds.map((round) => (
                           <td
                             key={round.id}
-                            className="px-6 py-4 text-center text-white font-semibold"
+                            className="text-center font-semibold"
                           >
-                            {player.roundScores?.[round.name] || 0}
+                            {formatNumber(player.roundScores?.[round.name] || 0)}
                           </td>
                         ))}
-                        <td className="px-6 py-4 text-center font-bold text-emerald-400 text-lg">
-                          {player.totalScore || 0}
+                        <td className="text-center font-bold text-emerald-400 text-lg">
+                          {formatNumber(player.totalScore || 0)}
                         </td>
                       </tr>
                     );

@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       const url = new URL(window.location.href);
       const tokenFromQuery = url.searchParams.get('token');
+      const pendingRedirect = sessionStorage.getItem('postAuthRedirect');
 
       if (tokenFromQuery) {
         localStorage.setItem('token', tokenFromQuery);
@@ -53,6 +54,13 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('token');
         }
       }
+
+      if (tokenFromQuery && pendingRedirect) {
+        sessionStorage.removeItem('postAuthRedirect');
+        window.location.replace(pendingRedirect);
+        return;
+      }
+
       setLoading(false);
     };
 

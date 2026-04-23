@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -11,7 +11,9 @@ export default function Login() {
 
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
+  const redirectTo = new URLSearchParams(location.search).get('redirect') || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +22,7 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate('/');
+      navigate(redirectTo);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,11 +31,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 space-y-6">
+    <div className="sport-shell app-auth-shell">
+      <div className="app-auth-card space-y-6">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-2">
+            <div className="score-pill mx-auto mb-4 text-emerald-200">
+              {t('nav.profile')}
+            </div>
+            <h1 className="sport-display text-5xl text-white mb-2">
               {t('auth.login')}
             </h1>
             <p className="text-gray-400">
@@ -48,14 +52,14 @@ export default function Login() {
           </div>
 
           {error && (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
+            <div className="app-alert app-alert-error">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="account-label">
                 {t('auth.email')}
               </label>
               <input
@@ -63,13 +67,13 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition"
+                className="app-input"
                 placeholder="your@email.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="account-label">
                 {t('auth.password')}
               </label>
               <input
@@ -77,7 +81,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition"
+                className="app-input"
                 placeholder="••••••••"
               />
               <div className="mt-2 text-right">
@@ -93,26 +97,22 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="app-button-primary"
             >
               {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-slate-800 text-gray-400">
-                O
-              </span>
-            </div>
+          <div className="app-divider">
+            <span>O</span>
           </div>
 
           <button
-            onClick={loginWithGoogle}
-            className="w-full py-3 border-2 border-slate-700 text-white rounded-lg font-semibold hover:border-emerald-500 hover:bg-slate-700 transition"
+            onClick={() => {
+              sessionStorage.setItem('postAuthRedirect', redirectTo);
+              loginWithGoogle();
+            }}
+            className="app-button-secondary"
           >
             {t('auth.loginGoogle')}
           </button>
@@ -125,7 +125,6 @@ export default function Login() {
               {t('common.back')}
             </Link>
           </div>
-        </div>
       </div>
     </div>
   );

@@ -13,10 +13,10 @@ import {
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
-import { getModeLabel, getModeRuleSections } from '../utils/tournament';
+import { getLocalizedName, getModeLabel, getModeRuleSections } from '../utils/tournament';
 
 export default function Home() {
-  const { language, t } = useLanguage();
+  const { language, t, formatDate, formatNumber } = useLanguage();
   const { user } = useAuth();
   const location = useLocation();
   const [tournaments, setTournaments] = useState([]);
@@ -56,7 +56,7 @@ export default function Home() {
 
   const featuredTournament = tournaments[0] || null;
   const featuredClosingDate = featuredTournament?.closingDate
-    ? new Date(featuredTournament.closingDate).toLocaleDateString()
+    ? formatDate(featuredTournament.closingDate)
     : 'TBD';
   const featuredTournamentLink = featuredTournament ? `/tournament/${featuredTournament.id}` : '/';
   const featuredLeaderboardLink = featuredTournament ? `/leaderboard/${featuredTournament.id}` : '/';
@@ -69,7 +69,7 @@ export default function Home() {
   const heroStats = [
     {
       label: 'Players',
-      value: featuredTournament?.participantCount || 0,
+      value: formatNumber(featuredTournament?.participantCount || 0),
       icon: Users,
       tone: 'text-emerald-300',
     },
@@ -81,7 +81,9 @@ export default function Home() {
     },
     {
       label: 'Max',
-      value: featuredTournament?.rules?.totalMaximumPoints || '--',
+      value: featuredTournament?.rules?.totalMaximumPoints
+        ? formatNumber(featuredTournament.rules.totalMaximumPoints)
+        : '--',
       icon: TimerReset,
       tone: 'text-cyan-300',
     },
@@ -120,7 +122,7 @@ export default function Home() {
           <div className="sport-panel-strong sport-pitch rounded-[2rem] px-6 py-8 md:px-10 md:py-10 overflow-hidden">
             <div className="relative z-10 flex h-full flex-col">
               <div className="score-pill mb-6 text-emerald-200">
-                {featuredTournament?.name || 'World Cup 2026'}
+                {getLocalizedName(featuredTournament, language, 'World Cup 2026')}
               </div>
               <h1 className="sport-display text-5xl md:text-7xl leading-[0.92] text-white mb-5 max-w-4xl">
                 {t('home.tagline')}
@@ -189,7 +191,7 @@ export default function Home() {
                     Featured Tournament
                   </p>
                   <h2 className="text-3xl font-bold text-white">
-                    {featuredTournament?.name || 'World Cup 2026'}
+                    {getLocalizedName(featuredTournament, language, 'World Cup 2026')}
                   </h2>
                 </div>
                 <Trophy size={28} className="text-amber-300" />
@@ -256,7 +258,9 @@ export default function Home() {
                   <span className="score-pill">{t('home.maximumScore')}</span>
                 </div>
                 <p className="sport-display text-3xl text-white">
-                  {featuredTournament?.rules?.totalMaximumPoints || '--'}
+                  {featuredTournament?.rules?.totalMaximumPoints
+                    ? formatNumber(featuredTournament.rules.totalMaximumPoints)
+                    : '--'}
                 </p>
               </div>
             </div>
@@ -390,12 +394,12 @@ export default function Home() {
             </h2>
             <p className="text-slate-400 mt-3 max-w-2xl">
               {featuredTournament
-                ? featuredTournament.name
+                ? getLocalizedName(featuredTournament, language, featuredTournament.name)
                 : t('home.noTournaments')}
             </p>
           </div>
           <div className="hidden md:flex score-pill text-emerald-200">
-            {tournaments.length} live boards
+            {formatNumber(tournaments.length)} live boards
           </div>
         </div>
 
@@ -457,7 +461,7 @@ export default function Home() {
                         : t('home.publicTournament')}
                     </div>
                     <h3 className="sport-display text-3xl text-white group-hover:text-emerald-300 transition">
-                      {tournament.name}
+                      {getLocalizedName(tournament, language, tournament.name)}
                     </h3>
                   </div>
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-300">
@@ -471,7 +475,7 @@ export default function Home() {
                       {t('tournament.participants')}
                     </p>
                     <p className="sport-display text-3xl text-white">
-                      {tournament.participantCount || 0}
+                      {formatNumber(tournament.participantCount || 0)}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
@@ -479,7 +483,9 @@ export default function Home() {
                       {t('home.maximumScore')}
                     </p>
                     <p className="sport-display text-3xl text-white">
-                      {tournament.rules?.totalMaximumPoints || '--'}
+                      {tournament.rules?.totalMaximumPoints
+                        ? formatNumber(tournament.rules.totalMaximumPoints)
+                        : '--'}
                     </p>
                   </div>
                 </div>
@@ -496,7 +502,7 @@ export default function Home() {
                       {t('tournament.closingDate')}:
                     </span>{' '}
                     {tournament.closingDate
-                      ? new Date(tournament.closingDate).toLocaleDateString()
+                      ? formatDate(tournament.closingDate)
                       : 'TBD'}
                   </p>
                   <p>

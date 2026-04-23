@@ -31,6 +31,7 @@ World Cup 2026 is seeded as the main official-style experience. The other footba
 - Guest landing page with featured tournament, mode-aware rules, and active tournament discovery
 - Registration, login, logout, Google OAuth, forgot-password, and reset-password flows
 - Profile editing, avatar updates, account stats, and password change
+- Authenticated global rankings with per-profile visibility preference
 - Public tournaments and private tournaments with join codes
 - Group-stage and knockout predictions
 - Support for best-third-place slot assignment when a mode requires it
@@ -151,6 +152,7 @@ Router
 - `/tournament/:id`
 - `/tournament/:id/predict`
 - `/leaderboard/:id`
+- `/leaderboard/global`
 - `/league/:id`
 - `/profile`
 - `/admin`
@@ -202,6 +204,7 @@ The flow is:
 - prediction save/load flow
 - league CRUD and league membership
 - leaderboard serialization
+- authenticated global leaderboard aggregation
 - admin tournament creation and safe structure updates
 - admin settings and result entry
 - score calculation triggers
@@ -337,6 +340,7 @@ All endpoints are prefixed with `/api`.
 - `POST /tournaments/:id/leagues`
 - `POST /tournaments/:id/leagues/join`
 - `GET /tournaments/:id/leaderboard`
+- `GET /leaderboard/global`
 
 ### 9.3 Leagues
 

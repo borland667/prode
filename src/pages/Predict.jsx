@@ -1,32 +1,39 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
 import {
   buildTeamMap,
+  buildRandomPredictionSet,
   getEligibleBestThirdGroups,
   getKnockoutRounds,
+  getLocalizedName,
   getRoundLabel,
   hasBestThirdPlaceSlots,
   resolveMatchParticipants,
+  sanitizeKnockoutPredictionMap,
   sortGroups,
 } from '../utils/tournament';
 
 export default function Predict() {
   const { id } = useParams();
-  const { t } = useLanguage();
+  const { language, t, formatNumber } = useLanguage();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLeagueScope = location.pathname.startsWith('/league/');
 
   const [tournament, setTournament] = useState(null);
+  const [league, setLeague] = useState(null);
   const [groupPredictions, setGroupPredictions] = useState({});
   const [knockoutPredictions, setKnockoutPredictions] = useState({});
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -35,7 +42,17 @@ export default function Predict() {
 
     const fetchData = async () => {
       try {
-        const tournamentData = await get(`/tournaments/${id}`);
+        let tournamentData;
+
+        if (isLeagueScope) {
+          const leagueData = await get(`/leagues/${id}`);
+          setLeague(leagueData);
+          tournamentData = await get(`/tournaments/${leagueData.tournamentId}`);
+        } else {
+          setLeague(null);
+          tournamentData = await get(`/tournaments/${id}`);
+        }
+
         setTournament(tournamentData);
 
         if (!tournamentData?.access?.canSubmitPredictions) {
@@ -47,10 +64,24 @@ export default function Predict() {
           return;
         }
 
-        const predictionData = await get(`/tournaments/${id}/my-predictions`);
+        const predictionData = await get(
+          isLeagueScope ? `/leagues/${id}/my-predictions` : `/tournaments/${id}/my-predictions`
+        );
+        const nextGroups = sortGroups(tournamentData?.groups || []);
+        const nextRounds = getKnockoutRounds(tournamentData?.rounds || []);
+        const nextTeamMap = buildTeamMap(nextGroups);
+        const nextGroupPredictions = predictionData?.groupPredictionMap || {};
+        const nextKnockoutPredictions = sanitizeKnockoutPredictionMap({
+          groups: nextGroups,
+          rounds: nextRounds,
+          groupSelections: nextGroupPredictions,
+          knockoutPredictions: predictionData?.knockoutPredictionMap || {},
+          teamMap: nextTeamMap,
+        });
 
-        setGroupPredictions(predictionData?.groupPredictionMap || {});
-        setKnockoutPredictions(predictionData?.knockoutPredictionMap || {});
+        setGroupPredictions(nextGroupPredictions);
+        setKnockoutPredictions(nextKnockoutPredictions);
+        setNotice('');
       } catch (err) {
         setError(err.message);
       } finally {
@@ -59,11 +90,11 @@ export default function Predict() {
     };
 
     fetchData();
-  }, [id, t, user]);
+  }, [id, isLeagueScope, t, user]);
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -140,12 +171,13 @@ export default function Predict() {
     }
 
     setSaving(true);
+    setNotice('');
     try {
-      await post(`/tournaments/${id}/predictions`, {
+      await post(isLeagueScope ? `/leagues/${id}/predictions` : `/tournaments/${id}/predictions`, {
         groupPredictions,
         knockoutPredictions,
       });
-      navigate(`/tournament/${id}`);
+      navigate(isLeagueScope ? `/league/${id}` : `/tournament/${id}`);
     } catch (err) {
       setError(
         err.status === 403 && tournament?.access?.predictionsLocked
@@ -157,9 +189,40 @@ export default function Predict() {
     }
   };
 
+  const handleRandomFill = () => {
+    if (!tournament) {
+      return;
+    }
+
+    const randomPredictions = buildRandomPredictionSet({
+      groups,
+      rounds,
+      teamMap,
+    });
+
+    setGroupPredictions(randomPredictions.groupPredictions);
+    setKnockoutPredictions(randomPredictions.knockoutPredictions);
+    setCurrentStep(Math.max(steps.length - 1, 0));
+    setError('');
+    setNotice(t('predict.randomFillDone'));
+  };
+
+  const applyPredictionState = (nextGroupPredictions, nextKnockoutPredictions) => {
+    setGroupPredictions(nextGroupPredictions);
+    setKnockoutPredictions(
+      sanitizeKnockoutPredictionMap({
+        groups,
+        rounds,
+        groupSelections: nextGroupPredictions,
+        knockoutPredictions: nextKnockoutPredictions,
+        teamMap,
+      })
+    );
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -167,7 +230,7 @@ export default function Predict() {
 
   if (!tournament) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.noResults')}</p>
       </div>
     );
@@ -176,19 +239,40 @@ export default function Predict() {
   const activeStep = steps[currentStep];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+    <div className="sport-shell min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold text-white mb-12">
-          {t('predict.makePredictions')}
-        </h1>
+        <div className="app-page-header">
+          <div className="app-page-kicker score-pill text-emerald-200">
+            {league?.name || getLocalizedName(tournament, language, tournament.name)}
+          </div>
+          <h1 className="app-page-title sport-display">
+            {t('predict.makePredictions')}
+          </h1>
+          <p className="app-page-description">
+            {isLeagueScope
+              ? t('predict.leaguePredictionHelp')
+              : t('predict.tournamentPredictionHelp')}
+          </p>
+          {isLeagueScope ? (
+            <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
+              {getLocalizedName(tournament, language, tournament.name)}
+            </p>
+          ) : null}
+        </div>
 
         {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-8">
+          <div className="app-alert app-alert-error mb-8">
             {error}
           </div>
         )}
 
-        <div className="mb-12">
+        {notice ? (
+          <div className="app-alert app-alert-success mb-8">
+            {notice}
+          </div>
+        ) : null}
+
+        <div className="sport-panel app-card-strong mb-8">
           <div className="flex items-center justify-between">
             {steps.map((step, index) => (
               <div key={step.key} className="flex items-center flex-1">
@@ -206,7 +290,7 @@ export default function Predict() {
                         : 'bg-slate-700 text-gray-400'
                   }`}
                 >
-                  {index + 1}
+                  {formatNumber(index + 1)}
                 </button>
                 {index < steps.length - 1 && (
                   <div
@@ -219,7 +303,7 @@ export default function Predict() {
             ))}
           </div>
           <div className="text-center mt-4 text-gray-300">
-            {t('predict.step')} {currentStep + 1} {t('predict.of')} {steps.length}:
+            {t('predict.step')} {formatNumber(currentStep + 1)} {t('predict.of')} {formatNumber(steps.length)}:
             <span className="text-emerald-400 font-semibold">
               {' '}
               {activeStep.label}
@@ -227,20 +311,23 @@ export default function Predict() {
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
+        <div className="sport-panel-strong app-card-strong mb-8">
           {activeStep.type === 'groups' ? (
             <GroupStageStep
               groups={groups}
               predictions={groupPredictions}
               requiresThirdPlaceSelections={requiresThirdPlaceSelections}
+              language={language}
               onSelect={(groupId, position, teamId) => {
-                setGroupPredictions((prev) => ({
-                  ...prev,
+                const nextGroupPredictions = {
+                  ...groupPredictions,
                   [groupId]: {
-                    ...prev[groupId],
+                    ...groupPredictions[groupId],
                     [position]: teamId,
                   },
-                }));
+                };
+
+                applyPredictionState(nextGroupPredictions, knockoutPredictions);
               }}
               t={t}
             />
@@ -253,84 +340,104 @@ export default function Predict() {
               knockoutPredictions={knockoutPredictions}
               knockoutWinnerSelections={knockoutWinnerSelections}
               teamMap={teamMap}
+              language={language}
               onSelectSlot={(matchId, side, teamId) => {
-                setKnockoutPredictions((prev) => {
-                  const current = prev[matchId] || {};
-                  const nextPrediction = {
-                    ...current,
-                    [side === 'home' ? 'selectedHomeTeamId' : 'selectedAwayTeamId']: teamId,
-                  };
-                  const homeTeamId =
-                    side === 'home' ? teamId : current.selectedHomeTeamId || '';
-                  const awayTeamId =
-                    side === 'away' ? teamId : current.selectedAwayTeamId || '';
+                const current = knockoutPredictions[matchId] || {};
+                const nextPrediction = {
+                  ...current,
+                  [side === 'home' ? 'selectedHomeTeamId' : 'selectedAwayTeamId']: teamId,
+                };
+                const homeTeamId =
+                  side === 'home' ? teamId : current.selectedHomeTeamId || '';
+                const awayTeamId =
+                  side === 'away' ? teamId : current.selectedAwayTeamId || '';
 
-                  if (
-                    current.predictedWinner &&
-                    current.predictedWinner !== homeTeamId &&
-                    current.predictedWinner !== awayTeamId
-                  ) {
-                    nextPrediction.predictedWinner = '';
-                  }
+                if (
+                  current.predictedWinner &&
+                  current.predictedWinner !== homeTeamId &&
+                  current.predictedWinner !== awayTeamId
+                ) {
+                  nextPrediction.predictedWinner = '';
+                }
 
-                  return {
-                    ...prev,
-                    [matchId]: nextPrediction,
-                  };
+                applyPredictionState(groupPredictions, {
+                  ...knockoutPredictions,
+                  [matchId]: nextPrediction,
                 });
               }}
               onSelect={(matchId, teamId) => {
-                setKnockoutPredictions((prev) => ({
-                  ...prev,
+                applyPredictionState(groupPredictions, {
+                  ...knockoutPredictions,
                   [matchId]: {
-                    ...(prev[matchId] || {}),
+                    ...(knockoutPredictions[matchId] || {}),
                     predictedWinner: teamId,
                   },
-                }));
+                });
               }}
               t={t}
             />
           )}
         </div>
 
-        <div className="flex justify-between items-center">
-          <button
-            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-            disabled={currentStep === 0}
-            className="flex items-center gap-2 px-6 py-3 border-2 border-slate-700 text-white rounded-lg hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            <ChevronLeft size={20} />
-            {t('predict.previous')}
-          </button>
+        <div className="sport-panel prediction-footer">
+          <div className="prediction-footer__meta">
+            <div className="prediction-footer__actions">
+              <button
+                type="button"
+                onClick={handleRandomFill}
+                disabled={saving}
+                className="app-button-secondary prediction-footer__button prediction-footer__button--secondary"
+              >
+                {t('predict.randomFill')}
+              </button>
 
-          {currentStep === steps.length - 1 ? (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-8 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {saving ? t('predict.savingPredictions') : t('predict.savePredictions')}
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (validateStep(currentStep)) {
-                  setCurrentStep(currentStep + 1);
-                }
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
-            >
-              {t('predict.next')}
-              <ChevronRight size={20} />
-            </button>
-          )}
+              <button
+                onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                disabled={currentStep === 0}
+                className="app-button-ghost prediction-footer__button prediction-footer__button--ghost"
+              >
+                <ChevronLeft size={20} />
+                {t('predict.previous')}
+              </button>
+            </div>
+            <p className="prediction-footer__help">
+              {isLeagueScope
+                ? t('predict.randomFillHelpLeague')
+                : t('predict.randomFillHelpTournament')}
+            </p>
+          </div>
+
+          <div className="prediction-footer__cta">
+            {currentStep === steps.length - 1 ? (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="app-button-primary prediction-footer__button prediction-footer__button--primary"
+              >
+                {saving ? t('predict.savingPredictions') : t('predict.savePredictions')}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (validateStep(currentStep)) {
+                    setNotice('');
+                    setCurrentStep(currentStep + 1);
+                  }
+                }}
+                className="app-button-primary prediction-footer__button prediction-footer__button--primary"
+              >
+                {t('predict.next')}
+                <ChevronRight size={20} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onSelect, t }) {
+function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, language, onSelect, t }) {
   return (
     <div>
       <p className="text-gray-300 mb-8">
@@ -341,7 +448,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onS
         {groups.map((group) => (
           <div
             key={group.id}
-            className="bg-slate-900 border border-slate-700 rounded-lg p-6"
+            className="sport-panel app-card"
           >
             <h3 className="text-lg font-bold text-emerald-400 mb-4">
               {group.name}
@@ -355,12 +462,12 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onS
                 <select
                   value={predictions[group.id]?.first || ''}
                   onChange={(e) => onSelect(group.id, 'first', e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                  className="app-select"
                 >
                   <option value="">-- {t('common.select')} --</option>
                   {group.teams?.map((team) => (
                     <option key={team.id} value={team.id}>
-                      {team.name}
+                      {getLocalizedName(team, language, team.name)}
                     </option>
                   ))}
                 </select>
@@ -373,7 +480,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onS
                 <select
                   value={predictions[group.id]?.second || ''}
                   onChange={(e) => onSelect(group.id, 'second', e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                  className="app-select"
                 >
                   <option value="">-- {t('common.select')} --</option>
                   {group.teams?.map((team) => (
@@ -382,7 +489,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onS
                       value={team.id}
                       disabled={predictions[group.id]?.first === team.id}
                     >
-                      {team.name}
+                      {getLocalizedName(team, language, team.name)}
                     </option>
                   ))}
                 </select>
@@ -396,7 +503,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onS
                   <select
                     value={predictions[group.id]?.third || ''}
                     onChange={(e) => onSelect(group.id, 'third', e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-select"
                   >
                     <option value="">-- {t('common.select')} --</option>
                     {group.teams?.map((team) => (
@@ -408,7 +515,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, onS
                           predictions[group.id]?.second === team.id
                         }
                       >
-                        {team.name}
+                        {getLocalizedName(team, language, team.name)}
                       </option>
                     ))}
                   </select>
@@ -430,6 +537,7 @@ function RoundStep({
   knockoutPredictions,
   knockoutWinnerSelections,
   teamMap,
+  language,
   onSelectSlot,
   onSelect,
   t,
@@ -464,7 +572,7 @@ function RoundStep({
           return (
             <div
               key={match.id}
-              className="bg-slate-900 border border-slate-700 rounded-lg p-6"
+              className="sport-panel app-card"
             >
               <p className="text-sm text-gray-400 mb-4 font-semibold">
                 {match.code}: {match.homeLabel} vs {match.awayLabel}
@@ -481,7 +589,7 @@ function RoundStep({
                   } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <p className="text-white font-semibold">
-                    {matchup.home.teamName || `(${matchup.home.slotLabel})`}
+                    {(matchup.home.teamId ? getLocalizedName(teamMap[matchup.home.teamId], language, matchup.home.teamName) : matchup.home.teamName) || `(${matchup.home.slotLabel})`}
                   </p>
                 </button>
 
@@ -489,7 +597,7 @@ function RoundStep({
                   <select
                     value={prediction.selectedHomeTeamId || ''}
                     onChange={(event) => onSelectSlot(match.id, 'home', event.target.value)}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-select"
                   >
                     <option value="">-- {t('predict.selectBestThirdTeam')} --</option>
                     {homeBestThirdOptions.map((team) => (
@@ -501,7 +609,7 @@ function RoundStep({
                             isBestThirdTeamUsedElsewhere(knockoutPredictions, match.id, team.id)
                           }
                         >
-                          {team.name}
+                          {getLocalizedName(team, language, team.name)}
                         </option>
                     ))}
                   </select>
@@ -521,7 +629,7 @@ function RoundStep({
                   } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <p className="text-white font-semibold">
-                    {matchup.away.teamName || `(${matchup.away.slotLabel})`}
+                    {(matchup.away.teamId ? getLocalizedName(teamMap[matchup.away.teamId], language, matchup.away.teamName) : matchup.away.teamName) || `(${matchup.away.slotLabel})`}
                   </p>
                 </button>
 
@@ -529,7 +637,7 @@ function RoundStep({
                   <select
                     value={prediction.selectedAwayTeamId || ''}
                     onChange={(event) => onSelectSlot(match.id, 'away', event.target.value)}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-select"
                   >
                     <option value="">-- {t('predict.selectBestThirdTeam')} --</option>
                     {awayBestThirdOptions.map((team) => (
@@ -541,7 +649,7 @@ function RoundStep({
                             isBestThirdTeamUsedElsewhere(knockoutPredictions, match.id, team.id)
                           }
                         >
-                          {team.name}
+                          {getLocalizedName(team, language, team.name)}
                         </option>
                     ))}
                   </select>

@@ -13,16 +13,18 @@ model User {
   password             String?
   googleId             String?              @unique
   avatarUrl            String?
+  showInGlobalRankings Boolean              @default(true)
   role                 String               @default("USER")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-  groupPredictions     GroupPrediction[]
-  knockoutPredictions  KnockoutPrediction[]
-  scores               Score[]
-  tournamentMemberships TournamentMember[]
-  createdLeagues       TournamentLeague[]   @relation("LeagueCreator")
-  leagueMemberships    LeagueMember[]
-  passwordResetTokens  PasswordResetToken[]
+  groupPredictions        GroupPrediction[]
+  knockoutPredictions     KnockoutPrediction[]
+  scores                  Score[]
+  tournamentPrimaryEntries TournamentPrimaryEntry[]
+  tournamentMemberships   TournamentMember[]
+  createdLeagues          TournamentLeague[]   @relation("LeagueCreator")
+  leagueMemberships       LeagueMember[]
+  passwordResetTokens     PasswordResetToken[]
 }
 
 model Tournament {
@@ -49,10 +51,11 @@ model Tournament {
   rounds               Round[]
   groupPredictions     GroupPrediction[]
   knockoutPredictions  KnockoutPrediction[]
-  groupResults         GroupResult[]
-  scores               Score[]
-  members              TournamentMember[]
-  leagues              TournamentLeague[]
+  groupResults             GroupResult[]
+  scores                   Score[]
+  tournamentPrimaryEntries TournamentPrimaryEntry[]
+  members                  TournamentMember[]
+  leagues                  TournamentLeague[]
 }
 
 model Team {
@@ -112,6 +115,7 @@ model GroupPrediction {
   userId       String
   tournamentId String
   groupId      String
+  scopeKey     String     @default("tournament")
   first        String
   second       String
   third        String?
@@ -121,7 +125,7 @@ model GroupPrediction {
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   group        Group      @relation(fields: [groupId], references: [id])
 
-  @@unique([userId, tournamentId, groupId])
+  @@unique([userId, tournamentId, groupId, scopeKey])
 }
 
 model KnockoutPrediction {
@@ -129,6 +133,7 @@ model KnockoutPrediction {
   userId          String
   tournamentId    String
   matchId         String
+  scopeKey        String     @default("tournament")
   predictedWinner String
   selectedHomeTeamId String?
   selectedAwayTeamId String?
@@ -138,7 +143,7 @@ model KnockoutPrediction {
   tournament      Tournament @relation(fields: [tournamentId], references: [id])
   match           Match      @relation(fields: [matchId], references: [id])
 
-  @@unique([userId, matchId])
+  @@unique([userId, matchId, scopeKey])
 }
 
 model GroupResult {
@@ -158,6 +163,7 @@ model Score {
   id             String     @id @default(cuid())
   userId         String
   tournamentId   String
+  scopeKey       String     @default("tournament")
   groupScore     Int        @default(0)
   knockoutScore  Int        @default(0)
   totalScore     Int        @default(0)
@@ -165,6 +171,19 @@ model Score {
   updatedAt      DateTime   @updatedAt
   user           User       @relation(fields: [userId], references: [id])
   tournament     Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([userId, tournamentId, scopeKey])
+}
+
+model TournamentPrimaryEntry {
+  id           String     @id @default(cuid())
+  userId       String
+  tournamentId String
+  scopeKey     String     @default("tournament")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id])
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
 
   @@unique([userId, tournamentId])
 }

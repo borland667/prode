@@ -1,13 +1,5 @@
 const prisma = require('./db.cjs');
-
-const ROUND_NAME_ES = {
-  group_stage: 'fase_de_grupos',
-  round_of_32: 'dieciseisavos_de_final',
-  round_of_16: 'octavos_de_final',
-  quarter_finals: 'cuartos_de_final',
-  semi_finals: 'semifinales',
-  final: 'final',
-};
+const { getRoundNameEs, getTeamNameEs } = require('./translations.cjs');
 
 function buildLinearKnockoutRounds(roundNames, start = 2, step = 2) {
   return roundNames.map((name, index) => ({
@@ -123,7 +115,7 @@ async function createTournamentSeed(definition) {
       await prisma.team.create({
         data: {
           name: team.name,
-          nameEs: team.nameEs || null,
+          nameEs: getTeamNameEs(team),
           code: team.code,
           flagUrl: getFlagUrl(team.flagCode, team.code?.slice(0, 2)),
           groupId: group.id,
@@ -140,7 +132,7 @@ async function createTournamentSeed(definition) {
     const createdRound = await prisma.round.create({
       data: {
         name: round.name,
-        nameEs: round.nameEs || ROUND_NAME_ES[round.name] || round.name,
+        nameEs: getRoundNameEs(round) || round.name,
         order: round.order,
         pointsPerCorrect: round.pointsPerCorrect,
         tournamentId: tournament.id,

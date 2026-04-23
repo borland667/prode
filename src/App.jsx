@@ -11,7 +11,9 @@ import ResetPassword from './pages/ResetPassword';
 import Tournament from './pages/Tournament';
 import Predict from './pages/Predict';
 import Leaderboard from './pages/Leaderboard';
+import GlobalLeaderboard from './pages/GlobalLeaderboard';
 import League from './pages/League';
+import LeagueInvite from './pages/LeagueInvite';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 
@@ -31,8 +33,11 @@ function App() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/tournament/:id" element={<Tournament />} />
                 <Route path="/tournament/:id/predict" element={<Predict />} />
+                <Route path="/league/:id/predict" element={<Predict />} />
+                <Route path="/leaderboard/global" element={<GlobalLeaderboard />} />
                 <Route path="/leaderboard/:id" element={<Leaderboard />} />
                 <Route path="/league/:id" element={<League />} />
+                <Route path="/league/invite/:joinCode" element={<LeagueInvite />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

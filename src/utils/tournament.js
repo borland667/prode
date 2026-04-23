@@ -64,6 +64,32 @@ export function getModeLabel(mode, language = 'en') {
   return mode.name || mode.nameEs || '';
 }
 
+export function getLocalizedName(entity, language = 'en', fallback = '') {
+  if (!entity) {
+    return fallback;
+  }
+
+  if (language === 'es' && entity.nameEs) {
+    return entity.nameEs;
+  }
+
+  return entity.name || entity.nameEs || fallback;
+}
+
+export function getSportLabel(sport, language = 'en') {
+  const normalizedSport = String(sport || '').trim().toLowerCase();
+
+  if (!normalizedSport) {
+    return language === 'es' ? 'futbol' : 'soccer';
+  }
+
+  if (normalizedSport === 'football') {
+    return language === 'es' ? 'futbol' : 'soccer';
+  }
+
+  return titleize(normalizedSport);
+}
+
 export function getModeRuleSections({ mode, rules, language = 'en', t }) {
   const modeKey = mode?.key || 'classic_argentinian_prode';
   const knockoutRounds = rules?.knockout || [];
@@ -126,6 +152,26 @@ export function buildTeamMap(groups = []) {
   }, {});
 }
 
+function shuffleArray(items = [], random = Math.random) {
+  const next = [...items];
+
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+
+  return next;
+}
+
+function pickRandomItem(items = [], random = Math.random) {
+  if (!items.length) {
+    return null;
+  }
+
+  const index = Math.floor(random() * items.length);
+  return items[index] || null;
+}
+
 export function getEligibleBestThirdGroups(label = '') {
   const match = label.trim().match(BEST_THIRD_SLOT_PATTERN);
   if (!match) {
@@ -135,6 +181,13 @@ export function getEligibleBestThirdGroups(label = '') {
   return match[1]
     .split('/')
     .map((groupCode) => groupCode.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function getEligibleBestThirdTeamIds(label = '', groups = [], groupSelections = {}) {
+  return getEligibleBestThirdGroups(label)
+    .map((groupCode) => findGroupByCode(groups, groupCode))
+    .map((group) => (group ? groupSelections[group.id]?.third : ''))
     .filter(Boolean);
 }
 
@@ -271,5 +324,189 @@ export function resolveMatchParticipants({
   return {
     home,
     away,
+  };
+}
+
+export function sanitizeKnockoutPredictionMap({
+  groups = [],
+  rounds = [],
+  groupSelections = {},
+  knockoutPredictions = {},
+  teamMap = buildTeamMap(groups),
+} = {}) {
+  const sanitized = {};
+  const knockoutSelections = {};
+  const usedBestThirdTeams = new Set();
+
+  for (const round of getKnockoutRounds(rounds)) {
+    for (const match of round.matches || []) {
+      const current = knockoutPredictions[match.id] || {};
+      const nextPrediction = {};
+
+      if (BEST_THIRD_SLOT_PATTERN.test(match.homeLabel || '')) {
+        const eligibleHomeTeamIds = getEligibleBestThirdTeamIds(match.homeLabel, groups, groupSelections);
+        const isValidHomeSelection =
+          eligibleHomeTeamIds.includes(current.selectedHomeTeamId) &&
+          !usedBestThirdTeams.has(current.selectedHomeTeamId) &&
+          current.selectedHomeTeamId !== current.selectedAwayTeamId;
+
+        nextPrediction.selectedHomeTeamId = isValidHomeSelection ? current.selectedHomeTeamId : '';
+
+        if (nextPrediction.selectedHomeTeamId) {
+          usedBestThirdTeams.add(nextPrediction.selectedHomeTeamId);
+        }
+      }
+
+      if (BEST_THIRD_SLOT_PATTERN.test(match.awayLabel || '')) {
+        const eligibleAwayTeamIds = getEligibleBestThirdTeamIds(match.awayLabel, groups, groupSelections);
+        const isValidAwaySelection =
+          eligibleAwayTeamIds.includes(current.selectedAwayTeamId) &&
+          !usedBestThirdTeams.has(current.selectedAwayTeamId) &&
+          current.selectedAwayTeamId !== nextPrediction.selectedHomeTeamId;
+
+        nextPrediction.selectedAwayTeamId = isValidAwaySelection ? current.selectedAwayTeamId : '';
+
+        if (nextPrediction.selectedAwayTeamId) {
+          usedBestThirdTeams.add(nextPrediction.selectedAwayTeamId);
+        }
+      }
+
+      const matchup = resolveMatchParticipants({
+        match,
+        groups,
+        rounds,
+        groupSelections,
+        knockoutSelections,
+        slotSelections: {
+          [match.homeLabel]: nextPrediction.selectedHomeTeamId || '',
+          [match.awayLabel]: nextPrediction.selectedAwayTeamId || '',
+        },
+        teamMap,
+      });
+
+      const isValidWinner =
+        current.predictedWinner &&
+        (current.predictedWinner === matchup.home.teamId || current.predictedWinner === matchup.away.teamId);
+
+      nextPrediction.predictedWinner = isValidWinner ? current.predictedWinner : '';
+      sanitized[match.id] = nextPrediction;
+
+      if (nextPrediction.predictedWinner) {
+        knockoutSelections[match.id] = nextPrediction.predictedWinner;
+      }
+    }
+  }
+
+  return sanitized;
+}
+
+export function buildRandomPredictionSet({
+  groups = [],
+  rounds = [],
+  teamMap = buildTeamMap(groups),
+  random = Math.random,
+} = {}) {
+  const groupSelections = {};
+  let knockoutPredictions = {};
+  const requiresThirdPlaceSelections = hasBestThirdPlaceSlots(rounds);
+
+  for (const group of sortGroups(groups)) {
+    const shuffledTeamIds = shuffleArray(
+      (group.teams || []).map((team) => team.id).filter(Boolean),
+      random
+    );
+
+    groupSelections[group.id] = {
+      first: shuffledTeamIds[0] || '',
+      second: shuffledTeamIds[1] || '',
+      ...(requiresThirdPlaceSelections ? { third: shuffledTeamIds[2] || '' } : {}),
+    };
+  }
+
+  for (const round of getKnockoutRounds(rounds)) {
+    for (const match of round.matches || []) {
+      const prediction = { ...knockoutPredictions[match.id] };
+
+      if (BEST_THIRD_SLOT_PATTERN.test(match.homeLabel || '')) {
+        const usedThirdPlaceTeams = new Set(
+          Object.values(knockoutPredictions)
+            .flatMap((entry) => [entry.selectedHomeTeamId, entry.selectedAwayTeamId])
+            .filter(Boolean)
+        );
+        const options = getEligibleBestThirdTeamIds(match.homeLabel, groups, groupSelections)
+          .filter((teamId) => !usedThirdPlaceTeams.has(teamId));
+
+        prediction.selectedHomeTeamId = pickRandomItem(options, random) || '';
+      }
+
+      if (BEST_THIRD_SLOT_PATTERN.test(match.awayLabel || '')) {
+        const usedThirdPlaceTeams = new Set(
+          Object.values(knockoutPredictions)
+            .flatMap((entry) => [entry.selectedHomeTeamId, entry.selectedAwayTeamId])
+            .filter(Boolean)
+        );
+        if (prediction.selectedHomeTeamId) {
+          usedThirdPlaceTeams.add(prediction.selectedHomeTeamId);
+        }
+
+        const options = getEligibleBestThirdTeamIds(match.awayLabel, groups, groupSelections)
+          .filter((teamId) => !usedThirdPlaceTeams.has(teamId));
+
+        prediction.selectedAwayTeamId = pickRandomItem(options, random) || '';
+      }
+
+      knockoutPredictions = sanitizeKnockoutPredictionMap({
+        groups,
+        rounds,
+        groupSelections,
+        knockoutPredictions: {
+          ...knockoutPredictions,
+          [match.id]: prediction,
+        },
+        teamMap,
+      });
+
+      const sanitizedPrediction = knockoutPredictions[match.id] || {};
+      const matchup = resolveMatchParticipants({
+        match,
+        groups,
+        rounds,
+        groupSelections,
+        knockoutSelections: Object.fromEntries(
+          Object.entries(knockoutPredictions).map(([matchId, entry]) => [matchId, entry.predictedWinner || ''])
+        ),
+        slotSelections: {
+          [match.homeLabel]: sanitizedPrediction.selectedHomeTeamId || '',
+          [match.awayLabel]: sanitizedPrediction.selectedAwayTeamId || '',
+        },
+        teamMap,
+      });
+
+      const candidates = [matchup.home.teamId, matchup.away.teamId].filter(Boolean);
+      knockoutPredictions = sanitizeKnockoutPredictionMap({
+        groups,
+        rounds,
+        groupSelections,
+        knockoutPredictions: {
+          ...knockoutPredictions,
+          [match.id]: {
+            ...sanitizedPrediction,
+            predictedWinner: pickRandomItem(candidates, random) || '',
+          },
+        },
+        teamMap,
+      });
+    }
+  }
+
+  return {
+    groupPredictions: groupSelections,
+    knockoutPredictions: sanitizeKnockoutPredictionMap({
+      groups,
+      rounds,
+      groupSelections,
+      knockoutPredictions,
+      teamMap,
+    }),
   };
 }

@@ -248,7 +248,7 @@ export default function Admin() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -437,31 +437,39 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+    <div className="sport-shell min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold text-white mb-12">
-          {t('admin.adminPanel')}
-        </h1>
+        <div className="app-page-header">
+          <div className="app-page-kicker score-pill text-emerald-200">
+            {t('nav.admin')}
+          </div>
+          <h1 className="app-page-title sport-display">
+            {t('admin.adminPanel')}
+          </h1>
+          <p className="app-page-description">
+            {t('admin.tournamentBuilderHelp')}
+          </p>
+        </div>
 
         {error ? (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-8">
+          <div className="app-alert app-alert-error mb-8">
             {error}
           </div>
         ) : null}
 
         {success ? (
-          <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded mb-8">
+          <div className="app-alert app-alert-success mb-8">
             {success}
           </div>
         ) : null}
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
+        <div className="sport-panel-strong app-card-strong mb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="app-section-title">
                 {t('admin.tournamentBuilder')}
               </h2>
-              <p className="text-gray-400 max-w-3xl">
+              <p className="app-section-copy max-w-3xl">
                 {t('admin.tournamentBuilderHelp')}
               </p>
             </div>
@@ -473,63 +481,63 @@ export default function Admin() {
                 setBuilderError('');
                 setBuilderForm(createEmptyBuilderForm());
               }}
-              className="px-5 py-3 border-2 border-slate-600 text-white rounded-lg font-semibold hover:border-emerald-500 transition"
+              className="app-button-secondary sm:w-auto"
             >
               {t('admin.newTournament')}
             </button>
           </div>
 
           {builderError ? (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
+            <div className="app-alert app-alert-error mb-6">
               {builderError}
             </div>
           ) : null}
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.tournamentName')}
               </label>
               <input
                 type="text"
                 value={builderForm.name}
                 onChange={(event) => handleBuilderFieldChange('name', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.tournamentNameEs')}
               </label>
               <input
                 type="text"
                 value={builderForm.nameEs}
                 onChange={(event) => handleBuilderFieldChange('nameEs', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.sportLabel')}
               </label>
               <input
                 type="text"
                 value={builderForm.sport}
                 onChange={(event) => handleBuilderFieldChange('sport', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.statusLabel')}
               </label>
               <select
                 value={builderForm.status}
                 onChange={(event) => handleBuilderFieldChange('status', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-select"
               >
                 <option value="upcoming">{t('tournament.upcoming')}</option>
                 <option value="active">{t('tournament.active')}</option>
@@ -539,49 +547,49 @@ export default function Admin() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.modeKey')}
               </label>
               <input
                 type="text"
                 value={builderForm.modeKey}
                 onChange={(event) => handleBuilderFieldChange('modeKey', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.modeName')}
               </label>
               <input
                 type="text"
                 value={builderForm.modeName}
                 onChange={(event) => handleBuilderFieldChange('modeName', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.modeNameEs')}
               </label>
               <input
                 type="text"
                 value={builderForm.modeNameEs}
                 onChange={(event) => handleBuilderFieldChange('modeNameEs', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.accessType')}
               </label>
               <select
                 value={builderForm.accessType}
                 onChange={(event) => handleBuilderFieldChange('accessType', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-select"
               >
                 <option value="public">{t('admin.publicAccess')}</option>
                 <option value="private">{t('admin.privateAccess')}</option>
@@ -589,7 +597,7 @@ export default function Admin() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.entryFeeLabel')}
               </label>
               <input
@@ -598,35 +606,35 @@ export default function Admin() {
                 step="1"
                 value={builderForm.entryFee}
                 onChange={(event) => handleBuilderFieldChange('entryFee', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.currencyLabel')}
               </label>
               <input
                 type="text"
                 value={builderForm.currency}
                 onChange={(event) => handleBuilderFieldChange('currency', event.target.value.toUpperCase())}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.joinCode')}
               </label>
               <input
                 type="text"
                 value={builderForm.joinCode}
                 onChange={(event) => handleBuilderFieldChange('joinCode', event.target.value.toUpperCase())}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
-            <label className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-900 px-4 py-3">
+            <label className="sport-panel app-card flex items-center justify-between gap-4 cursor-pointer">
               <span className="text-white font-semibold">
                 {t('admin.prizesEnabled')}
               </span>
@@ -639,71 +647,71 @@ export default function Admin() {
             </label>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.startDateLabel')}
               </label>
               <input
                 type="datetime-local"
                 value={builderForm.startDate}
                 onChange={(event) => handleBuilderFieldChange('startDate', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.endDateLabel')}
               </label>
               <input
                 type="datetime-local"
                 value={builderForm.endDate}
                 onChange={(event) => handleBuilderFieldChange('endDate', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.closingDateLabel')}
               </label>
               <input
                 type="datetime-local"
                 value={builderForm.closingDate}
                 onChange={(event) => handleBuilderFieldChange('closingDate', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                className="app-input"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.groupsJsonLabel')}
               </label>
               <textarea
                 rows={16}
                 value={builderForm.groupsJson}
                 onChange={(event) => handleBuilderFieldChange('groupsJson', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                className="app-textarea font-mono text-sm"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-2">
+              <label className="account-label">
                 {t('admin.roundsJsonLabel')}
               </label>
               <textarea
                 rows={18}
                 value={builderForm.roundsJson}
                 onChange={(event) => handleBuilderFieldChange('roundsJson', event.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                className="app-textarea font-mono text-sm"
               />
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap gap-4">
             <button
               onClick={handleSaveStructure}
               disabled={builderSaving}
-              className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+              className="app-button-primary sm:w-auto"
             >
               {builderSaving
                 ? t('admin.saving')
@@ -714,14 +722,14 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
-          <label className="block text-lg font-semibold text-white mb-4">
+        <div className="sport-panel-strong app-card-strong mb-8">
+          <label className="account-label text-base">
             {t('admin.selectTournament')}
           </label>
           <select
             value={selectedTournament}
             onChange={(e) => setSelectedTournament(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+            className="app-select"
           >
             <option value="">-- {t('admin.selectTournament')} --</option>
             {tournaments.map((entry) => (
@@ -734,13 +742,13 @@ export default function Admin() {
 
         {tournament ? (
           <>
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">
+            <div className="sport-panel-strong app-card-strong mb-8">
+              <h2 className="app-section-title">
                 {t('admin.tournamentSettings')}
               </h2>
 
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-6">
+                <div className="sport-panel app-card">
                   <label className="flex items-center justify-between gap-4 cursor-pointer">
                     <span className="text-white font-semibold">
                       {t('admin.prizesEnabled')}
@@ -760,7 +768,7 @@ export default function Admin() {
 
                   <div className="grid grid-cols-2 gap-4 mt-6">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
+                      <label className="account-label">
                         {t('admin.entryFeeLabel')}
                       </label>
                       <input
@@ -774,12 +782,12 @@ export default function Admin() {
                             entryFee: event.target.value,
                           }))
                         }
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                        className="app-input"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
+                      <label className="account-label">
                         {t('admin.currencyLabel')}
                       </label>
                       <input
@@ -791,15 +799,15 @@ export default function Admin() {
                             currency: event.target.value.toUpperCase(),
                           }))
                         }
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                        className="app-input"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-6">
+                <div className="sport-panel app-card">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">
+                    <label className="account-label">
                       {t('admin.accessType')}
                     </label>
                     <select
@@ -810,7 +818,7 @@ export default function Admin() {
                           accessType: event.target.value,
                         }))
                       }
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                      className="app-select"
                     >
                       <option value="public">{t('admin.publicAccess')}</option>
                       <option value="private">{t('admin.privateAccess')}</option>
@@ -820,7 +828,7 @@ export default function Admin() {
                   {settings.accessType === 'private' ? (
                     <>
                       <div className="mt-6">
-                        <label className="block text-sm text-gray-400 mb-2">
+                        <label className="account-label">
                           {t('admin.joinCode')}
                         </label>
                         <input
@@ -833,11 +841,11 @@ export default function Admin() {
                               regenerateJoinCode: false,
                             }))
                           }
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                          className="app-input"
                         />
                       </div>
 
-                      <label className="flex items-center gap-3 mt-4 cursor-pointer">
+                      <label className="flex items-center gap-3 mt-4 cursor-pointer text-gray-300">
                         <input
                           type="checkbox"
                           checked={settings.regenerateJoinCode}
@@ -849,7 +857,7 @@ export default function Admin() {
                           }
                           className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
                         />
-                        <span className="text-gray-300">
+                        <span>
                           {t('admin.regenerateJoinCode')}
                         </span>
                       </label>
@@ -862,15 +870,15 @@ export default function Admin() {
                 <button
                   onClick={handleSaveSettings}
                   disabled={saving}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+                  className="app-button-primary sm:w-auto"
                 >
                   {saving ? t('admin.saving') : t('admin.saveSettings')}
                 </button>
               </div>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">
+            <div className="sport-panel-strong app-card-strong mb-8">
+              <h2 className="app-section-title">
                 {t('admin.groupResults')}
               </h2>
 
@@ -878,7 +886,7 @@ export default function Admin() {
                 {groups.map((group) => (
                   <div
                     key={group.id}
-                    className="bg-slate-900 border border-slate-700 rounded-lg p-6"
+                    className="sport-panel app-card"
                   >
                     <h3 className="text-lg font-bold text-emerald-400 mb-4">
                       {group.name}
@@ -886,7 +894,7 @@ export default function Admin() {
 
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm text-gray-400 mb-2">
+                        <label className="account-label">
                           {t('admin.firstPlace')}
                         </label>
                         <select
@@ -900,7 +908,7 @@ export default function Admin() {
                               },
                             }))
                           }
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                          className="app-select"
                         >
                           <option value="">-- {t('common.select')} --</option>
                           {group.teams?.map((team) => (
@@ -912,7 +920,7 @@ export default function Admin() {
                       </div>
 
                       <div>
-                        <label className="block text-sm text-gray-400 mb-2">
+                        <label className="account-label">
                           {t('admin.secondPlace')}
                         </label>
                         <select
@@ -926,7 +934,7 @@ export default function Admin() {
                               },
                             }))
                           }
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                          className="app-select"
                         >
                           <option value="">-- {t('common.select')} --</option>
                           {group.teams?.map((team) => (
@@ -943,7 +951,7 @@ export default function Admin() {
 
                       {requiresThirdPlaceSelections ? (
                         <div>
-                          <label className="block text-sm text-gray-400 mb-2">
+                          <label className="account-label">
                             {t('admin.thirdPlace')}
                           </label>
                           <select
@@ -957,7 +965,7 @@ export default function Admin() {
                                 },
                               }))
                             }
-                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                            className="app-select"
                           >
                             <option value="">-- {t('common.select')} --</option>
                             {group.teams?.map((team) => (
@@ -983,14 +991,14 @@ export default function Admin() {
               <button
                 onClick={handleSaveGroupResults}
                 disabled={saving}
-                className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="app-button-primary sm:w-auto"
               >
                 {saving ? t('admin.saving') : t('common.save')}
               </button>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">
+            <div className="sport-panel-strong app-card-strong mb-8">
+              <h2 className="app-section-title">
                 {t('admin.knockoutResults')}
               </h2>
 
@@ -1042,9 +1050,9 @@ export default function Admin() {
                         return (
                           <div
                             key={match.id}
-                            className="bg-slate-900 border border-slate-700 rounded-lg p-6"
+                            className="sport-panel app-card"
                           >
-                            <label className="block text-sm text-gray-400 mb-2">
+                            <label className="account-label">
                               {match.code}: {match.homeLabel} vs {match.awayLabel}
                             </label>
                             {matchup.home.isBestThirdSlot ? (
@@ -1063,7 +1071,7 @@ export default function Admin() {
                                     },
                                   }))
                                 }
-                                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none mb-3"
+                                className="app-select mb-3"
                               >
                                 <option value="">-- {t('predict.selectBestThirdTeam')} --</option>
                                 {homeBestThirdOptions.map((option) => (
@@ -1096,7 +1104,7 @@ export default function Admin() {
                                     },
                                   }))
                                 }
-                                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none mb-3"
+                                className="app-select mb-3"
                               >
                                 <option value="">-- {t('predict.selectBestThirdTeam')} --</option>
                                 {awayBestThirdOptions.map((option) => (
@@ -1124,7 +1132,7 @@ export default function Admin() {
                                   },
                                 }))
                               }
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white focus:border-emerald-500 focus:outline-none"
+                              className="app-select"
                             >
                               <option value="">-- {t('common.select')} --</option>
                               {options.map((option) => (
@@ -1145,21 +1153,27 @@ export default function Admin() {
                 <button
                   onClick={handleSaveKnockoutResults}
                   disabled={saving}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="app-button-primary sm:w-auto"
                 >
                   {saving ? t('admin.saving') : t('common.save')}
                 </button>
                 <button
                   onClick={handleCalculateScores}
                   disabled={saving}
-                  className="px-6 py-3 border-2 border-emerald-500 text-emerald-400 rounded-lg font-semibold hover:bg-emerald-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="app-button-secondary sm:w-auto"
                 >
                   {saving ? t('admin.calculating') : t('admin.calculateScores')}
                 </button>
               </div>
             </div>
           </>
-        ) : null}
+        ) : (
+          <div className="sport-panel app-empty">
+            <p className="text-gray-400 text-lg">
+              {t('admin.selectTournament')}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

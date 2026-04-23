@@ -6,16 +6,18 @@ import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
 import {
   buildTeamMap,
+  getLocalizedName,
   getKnockoutRounds,
   getModeLabel,
   getRoundLabel,
+  getSportLabel,
   resolveMatchParticipants,
   sortGroups,
 } from '../utils/tournament';
 
 export default function Tournament() {
   const { id } = useParams();
-  const { language, t } = useLanguage();
+  const { language, t, formatDate, formatNumber, formatCurrency } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -30,6 +32,7 @@ export default function Tournament() {
   const [leagueName, setLeagueName] = useState('');
   const [leagueDescription, setLeagueDescription] = useState('');
   const [leagueJoinCode, setLeagueJoinCode] = useState('');
+  const [primaryEntry, setPrimaryEntry] = useState(null);
   const [pageError, setPageError] = useState('');
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
@@ -40,16 +43,19 @@ export default function Tournament() {
         const tournamentData = await get(`/tournaments/${id}`);
         let predictionsData = null;
         let leagueData = [];
+        let primaryEntryData = null;
 
         if (user && tournamentData?.access?.canViewPredictions) {
-          [predictionsData, leagueData] = await Promise.all([
+          [predictionsData, leagueData, primaryEntryData] = await Promise.all([
             get(`/tournaments/${id}/my-predictions`),
             get(`/tournaments/${id}/leagues`).catch(() => []),
+            get(`/tournaments/${id}/primary-entry`).catch(() => null),
           ]);
         }
 
         setTournament(tournamentData);
         setLeagues(leagueData || []);
+        setPrimaryEntry(primaryEntryData);
         setHasPredictions(
           Boolean(
             predictionsData?.groupPredictions?.length || predictionsData?.knockoutPredictions?.length
@@ -80,6 +86,9 @@ export default function Tournament() {
         joinCode,
       });
       setTournament(response?.tournament || tournament);
+      if (response?.tournament?.access?.canViewPredictions) {
+        await refreshLeagues();
+      }
       setSuccess(t('tournament.joined'));
       setJoinCode('');
     } catch (err) {
@@ -90,8 +99,12 @@ export default function Tournament() {
   };
 
   const refreshLeagues = async () => {
-    const leagueData = await get(`/tournaments/${id}/leagues`);
+    const [leagueData, primaryEntryData] = await Promise.all([
+      get(`/tournaments/${id}/leagues`),
+      get(`/tournaments/${id}/primary-entry`).catch(() => null),
+    ]);
     setLeagues(leagueData || []);
+    setPrimaryEntry(primaryEntryData);
   };
 
   const handleCreateLeague = async () => {
@@ -144,9 +157,27 @@ export default function Tournament() {
     }
   };
 
+  const handleSetPrimaryEntry = async (scopeKey, option) => {
+    if (!option?.hasPredictions) {
+      setFormError(t('tournament.primaryEntryNeedsPredictions'));
+      return;
+    }
+
+    setFormError('');
+    setSuccess('');
+
+    try {
+      const response = await post(`/tournaments/${id}/primary-entry`, { scopeKey });
+      setPrimaryEntry(response?.primaryEntry || primaryEntry);
+      setSuccess(t('tournament.primaryEntrySaved'));
+    } catch (err) {
+      setFormError(err.message);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -154,15 +185,17 @@ export default function Tournament() {
 
   if (pageError) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <p className="text-red-400">{pageError}</p>
+      <div className="sport-shell min-h-screen flex items-center justify-center px-4">
+        <div className="sport-panel app-empty max-w-2xl w-full">
+          <p className="text-red-400">{pageError}</p>
+        </div>
       </div>
     );
   }
 
   if (!tournament) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.noResults')}</p>
       </div>
     );
@@ -184,7 +217,11 @@ export default function Tournament() {
   const isPrivate = Boolean(tournament.access?.isPrivate);
   const isMember = Boolean(tournament.access?.isMember);
   const predictionsLocked = Boolean(tournament.access?.predictionsLocked);
+  const canChangePrimaryEntry = Boolean(primaryEntry?.canChange);
   const showPrizeInfo = Boolean(tournament.prizesEnabled && tournament.entryFee);
+  const currentPrimaryOption = primaryEntry?.options?.find((option) => option.isPrimary) || null;
+  const tournamentPrimaryOption =
+    primaryEntry?.options?.find((option) => option.scopeKey === 'tournament') || null;
   const actualGroupSelections = Object.fromEntries(
     groups
       .filter((group) => group.result)
@@ -211,10 +248,10 @@ export default function Tournament() {
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="mb-12">
           <div className="score-pill mb-5 text-emerald-200">
-            {tournament.sport || 'football'}
+            {getSportLabel(tournament.sport, language)}
           </div>
           <h1 className="sport-display text-5xl md:text-6xl text-white mb-6">
-            {tournament.name}
+            {getLocalizedName(tournament, language, tournament.name)}
           </h1>
 
           <div className="grid md:grid-cols-6 gap-6 mb-8">
@@ -250,7 +287,7 @@ export default function Tournament() {
                 {t('tournament.closingDate')}
               </p>
               <p className="text-white font-semibold text-lg">
-                {closingDate ? closingDate.toLocaleDateString() : 'TBD'}
+                {closingDate ? formatDate(closingDate) : 'TBD'}
               </p>
             </div>
 
@@ -259,7 +296,7 @@ export default function Tournament() {
                 {isPrivate ? t('tournament.members') : t('tournament.participants')}
               </p>
               <p className="text-white font-semibold text-lg">
-                {isPrivate ? tournament.memberCount || 0 : tournament.participantCount || 0}
+                {formatNumber(isPrivate ? tournament.memberCount || 0 : tournament.participantCount || 0)}
               </p>
             </div>
 
@@ -272,7 +309,9 @@ export default function Tournament() {
               </p>
               {showPrizeInfo ? (
                 <p className="text-gray-400 text-sm mt-2">
-                  {tournament.currency} {tournament.entryFee}
+                  {formatCurrency(tournament.entryFee, tournament.currency, {
+                    maximumFractionDigits: 0,
+                  })}
                 </p>
               ) : null}
             </div>
@@ -292,24 +331,68 @@ export default function Tournament() {
                 {t('home.tournamentEndsIn')}
               </p>
               <p className="text-white font-semibold text-lg">
-                {daysRemaining}d {hoursRemaining}h
+                {formatNumber(daysRemaining)}d {formatNumber(hoursRemaining)}h
               </p>
             </div>
           </div>
 
           {success ? (
-            <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded mb-8">
+            <div className="app-alert app-alert-success mb-8">
               {success}
             </div>
           ) : null}
 
-          {formError ? (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-8">
-              {formError}
-            </div>
-          ) : null}
+        {formError ? (
+          <div className="app-alert app-alert-error mb-8">
+            {formError}
+          </div>
+        ) : null}
 
-          {isPrivate && !isMember ? (
+        {user && tournament.access?.canViewPredictions ? (
+          <div className="sport-panel-strong app-card-strong mb-8">
+            <h2 className="app-section-title">
+              {t('tournament.primaryEntry')}
+            </h2>
+            <p className="app-section-copy mb-5">
+              {t('tournament.primaryEntryHelp')}
+            </p>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.18em] text-gray-500 mb-2">
+                  {t('tournament.currentPrimaryEntry')}
+                </p>
+                <p className="text-white font-semibold text-xl">
+                  {currentPrimaryOption?.type === 'league'
+                    ? currentPrimaryOption.label
+                    : t('tournament.primaryEntryTournament')}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSetPrimaryEntry('tournament', tournamentPrimaryOption)}
+                  disabled={
+                    !tournamentPrimaryOption?.hasPredictions ||
+                    !canChangePrimaryEntry ||
+                    currentPrimaryOption?.scopeKey === 'tournament'
+                  }
+                  className="app-button-secondary sm:w-auto"
+                >
+                  {currentPrimaryOption?.scopeKey === 'tournament'
+                    ? t('tournament.currentPrimaryEntry')
+                    : t('tournament.setPrimaryEntry')}
+                </button>
+              </div>
+            </div>
+            {!canChangePrimaryEntry ? (
+              <p className="text-amber-300 text-sm mt-4">
+                {t('tournament.primaryEntryLocked')}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isPrivate && !isMember ? (
             <div className="sport-panel-strong rounded-[1.75rem] border border-amber-500/60 p-6 mb-8">
               <h2 className="text-2xl font-bold text-white mb-3">
                 {t('tournament.joinTournament')}
@@ -332,7 +415,7 @@ export default function Tournament() {
                     value={joinCode}
                     onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
                     placeholder={t('tournament.joinCode')}
-                    className="flex-1 px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-input flex-1"
                   />
                   <button
                     onClick={handleJoinTournament}
@@ -417,14 +500,14 @@ export default function Tournament() {
                     value={leagueName}
                     onChange={(event) => setLeagueName(event.target.value)}
                     placeholder={t('tournament.leagueName')}
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-input"
                   />
                   <textarea
                     value={leagueDescription}
                     onChange={(event) => setLeagueDescription(event.target.value)}
                     placeholder={t('tournament.leagueDescription')}
                     rows={3}
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-textarea"
                   />
                   <button
                     onClick={handleCreateLeague}
@@ -449,7 +532,7 @@ export default function Tournament() {
                     value={leagueJoinCode}
                     onChange={(event) => setLeagueJoinCode(event.target.value.toUpperCase())}
                     placeholder={t('tournament.joinCode')}
-                    className="flex-1 px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-input flex-1"
                   />
                   <button
                     onClick={handleJoinLeague}
@@ -481,18 +564,53 @@ export default function Tournament() {
                       ) : null}
                       <div className="space-y-2 text-sm text-gray-300 mb-5">
                         <p>
-                          {t('tournament.leagueMembers')}: {league.memberCount || 0}
+                          {t('tournament.leagueMembers')}: {formatNumber(league.memberCount || 0)}
                         </p>
                         <p>
                           {t('tournament.joinCode')}: <span className="tracking-[0.2em]">{league.joinCode}</span>
                         </p>
+                        {currentPrimaryOption?.scopeKey === `league:${league.id}` ? (
+                          <p className="text-emerald-300">
+                            {t('tournament.currentPrimaryEntry')}
+                          </p>
+                        ) : null}
                       </div>
-                      <Link
-                        to={`/league/${league.id}`}
-                        className="sport-button-secondary inline-flex px-4 py-2 rounded-full text-emerald-300 font-bold hover:bg-white/5 transition"
-                      >
-                        {t('tournament.openLeague')}
-                      </Link>
+                      <div className="flex flex-wrap gap-3">
+                        <Link
+                          to={`/league/${league.id}`}
+                          className="sport-button-secondary inline-flex px-4 py-2 rounded-full text-emerald-300 font-bold hover:bg-white/5 transition"
+                        >
+                          {t('tournament.openLeague')}
+                        </Link>
+                        {canSubmitPredictions ? (
+                          <Link
+                            to={`/league/${league.id}/predict`}
+                            className="sport-button inline-flex px-4 py-2 rounded-full text-slate-950 font-bold transition"
+                          >
+                            {t('tournament.openLeaguePredictions')}
+                          </Link>
+                        ) : null}
+                        {primaryEntry?.options?.find((option) => option.scopeKey === `league:${league.id}`)?.hasPredictions ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleSetPrimaryEntry(
+                                `league:${league.id}`,
+                                primaryEntry?.options?.find((option) => option.scopeKey === `league:${league.id}`)
+                              )
+                            }
+                            disabled={
+                              !canChangePrimaryEntry ||
+                              currentPrimaryOption?.scopeKey === `league:${league.id}`
+                            }
+                            className="app-button-secondary sm:w-auto"
+                          >
+                            {currentPrimaryOption?.scopeKey === `league:${league.id}`
+                              ? t('tournament.currentPrimaryEntry')
+                              : t('tournament.setPrimaryEntry')}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -528,9 +646,9 @@ export default function Tournament() {
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-gray-500 font-semibold w-6">
-                            {index + 1}.
+                            {formatNumber(index + 1)}.
                           </span>
-                          <span className="text-white">{team.name}</span>
+                          <span className="text-white">{getLocalizedName(team, language, team.name)}</span>
                         </div>
                         <span className="text-gray-400 text-sm">
                           {group.result && index < 3 ? positionLabel(index) : team.code || ''}

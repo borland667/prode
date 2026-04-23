@@ -23,6 +23,7 @@
     "db:migrate:status": "npx prisma migrate status",
     "db:push": "npx prisma db push",
     "db:seed": "node api/seed.cjs",
+    "db:backfill:translations": "node api/backfill-translations.cjs",
     "db:studio": "npx prisma studio"
   },
   "dependencies": {

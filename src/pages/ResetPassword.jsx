@@ -38,11 +38,13 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 space-y-6">
+    <div className="sport-shell app-auth-shell">
+      <div className="app-auth-card space-y-6">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-2">
+            <div className="score-pill mx-auto mb-4 text-emerald-200">
+              {t('auth.resetPassword')}
+            </div>
+            <h1 className="sport-display text-5xl text-white mb-2">
               {t('auth.resetPassword')}
             </h1>
             <p className="text-gray-400">
@@ -51,26 +53,26 @@ export default function ResetPassword() {
           </div>
 
           {!token ? (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
+            <div className="app-alert app-alert-error">
               {t('common.error')}
             </div>
           ) : null}
 
           {error ? (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
+            <div className="app-alert app-alert-error">
               {error}
             </div>
           ) : null}
 
           {success ? (
-            <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded">
+            <div className="app-alert app-alert-success">
               {success}
             </div>
           ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="account-label">
                 {t('auth.newPassword')}
               </label>
               <input
@@ -79,7 +81,7 @@ export default function ResetPassword() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 disabled={!token}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition disabled:opacity-50"
+                className="app-input disabled:opacity-50"
                 placeholder="••••••••"
               />
             </div>
@@ -87,7 +89,7 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={loading || !token}
-              className="w-full py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="app-button-primary"
             >
               {loading ? t('auth.changingPassword') : t('auth.resetPassword')}
             </button>
@@ -101,7 +103,6 @@ export default function ResetPassword() {
               {t('auth.backToLogin')}
             </Link>
           </div>
-        </div>
       </div>
     </div>
   );

@@ -11,6 +11,12 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const prisma = require('./db.cjs');
 const { calculateTotalScore } = require('./scoring.cjs');
 const { hasEmailTransportConfig, sendPasswordResetEmail } = require('./email.cjs');
+const {
+  getModeNameEs,
+  getRoundNameEs,
+  getTeamNameEs,
+  getTournamentNameEs,
+} = require('./translations.cjs');
 
 const DEFAULT_GROUP_STAGE_RULES = {
   exactOrder: 4,
@@ -36,8 +42,12 @@ const ROUND_CODES = {
   semi_finals: 'SF',
   final: 'FINAL',
 };
+const GROUP_SLOT_PATTERN = /^([123])\s*([A-Za-z0-9]+)$/;
+const BEST_THIRD_SLOT_PATTERN = /^3\[(.+)\]$/i;
+const WINNER_SLOT_PATTERN = /^W-([A-Za-z0-9]+)-(\d+)$/i;
 const MIN_PASSWORD_LENGTH = 8;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
+const TOURNAMENT_SCOPE_KEY = 'tournament';
 const GOOGLE_AUTH_CONFIGURED = Boolean(
   process.env.GOOGLE_CLIENT_ID &&
   process.env.GOOGLE_CLIENT_SECRET &&
@@ -136,6 +146,7 @@ function serializeUser(user) {
     role: user.role,
     isAdmin: user.role === 'ADMIN',
     avatarUrl: user.avatarUrl || null,
+    showInGlobalRankings: user.showInGlobalRankings !== false,
   };
 }
 
@@ -465,10 +476,16 @@ function normalizeTournamentStructurePayload(body = {}) {
         throw createHttpError(400, `Team ${teamIndex + 1} in group ${groupName} must have a name`);
       }
 
+      const teamCode = String(team?.code || '').trim().toUpperCase() || null;
+
       return {
         name: teamName,
-        nameEs: String(team?.nameEs || '').trim() || null,
-        code: String(team?.code || '').trim().toUpperCase() || null,
+        nameEs: getTeamNameEs({
+          name: teamName,
+          nameEs: team?.nameEs,
+          code: teamCode,
+        }),
+        code: teamCode,
         flagUrl: String(team?.flagUrl || '').trim() || null,
       };
     });
@@ -542,7 +559,10 @@ function normalizeTournamentStructurePayload(body = {}) {
 
     return {
       name: roundName,
-      nameEs: String(round?.nameEs || '').trim() || null,
+      nameEs: getRoundNameEs({
+        name: roundName,
+        nameEs: round?.nameEs,
+      }),
       order,
       pointsPerCorrect,
       matches: normalizedMatches,
@@ -559,13 +579,23 @@ function normalizeTournamentStructurePayload(body = {}) {
     throw createHttpError(400, 'Round order values must be unique');
   }
 
+  const modeKey = String(body.modeKey || 'classic_argentinian_prode').trim() || 'classic_argentinian_prode';
+  const modeName = String(body.modeName || 'Classic Argentinian Prode').trim() || 'Classic Argentinian Prode';
+
   return {
     tournament: {
       name,
-      nameEs: String(body.nameEs || '').trim() || null,
-      modeKey: String(body.modeKey || 'classic_argentinian_prode').trim() || 'classic_argentinian_prode',
-      modeName: String(body.modeName || 'Classic Argentinian Prode').trim() || 'Classic Argentinian Prode',
-      modeNameEs: String(body.modeNameEs || '').trim() || null,
+      nameEs: getTournamentNameEs({
+        name,
+        nameEs: body.nameEs,
+      }),
+      modeKey,
+      modeName,
+      modeNameEs: getModeNameEs({
+        modeKey,
+        modeName,
+        modeNameEs: body.modeNameEs,
+      }),
       sport: String(body.sport || 'football').trim() || 'football',
       status: normalizeTournamentStatus(body.status),
       prizesEnabled: Boolean(body.prizesEnabled),
@@ -771,6 +801,37 @@ function serializeLeague(league, viewer) {
   };
 }
 
+function serializeLeagueInvite(league, tournament, viewer) {
+  const leagueAccess = buildLeagueAccess(league, viewer);
+  const tournamentAccess = buildTournamentAccess(tournament, viewer);
+  const requiresTournamentJoin = !tournamentAccess.canViewPredictions;
+
+  return {
+    league: {
+      id: league.id,
+      name: league.name,
+      description: league.description || '',
+      joinCode: league.joinCode,
+      memberCount: league._count?.members ?? league.members?.length ?? 0,
+    },
+    tournament: {
+      id: tournament.id,
+      name: tournament.name,
+      nameEs: tournament.nameEs || null,
+      accessType: normalizeAccessType(tournament.accessType),
+      status: getTournamentLifecycle(tournament).status,
+    },
+    access: {
+      isLeagueMember: leagueAccess.isMember,
+      isTournamentMember: tournamentAccess.isMember,
+      requiresTournamentJoin,
+      canJoinLeague: Boolean(viewer?.id) && !requiresTournamentJoin && leagueAccess.canJoin,
+      canViewLeague: leagueAccess.canViewLeaderboard,
+      canJoinTournament: tournamentAccess.canJoin,
+    },
+  };
+}
+
 async function getTournamentDetails(tournamentId, viewer) {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
@@ -964,10 +1025,22 @@ function normalizeKnockoutPredictionMap(knockoutPredictions = []) {
   }, {});
 }
 
+function getEligibleBestThirdGroups(label = '') {
+  const match = String(label || '').trim().match(BEST_THIRD_SLOT_PATTERN);
+  if (!match) {
+    return [];
+  }
+
+  return match[1]
+    .split('/')
+    .map((groupCode) => groupCode.trim().toUpperCase())
+    .filter(Boolean);
+}
+
 function hasBestThirdPlaceSlots(rounds = []) {
   return rounds.some((round) =>
     (round.matches || []).some((match) =>
-      String(match.homeLabel || '').includes('3[') || String(match.awayLabel || '').includes('3[')
+      BEST_THIRD_SLOT_PATTERN.test(match.homeLabel || '') || BEST_THIRD_SLOT_PATTERN.test(match.awayLabel || '')
     )
   );
 }
@@ -1015,6 +1088,544 @@ function validateUniqueBestThirdSelections(knockoutPredictions = []) {
     .filter(Boolean);
 
   return new Set(selectedTeamIds).size === selectedTeamIds.length;
+}
+
+function getGroupCode(groupName = '') {
+  const match = String(groupName || '').match(/([A-Za-z0-9]+)$/);
+  return match ? match[1].toUpperCase() : String(groupName || '').toUpperCase();
+}
+
+function findGroupByCode(groups = [], code = '') {
+  return groups.find((group) => getGroupCode(group.name) === String(code || '').toUpperCase());
+}
+
+function findMatchByRoundCode(rounds = [], roundCode, matchNumber) {
+  return rounds
+    .flatMap((round) =>
+      sortMatches(round.matches || []).map((match) => ({
+        ...match,
+        roundCode: getRoundCode(round.name),
+      }))
+    )
+    .find(
+      (match) =>
+        String(match.roundCode).toUpperCase() === String(roundCode || '').toUpperCase() &&
+        Number(match.matchNumber) === Number(matchNumber)
+    );
+}
+
+function resolvePredictedSlotTeamId({
+  label,
+  groups = [],
+  rounds = [],
+  groupSelections = {},
+  knockoutSelections = {},
+  slotSelections = {},
+}) {
+  if (!label) {
+    return null;
+  }
+
+  const trimmedLabel = String(label).trim();
+  const groupSlot = trimmedLabel.match(GROUP_SLOT_PATTERN);
+  if (groupSlot) {
+    const position = groupSlot[1] === '1' ? 'first' : groupSlot[1] === '2' ? 'second' : 'third';
+    const group = findGroupByCode(groups, groupSlot[2]);
+    return group ? groupSelections[group.id]?.[position] || null : null;
+  }
+
+  const bestThirdSlot = trimmedLabel.match(BEST_THIRD_SLOT_PATTERN);
+  if (bestThirdSlot) {
+    const selectedTeamId = slotSelections[trimmedLabel] || null;
+    const eligibleTeamIds = getEligibleBestThirdGroups(trimmedLabel)
+      .map((groupCode) => findGroupByCode(groups, groupCode))
+      .map((group) => (group ? groupSelections[group.id]?.third : ''))
+      .filter(Boolean);
+
+    return eligibleTeamIds.includes(selectedTeamId) ? selectedTeamId : null;
+  }
+
+  const winnerSlot = trimmedLabel.match(WINNER_SLOT_PATTERN);
+  if (winnerSlot) {
+    const sourceMatch = findMatchByRoundCode(rounds, winnerSlot[1], winnerSlot[2]);
+    return sourceMatch ? knockoutSelections[sourceMatch.id] || null : null;
+  }
+
+  return null;
+}
+
+function validateKnockoutPredictionProgression({
+  groups = [],
+  rounds = [],
+  groupPredictions = [],
+  knockoutPredictions = [],
+}) {
+  const groupSelections = normalizeGroupPredictionMap(groupPredictions);
+  const knockoutPredictionMap = normalizeKnockoutPredictionMap(knockoutPredictions);
+  const knockoutSelections = {};
+
+  for (const round of sortRounds(rounds)) {
+    for (const match of sortMatches(round.matches || [])) {
+      const prediction = knockoutPredictionMap[match.id] || {};
+      const slotSelections = {
+        [match.homeLabel]: prediction.selectedHomeTeamId || '',
+        [match.awayLabel]: prediction.selectedAwayTeamId || '',
+      };
+      const homeTeamId = resolvePredictedSlotTeamId({
+        label: match.homeLabel,
+        groups,
+        rounds,
+        groupSelections,
+        knockoutSelections,
+        slotSelections,
+      });
+      const awayTeamId = resolvePredictedSlotTeamId({
+        label: match.awayLabel,
+        groups,
+        rounds,
+        groupSelections,
+        knockoutSelections,
+        slotSelections,
+      });
+
+      if (
+        prediction.predictedWinner &&
+        prediction.predictedWinner !== homeTeamId &&
+        prediction.predictedWinner !== awayTeamId
+      ) {
+        throw createHttpError(
+          400,
+          `Invalid knockout progression for ${match.code || `${getRoundCode(round.name)}-${match.matchNumber}`}`
+        );
+      }
+
+      if (prediction.predictedWinner) {
+        knockoutSelections[match.id] = prediction.predictedWinner;
+      }
+    }
+  }
+}
+
+function buildLeagueScopeKey(leagueId) {
+  return `league:${leagueId}`;
+}
+
+function isLeagueScopeKey(scopeKey) {
+  return String(scopeKey || '').startsWith('league:');
+}
+
+function getLeagueIdFromScopeKey(scopeKey) {
+  return isLeagueScopeKey(scopeKey) ? String(scopeKey).slice('league:'.length) : null;
+}
+
+async function getPrimaryEntrySelection(userId, tournamentId) {
+  return prisma.tournamentPrimaryEntry.findUnique({
+    where: {
+      userId_tournamentId: {
+        userId,
+        tournamentId,
+      },
+    },
+  });
+}
+
+async function validatePrimaryEntryScopeSelection({ userId, tournamentId, scopeKey }) {
+  if (scopeKey !== TOURNAMENT_SCOPE_KEY && !isLeagueScopeKey(scopeKey)) {
+    throw createHttpError(400, 'Invalid primary entry scope');
+  }
+
+  if (isLeagueScopeKey(scopeKey)) {
+    const leagueId = getLeagueIdFromScopeKey(scopeKey);
+    await ensureLeagueMembership(leagueId, { id: userId });
+
+    const league = await prisma.tournamentLeague.findUnique({
+      where: { id: leagueId },
+      select: { tournamentId: true },
+    });
+
+    if (!league || league.tournamentId !== tournamentId) {
+      throw createHttpError(400, 'That league does not belong to this tournament');
+    }
+  }
+
+  const [groupPredictionCount, knockoutPredictionCount] = await Promise.all([
+    prisma.groupPrediction.count({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+    prisma.knockoutPrediction.count({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+  ]);
+
+  if (!groupPredictionCount && !knockoutPredictionCount) {
+    throw createHttpError(400, 'You need saved predictions in that entry before making it official');
+  }
+}
+
+async function listPrimaryEntryOptions(userId, tournamentId) {
+  const [selection, leagues, groupScopes, knockoutScopes, tournament] = await Promise.all([
+    getPrimaryEntrySelection(userId, tournamentId),
+    prisma.tournamentLeague.findMany({
+      where: {
+        tournamentId,
+        OR: [
+          { createdByUserId: userId },
+          { members: { some: { userId } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: [{ updatedAt: 'desc' }, { name: 'asc' }],
+    }),
+    prisma.groupPrediction.findMany({
+      where: {
+        userId,
+        tournamentId,
+      },
+      select: {
+        scopeKey: true,
+      },
+      distinct: ['scopeKey'],
+    }),
+    prisma.knockoutPrediction.findMany({
+      where: {
+        userId,
+        tournamentId,
+      },
+      select: {
+        scopeKey: true,
+      },
+      distinct: ['scopeKey'],
+    }),
+    prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        name: true,
+        closingDate: true,
+        status: true,
+        accessType: true,
+      },
+    }),
+  ]);
+
+  const predictionScopes = new Set([
+    ...groupScopes.map((entry) => entry.scopeKey),
+    ...knockoutScopes.map((entry) => entry.scopeKey),
+  ]);
+  const currentScopeKey = selection?.scopeKey || TOURNAMENT_SCOPE_KEY;
+  const lifecycle = tournament ? getTournamentLifecycle(tournament) : { predictionsLocked: false };
+
+  const options = [
+    {
+      scopeKey: TOURNAMENT_SCOPE_KEY,
+      type: 'tournament',
+      label: tournament?.name || 'Tournament',
+      hasPredictions: predictionScopes.has(TOURNAMENT_SCOPE_KEY),
+      isPrimary: currentScopeKey === TOURNAMENT_SCOPE_KEY,
+    },
+    ...leagues.map((league) => {
+      const scopeKey = buildLeagueScopeKey(league.id);
+
+      return {
+        scopeKey,
+        type: 'league',
+        leagueId: league.id,
+        label: league.name,
+        hasPredictions: predictionScopes.has(scopeKey),
+        isPrimary: currentScopeKey === scopeKey,
+      };
+    }),
+  ];
+
+  return {
+    currentScopeKey,
+    canChange: !lifecycle.predictionsLocked,
+    options,
+  };
+}
+
+function getOfficialScopeKeyForUser(user) {
+  return user.tournamentPrimaryEntries?.[0]?.scopeKey || TOURNAMENT_SCOPE_KEY;
+}
+
+function mapPredictionsByScope(predictions = []) {
+  return predictions.reduce((acc, prediction) => {
+    if (!acc[prediction.scopeKey]) {
+      acc[prediction.scopeKey] = [];
+    }
+    acc[prediction.scopeKey].push(prediction);
+    return acc;
+  }, {});
+}
+
+function selectOfficialScoresForUser(user) {
+  const primarySelections = new Map(
+    (user.tournamentPrimaryEntries || []).map((entry) => [entry.tournamentId, entry.scopeKey])
+  );
+  const officialScores = new Map();
+
+  for (const score of user.scores || []) {
+    const officialScopeKey = primarySelections.get(score.tournamentId) || TOURNAMENT_SCOPE_KEY;
+    if (score.scopeKey === officialScopeKey) {
+      officialScores.set(score.tournamentId, score);
+    }
+  }
+
+  return Array.from(officialScores.values());
+}
+
+async function listPredictionScopeKeys(userId, tournamentId) {
+  const [groupScopes, knockoutScopes] = await Promise.all([
+    prisma.groupPrediction.findMany({
+      where: {
+        userId,
+        tournamentId,
+      },
+      select: {
+        scopeKey: true,
+      },
+      distinct: ['scopeKey'],
+    }),
+    prisma.knockoutPrediction.findMany({
+      where: {
+        userId,
+        tournamentId,
+      },
+      select: {
+        scopeKey: true,
+      },
+      distinct: ['scopeKey'],
+    }),
+  ]);
+
+  return [...new Set([...groupScopes, ...knockoutScopes].map((entry) => entry.scopeKey).filter(Boolean))];
+}
+
+function getFallbackPrimaryScopeKey(scopeKeys = []) {
+  if (scopeKeys.includes(TOURNAMENT_SCOPE_KEY)) {
+    return TOURNAMENT_SCOPE_KEY;
+  }
+
+  return [...scopeKeys].sort()[0] || null;
+}
+
+async function syncPrimaryEntryAfterScopeRemoval({ userId, tournamentId, removedScopeKey }) {
+  const selection = await getPrimaryEntrySelection(userId, tournamentId);
+  const currentScopeKey = selection?.scopeKey || TOURNAMENT_SCOPE_KEY;
+
+  if (currentScopeKey !== removedScopeKey) {
+    return;
+  }
+
+  const remainingScopeKeys = await listPredictionScopeKeys(userId, tournamentId);
+  const fallbackScopeKey = getFallbackPrimaryScopeKey(remainingScopeKeys);
+
+  if (!fallbackScopeKey) {
+    if (selection) {
+      await prisma.tournamentPrimaryEntry.delete({
+        where: {
+          userId_tournamentId: {
+            userId,
+            tournamentId,
+          },
+        },
+      });
+    }
+    return;
+  }
+
+  if (selection) {
+    await prisma.tournamentPrimaryEntry.update({
+      where: {
+        userId_tournamentId: {
+          userId,
+          tournamentId,
+        },
+      },
+      data: {
+        scopeKey: fallbackScopeKey,
+      },
+    });
+    return;
+  }
+
+  if (fallbackScopeKey !== TOURNAMENT_SCOPE_KEY) {
+    await prisma.tournamentPrimaryEntry.create({
+      data: {
+        userId,
+        tournamentId,
+        scopeKey: fallbackScopeKey,
+      },
+    });
+  }
+}
+
+async function getPredictionsForScope({ userId, tournamentId, scopeKey = TOURNAMENT_SCOPE_KEY }) {
+  const where = {
+    userId,
+    tournamentId,
+    scopeKey,
+  };
+
+  const [groupPredictions, knockoutPredictions] = await Promise.all([
+    prisma.groupPrediction.findMany({ where }),
+    prisma.knockoutPrediction.findMany({ where }),
+  ]);
+
+  return {
+    groupPredictions,
+    knockoutPredictions,
+    groupPredictionMap: normalizeGroupPredictionMap(groupPredictions),
+    knockoutPredictionMap: normalizeKnockoutPredictionMap(knockoutPredictions),
+  };
+}
+
+async function savePredictionsForScope({
+  userId,
+  tournamentId,
+  scopeKey = TOURNAMENT_SCOPE_KEY,
+  groupPredictions: rawGroupPredictions,
+  knockoutPredictions: rawKnockoutPredictions,
+}) {
+  const [groups, rounds] = await Promise.all([
+    prisma.group.findMany({
+      where: { tournamentId },
+      include: { teams: true },
+    }),
+    prisma.round.findMany({
+      where: { tournamentId },
+      include: { matches: true },
+    }),
+  ]);
+  const requiresThirdPlaceSelections = hasBestThirdPlaceSlots(rounds);
+  const groupPredictions = parseGroupPredictionEntries(rawGroupPredictions);
+  const knockoutPredictions = parseKnockoutPredictionEntries(rawKnockoutPredictions);
+
+  if (!validateUniqueBestThirdSelections(knockoutPredictions)) {
+    throw createHttpError(400, 'Each third-place team can only be used once in the Round of 32');
+  }
+
+  for (const prediction of groupPredictions) {
+    if (!prediction.groupId || !prediction.first || !prediction.second) {
+      throw createHttpError(400, 'Incomplete group prediction payload');
+    }
+
+    if (requiresThirdPlaceSelections && !prediction.third) {
+      throw createHttpError(400, 'Third-place picks are required for this tournament');
+    }
+
+    const selectedTeams = [prediction.first, prediction.second, prediction.third].filter(Boolean);
+    if (new Set(selectedTeams).size !== selectedTeams.length) {
+      throw createHttpError(400, 'Group placements must use different teams');
+    }
+  }
+
+  for (const prediction of knockoutPredictions) {
+    if (!prediction.matchId || !prediction.predictedWinner) {
+      throw createHttpError(400, 'Incomplete knockout prediction payload');
+    }
+  }
+
+  validateKnockoutPredictionProgression({
+    groups,
+    rounds,
+    groupPredictions,
+    knockoutPredictions,
+  });
+
+  const operations = [
+    prisma.groupPrediction.deleteMany({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+    prisma.knockoutPrediction.deleteMany({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+  ];
+
+  if (groupPredictions.length) {
+    operations.push(
+      prisma.groupPrediction.createMany({
+        data: groupPredictions.map((prediction) => ({
+          userId,
+          tournamentId,
+          groupId: prediction.groupId,
+          scopeKey,
+          first: prediction.first,
+          second: prediction.second,
+          third: prediction.third || null,
+        })),
+      })
+    );
+  }
+
+  if (knockoutPredictions.length) {
+    operations.push(
+      prisma.knockoutPrediction.createMany({
+        data: knockoutPredictions.map((prediction) => ({
+          userId,
+          tournamentId,
+          matchId: prediction.matchId,
+          scopeKey,
+          predictedWinner: prediction.predictedWinner,
+          selectedHomeTeamId: prediction.selectedHomeTeamId || null,
+          selectedAwayTeamId: prediction.selectedAwayTeamId || null,
+        })),
+      })
+    );
+  }
+
+  await prisma.$transaction(operations);
+}
+
+async function clearPredictionsForScope({ userId, tournamentId, scopeKey = TOURNAMENT_SCOPE_KEY }) {
+  await prisma.$transaction([
+    prisma.groupPrediction.deleteMany({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+    prisma.knockoutPrediction.deleteMany({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+    prisma.score.deleteMany({
+      where: {
+        userId,
+        tournamentId,
+        scopeKey,
+      },
+    }),
+  ]);
+
+  await syncPrimaryEntryAfterScopeRemoval({
+    userId,
+    tournamentId,
+    removedScopeKey: scopeKey,
+  });
 }
 
 async function getScoringContext(tournamentId) {
@@ -1070,47 +1681,76 @@ function serializeLeaderboardPlayer(user, score) {
   };
 }
 
+function serializeGlobalLeaderboardPlayer(user, scores = []) {
+  const totals = scores.reduce(
+    (acc, score) => {
+      acc.groupScore += score.groupScore || 0;
+      acc.knockoutScore += score.knockoutScore || 0;
+      acc.totalScore += score.totalScore || 0;
+      return acc;
+    },
+    {
+      groupScore: 0,
+      knockoutScore: 0,
+      totalScore: 0,
+    }
+  );
+
+  return {
+    id: `${user.id}:${totals.totalScore}`,
+    userId: user.id,
+    name: user.name || String(user.email || '').split('@')[0] || 'Player',
+    avatarUrl: user.avatarUrl || null,
+    tournamentCount: scores.length,
+    groupScore: totals.groupScore,
+    knockoutScore: totals.knockoutScore,
+    totalScore: totals.totalScore,
+  };
+}
+
 async function calculateLeaderboard(tournamentId, options = {}) {
+  const scopeKey = options.scopeKey || null;
   const allowedUserIds = options.userIds || null;
+  const useAllowedUserIds = Array.isArray(allowedUserIds);
   const scoringContext = await getScoringContext(tournamentId);
   const users = await prisma.user.findMany({
-    where: allowedUserIds?.length
+    where: useAllowedUserIds
       ? {
           id: { in: allowedUserIds },
         }
       : {
           OR: [
-            { groupPredictions: { some: { tournamentId } } },
-            { knockoutPredictions: { some: { tournamentId } } },
+            { groupPredictions: { some: { tournamentId, ...(scopeKey ? { scopeKey } : {}) } } },
+            { knockoutPredictions: { some: { tournamentId, ...(scopeKey ? { scopeKey } : {}) } } },
+            ...(scopeKey ? [] : [{ tournamentPrimaryEntries: { some: { tournamentId } } }]),
           ],
         },
     include: {
       groupPredictions: {
-        where: { tournamentId },
+        where: { tournamentId, ...(scopeKey ? { scopeKey } : {}) },
       },
       knockoutPredictions: {
-        where: { tournamentId },
+        where: { tournamentId, ...(scopeKey ? { scopeKey } : {}) },
       },
+      ...(scopeKey
+        ? {}
+        : {
+            tournamentPrimaryEntries: {
+              where: { tournamentId },
+            },
+          }),
     },
   });
 
   const players = users
     .map((user) => {
-      const score = calculateTotalScore(
-        user.groupPredictions.map((prediction) => ({
-          groupId: prediction.groupId,
-          predictions: {
-            first: prediction.first,
-            second: prediction.second,
-          },
-        })),
-        scoringContext.groupResults,
-        user.knockoutPredictions.map((prediction) => ({
-          matchId: prediction.matchId,
-          predictedWinner: prediction.predictedWinner,
-        })),
-        scoringContext.knockoutMatches,
-        scoringContext.roundPointsMap
+      const activeScopeKey = scopeKey || getOfficialScopeKeyForUser(user);
+      const groupPredictionsByScope = mapPredictionsByScope(user.groupPredictions);
+      const knockoutPredictionsByScope = mapPredictionsByScope(user.knockoutPredictions);
+      const score = calculateScopedScore(
+        groupPredictionsByScope[activeScopeKey] || [],
+        knockoutPredictionsByScope[activeScopeKey] || [],
+        scoringContext
       );
 
       return serializeLeaderboardPlayer(user, score);
@@ -1123,49 +1763,110 @@ async function calculateLeaderboard(tournamentId, options = {}) {
   };
 }
 
-async function persistTournamentScores(tournamentId) {
-  const scoringContext = await getScoringContext(tournamentId);
+async function calculateGlobalLeaderboard() {
   const users = await prisma.user.findMany({
     where: {
-      OR: [
-        { groupPredictions: { some: { tournamentId } } },
-        { knockoutPredictions: { some: { tournamentId } } },
-        { scores: { some: { tournamentId } } },
-      ],
+      showInGlobalRankings: true,
+      scores: {
+        some: {},
+      },
     },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      avatarUrl: true,
+      tournamentPrimaryEntries: {
+        select: {
+          tournamentId: true,
+          scopeKey: true,
+        },
+      },
+      scores: {
+        select: {
+          tournamentId: true,
+          scopeKey: true,
+          groupScore: true,
+          knockoutScore: true,
+          totalScore: true,
+        },
+      },
+    },
+  });
+
+  const players = users
+    .map((user) => serializeGlobalLeaderboardPlayer(user, selectOfficialScoresForUser(user)))
+    .filter((user) => user.tournamentCount > 0)
+    .sort((a, b) => b.totalScore - a.totalScore || b.tournamentCount - a.tournamentCount || a.name.localeCompare(b.name));
+
+  return {
+    players,
+    summary: {
+      visiblePlayerCount: players.length,
+    },
+  };
+}
+
+function calculateScopedScore(groupPredictions, knockoutPredictions, scoringContext) {
+  return calculateTotalScore(
+    groupPredictions.map((prediction) => ({
+      groupId: prediction.groupId,
+      predictions: {
+        first: prediction.first,
+        second: prediction.second,
+      },
+    })),
+    scoringContext.groupResults,
+    knockoutPredictions.map((prediction) => ({
+      matchId: prediction.matchId,
+      predictedWinner: prediction.predictedWinner,
+    })),
+    scoringContext.knockoutMatches,
+    scoringContext.roundPointsMap
+  );
+}
+
+async function persistScopeScores(tournamentId, scoringContext, options = {}) {
+  const scopeKey = options.scopeKey || TOURNAMENT_SCOPE_KEY;
+  const allowedUserIds = options.userIds || null;
+  const useAllowedUserIds = Array.isArray(allowedUserIds);
+  const users = await prisma.user.findMany({
+    where: useAllowedUserIds
+      ? {
+          id: {
+            in: allowedUserIds,
+          },
+        }
+      : {
+          OR: [
+            { groupPredictions: { some: { tournamentId, scopeKey } } },
+            { knockoutPredictions: { some: { tournamentId, scopeKey } } },
+            { scores: { some: { tournamentId, scopeKey } } },
+          ],
+        },
     include: {
       groupPredictions: {
-        where: { tournamentId },
+        where: { tournamentId, scopeKey },
       },
       knockoutPredictions: {
-        where: { tournamentId },
+        where: { tournamentId, scopeKey },
       },
     },
   });
 
   const scoreUpdates = users.map((user) => {
-    const score = calculateTotalScore(
-      user.groupPredictions.map((prediction) => ({
-        groupId: prediction.groupId,
-        predictions: {
-          first: prediction.first,
-          second: prediction.second,
-        },
-      })),
-      scoringContext.groupResults,
-      user.knockoutPredictions.map((prediction) => ({
-        matchId: prediction.matchId,
-        predictedWinner: prediction.predictedWinner,
-      })),
-      scoringContext.knockoutMatches,
-      scoringContext.roundPointsMap
+    const score = calculateScopedScore(
+      user.groupPredictions,
+      user.knockoutPredictions,
+      scoringContext
     );
 
     return prisma.score.upsert({
       where: {
-        userId_tournamentId: {
+        userId_tournamentId_scopeKey: {
           userId: user.id,
           tournamentId,
+          scopeKey,
         },
       },
       update: {
@@ -1176,6 +1877,7 @@ async function persistTournamentScores(tournamentId) {
       create: {
         userId: user.id,
         tournamentId,
+        scopeKey,
         groupScore: score.groupScore,
         knockoutScore: score.knockoutScore,
         totalScore: score.totalScore,
@@ -1183,12 +1885,67 @@ async function persistTournamentScores(tournamentId) {
     });
   });
 
-  if (!scoreUpdates.length) {
-    return { updatedUsers: 0 };
+  if (scoreUpdates.length) {
+    await prisma.$transaction(scoreUpdates);
   }
 
-  await prisma.$transaction(scoreUpdates);
+  if (useAllowedUserIds) {
+    await prisma.score.deleteMany({
+      where: {
+        tournamentId,
+        scopeKey,
+        userId: {
+          notIn: allowedUserIds,
+        },
+      },
+    });
+  }
+
   return { updatedUsers: scoreUpdates.length };
+}
+
+async function persistTournamentScores(tournamentId) {
+  const scoringContext = await getScoringContext(tournamentId);
+  const leagues = await prisma.tournamentLeague.findMany({
+    where: {
+      tournamentId,
+    },
+    select: {
+      id: true,
+      members: {
+        select: {
+          userId: true,
+        },
+      },
+    },
+  });
+
+  const tournamentScopeResult = await persistScopeScores(tournamentId, scoringContext, {
+    scopeKey: TOURNAMENT_SCOPE_KEY,
+  });
+
+  const leagueScopeResults = [];
+  for (const league of leagues) {
+    const memberIds = league.members.map((member) => member.userId);
+    const leagueScopeKey = buildLeagueScopeKey(league.id);
+    const leagueResult = await persistScopeScores(tournamentId, scoringContext, {
+      scopeKey: leagueScopeKey,
+      userIds: memberIds,
+    });
+
+    leagueScopeResults.push({
+      leagueId: league.id,
+      updatedUsers: leagueResult.updatedUsers,
+    });
+  }
+
+  return {
+    updatedUsers: tournamentScopeResult.updatedUsers,
+    scopedUpdates: {
+      tournament: tournamentScopeResult.updatedUsers,
+      leagues: leagueScopeResults,
+    },
+  };
 }
 
 async function buildAccountProfile(userId) {
@@ -1197,7 +1954,7 @@ async function buildAccountProfile(userId) {
     tournamentMemberships,
     createdLeagues,
     leagueMemberships,
-    totalScore,
+    scoreProfile,
     groupPredictionCount,
     knockoutPredictionCount,
   ] = await Promise.all([
@@ -1218,9 +1975,25 @@ async function buildAccountProfile(userId) {
       select: { leagueId: true },
       distinct: ['leagueId'],
     }),
-    prisma.score.aggregate({
-      where: { userId },
-      _sum: { totalScore: true },
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        scores: {
+          select: {
+            tournamentId: true,
+            scopeKey: true,
+            groupScore: true,
+            knockoutScore: true,
+            totalScore: true,
+          },
+        },
+        tournamentPrimaryEntries: {
+          select: {
+            tournamentId: true,
+            scopeKey: true,
+          },
+        },
+      },
     }),
     prisma.groupPrediction.count({
       where: { userId },
@@ -1239,9 +2012,89 @@ async function buildAccountProfile(userId) {
     stats: {
       tournamentCount: tournamentMemberships.length,
       leagueCount: Math.max(leagueMemberships.length, createdLeagues.length),
-      totalScore: totalScore._sum.totalScore || 0,
+      totalScore: selectOfficialScoresForUser(scoreProfile).reduce(
+        (sum, score) => sum + (score.totalScore || 0),
+        0
+      ),
       savedPredictionCount: groupPredictionCount + knockoutPredictionCount,
     },
+  };
+}
+
+async function buildAccountNavigation(userId) {
+  const [tournaments, leagues] = await Promise.all([
+    prisma.tournament.findMany({
+      where: {
+        OR: [
+          { members: { some: { userId } } },
+          { groupPredictions: { some: { userId } } },
+          { knockoutPredictions: { some: { userId } } },
+          { scores: { some: { userId } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        nameEs: true,
+        accessType: true,
+        status: true,
+        closingDate: true,
+      },
+      orderBy: [
+        { closingDate: 'asc' },
+        { startDate: 'asc' },
+        { name: 'asc' },
+      ],
+      take: 8,
+    }),
+    prisma.tournamentLeague.findMany({
+      where: {
+        OR: [
+          { createdByUserId: userId },
+          { members: { some: { userId } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        tournamentId: true,
+        createdByUserId: true,
+        tournament: {
+          select: {
+            name: true,
+            nameEs: true,
+          },
+        },
+        _count: {
+          select: { members: true },
+        },
+      },
+      orderBy: [
+        { updatedAt: 'desc' },
+        { name: 'asc' },
+      ],
+      take: 8,
+    }),
+  ]);
+
+  return {
+    tournaments: tournaments.map((tournament) => ({
+      id: tournament.id,
+      name: tournament.name,
+      nameEs: tournament.nameEs || null,
+      accessType: normalizeAccessType(tournament.accessType),
+      status: tournament.status,
+      closingDate: tournament.closingDate,
+    })),
+    leagues: leagues.map((league) => ({
+      id: league.id,
+      name: league.name,
+      tournamentId: league.tournamentId,
+      tournamentName: league.tournament?.name || '',
+      tournamentNameEs: league.tournament?.nameEs || null,
+      memberCount: league._count?.members || 0,
+      isOwner: league.createdByUserId === userId,
+    })),
   };
 }
 
@@ -1468,10 +2321,22 @@ app.get('/api/account/profile', verifyToken, async (req, res) => {
   }
 });
 
+app.get('/api/account/navigation', verifyToken, async (req, res) => {
+  try {
+    res.json(await buildAccountNavigation(req.user.id));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 app.patch('/api/account/profile', verifyToken, async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
     const avatarUrl = String(req.body.avatarUrl || '').trim();
+    const hasShowInGlobalRankings = Object.prototype.hasOwnProperty.call(
+      req.body || {},
+      'showInGlobalRankings'
+    );
 
     if (!name) {
       return res.status(400).json({ error: 'Display name is required' });
@@ -1482,6 +2347,11 @@ app.patch('/api/account/profile', verifyToken, async (req, res) => {
       data: {
         name,
         avatarUrl: avatarUrl || null,
+        ...(hasShowInGlobalRankings
+          ? {
+              showInGlobalRankings: Boolean(req.body.showInGlobalRankings),
+            }
+          : {}),
       },
     });
 
@@ -1637,30 +2507,70 @@ app.get('/api/tournaments/:id/my-predictions', verifyToken, async (req, res) => 
   try {
     await ensureTournamentParticipationAccess(req.params.id, req.user);
 
-    const [groupPredictions, knockoutPredictions] = await Promise.all([
-      prisma.groupPrediction.findMany({
-        where: {
-          userId: req.user.id,
-          tournamentId: req.params.id,
-        },
-      }),
-      prisma.knockoutPrediction.findMany({
-        where: {
-          userId: req.user.id,
-          tournamentId: req.params.id,
-        },
-      }),
-    ]);
+    const predictions = await getPredictionsForScope({
+      userId: req.user.id,
+      tournamentId: req.params.id,
+      scopeKey: TOURNAMENT_SCOPE_KEY,
+    });
 
     res.json({
       tournamentId: req.params.id,
-      groupPredictions,
-      knockoutPredictions,
-      groupPredictionMap: normalizeGroupPredictionMap(groupPredictions),
-      knockoutPredictionMap: normalizeKnockoutPredictionMap(knockoutPredictions),
+      scopeKey: TOURNAMENT_SCOPE_KEY,
+      ...predictions,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/tournaments/:id/primary-entry', verifyToken, async (req, res) => {
+  try {
+    await ensureTournamentParticipationAccess(req.params.id, req.user);
+    const primaryEntry = await listPrimaryEntryOptions(req.user.id, req.params.id);
+    res.json(primaryEntry);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/tournaments/:id/primary-entry', verifyToken, async (req, res) => {
+  try {
+    const accessState = await ensureTournamentParticipationAccess(req.params.id, req.user);
+
+    if (accessState.access.predictionsLocked) {
+      throw createHttpError(403, 'Primary entry selection is locked for this tournament');
+    }
+
+    const scopeKey = String(req.body.scopeKey || '').trim() || TOURNAMENT_SCOPE_KEY;
+    await validatePrimaryEntryScopeSelection({
+      userId: req.user.id,
+      tournamentId: req.params.id,
+      scopeKey,
+    });
+
+    await prisma.tournamentPrimaryEntry.upsert({
+      where: {
+        userId_tournamentId: {
+          userId: req.user.id,
+          tournamentId: req.params.id,
+        },
+      },
+      update: {
+        scopeKey,
+      },
+      create: {
+        userId: req.user.id,
+        tournamentId: req.params.id,
+        scopeKey,
+      },
+    });
+
+    res.json({
+      message: 'Primary entry updated successfully',
+      primaryEntry: await listPrimaryEntryOptions(req.user.id, req.params.id),
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -1668,92 +2578,103 @@ app.post('/api/tournaments/:id/predictions', verifyToken, async (req, res) => {
   try {
     await ensureTournamentPredictionSubmissionAccess(req.params.id, req.user);
 
-    const rounds = await prisma.round.findMany({
-      where: { tournamentId: req.params.id },
-      include: { matches: true },
+    await savePredictionsForScope({
+      userId: req.user.id,
+      tournamentId: req.params.id,
+      scopeKey: TOURNAMENT_SCOPE_KEY,
+      groupPredictions: req.body.groupPredictions,
+      knockoutPredictions: req.body.knockoutPredictions,
     });
-    const requiresThirdPlaceSelections = hasBestThirdPlaceSlots(rounds);
-    const groupPredictions = parseGroupPredictionEntries(req.body.groupPredictions);
-    const knockoutPredictions = parseKnockoutPredictionEntries(req.body.knockoutPredictions);
-
-    if (!validateUniqueBestThirdSelections(knockoutPredictions)) {
-      return res.status(400).json({ error: 'Each third-place team can only be used once in the Round of 32' });
-    }
-
-    for (const prediction of groupPredictions) {
-      if (!prediction.groupId || !prediction.first || !prediction.second) {
-        return res.status(400).json({ error: 'Incomplete group prediction payload' });
-      }
-
-      if (requiresThirdPlaceSelections && !prediction.third) {
-        return res.status(400).json({ error: 'Third-place picks are required for this tournament' });
-      }
-
-      const selectedTeams = [prediction.first, prediction.second, prediction.third].filter(Boolean);
-      if (new Set(selectedTeams).size !== selectedTeams.length) {
-        return res.status(400).json({ error: 'Group placements must use different teams' });
-      }
-    }
-
-    for (const prediction of knockoutPredictions) {
-      if (!prediction.matchId || !prediction.predictedWinner) {
-        return res.status(400).json({ error: 'Incomplete knockout prediction payload' });
-      }
-    }
-
-    await prisma.$transaction([
-      ...groupPredictions.map((prediction) =>
-        prisma.groupPrediction.upsert({
-          where: {
-            userId_tournamentId_groupId: {
-              userId: req.user.id,
-              tournamentId: req.params.id,
-              groupId: prediction.groupId,
-            },
-          },
-          update: {
-            first: prediction.first,
-            second: prediction.second,
-            third: prediction.third || null,
-          },
-          create: {
-            userId: req.user.id,
-            tournamentId: req.params.id,
-            groupId: prediction.groupId,
-            first: prediction.first,
-            second: prediction.second,
-            third: prediction.third || null,
-          },
-        })
-      ),
-      ...knockoutPredictions.map((prediction) =>
-        prisma.knockoutPrediction.upsert({
-          where: {
-            userId_matchId: {
-              userId: req.user.id,
-              matchId: prediction.matchId,
-            },
-          },
-          update: {
-            predictedWinner: prediction.predictedWinner,
-            selectedHomeTeamId: prediction.selectedHomeTeamId || null,
-            selectedAwayTeamId: prediction.selectedAwayTeamId || null,
-          },
-          create: {
-            userId: req.user.id,
-            tournamentId: req.params.id,
-            matchId: prediction.matchId,
-            predictedWinner: prediction.predictedWinner,
-            selectedHomeTeamId: prediction.selectedHomeTeamId || null,
-            selectedAwayTeamId: prediction.selectedAwayTeamId || null,
-          },
-        })
-      ),
-    ]);
 
     await persistTournamentScores(req.params.id);
 
     res.json({ message: 'Predictions saved successfully' });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.get('/api/leagues/:id/my-predictions', verifyToken, async (req, res) => {
+  try {
+    const { league } = await ensureLeagueMembership(req.params.id, req.user);
+    await ensureTournamentParticipationAccess(league.tournamentId, req.user);
+
+    const scopeKey = buildLeagueScopeKey(league.id);
+    const predictions = await getPredictionsForScope({
+      userId: req.user.id,
+      tournamentId: league.tournamentId,
+      scopeKey,
+    });
+
+    res.json({
+      leagueId: league.id,
+      tournamentId: league.tournamentId,
+      scopeKey,
+      ...predictions,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/leagues/:id/predictions', verifyToken, async (req, res) => {
+  try {
+    const { league } = await ensureLeagueMembership(req.params.id, req.user);
+    await ensureTournamentPredictionSubmissionAccess(league.tournamentId, req.user);
+
+    await savePredictionsForScope({
+      userId: req.user.id,
+      tournamentId: league.tournamentId,
+      scopeKey: buildLeagueScopeKey(league.id),
+      groupPredictions: req.body.groupPredictions,
+      knockoutPredictions: req.body.knockoutPredictions,
+    });
+
+    await persistTournamentScores(league.tournamentId);
+
+    res.json({ message: 'Predictions saved successfully' });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/predictions/:id', verifyToken, async (req, res) => {
+  try {
+    const tournament = await prisma.tournament.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+
+    let tournamentId = null;
+    let scopeKey = TOURNAMENT_SCOPE_KEY;
+    let scopeType = 'tournament';
+
+    if (tournament) {
+      await ensureTournamentPredictionSubmissionAccess(req.params.id, req.user);
+      tournamentId = req.params.id;
+    } else {
+      const { league } = await ensureLeagueMembership(req.params.id, req.user);
+      await ensureTournamentPredictionSubmissionAccess(league.tournamentId, req.user);
+      tournamentId = league.tournamentId;
+      scopeKey = buildLeagueScopeKey(league.id);
+      scopeType = 'league';
+    }
+
+    await clearPredictionsForScope({
+      userId: req.user.id,
+      tournamentId,
+      scopeKey,
+    });
+
+    await persistTournamentScores(tournamentId);
+
+    res.json({
+      message: 'Predictions deleted successfully',
+      tournamentId,
+      scopeKey,
+      scopeType,
+      primaryEntry: await listPrimaryEntryOptions(req.user.id, tournamentId),
+    });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }
@@ -1939,6 +2860,58 @@ app.post('/api/tournaments/:id/leagues/join', verifyToken, async (req, res) => {
   }
 });
 
+app.get('/api/leagues/invite/:joinCode', optionalAuth, async (req, res) => {
+  try {
+    const joinCode = normalizeJoinCode(req.params.joinCode);
+    if (!joinCode) {
+      return res.status(400).json({ error: 'Join code is required' });
+    }
+
+    const league = await prisma.tournamentLeague.findFirst({
+      where: { joinCode },
+      include: {
+        tournament: {
+          select: {
+            id: true,
+            name: true,
+            nameEs: true,
+            accessType: true,
+            status: true,
+            closingDate: true,
+            ...(req.user?.id
+              ? {
+                  members: {
+                    where: { userId: req.user.id },
+                    select: { userId: true },
+                  },
+                }
+              : {}),
+          },
+        },
+        ...(req.user?.id
+          ? {
+              members: {
+                where: { userId: req.user.id },
+                select: { userId: true },
+              },
+            }
+          : {}),
+        _count: {
+          select: { members: true },
+        },
+      },
+    });
+
+    if (!league) {
+      return res.status(404).json({ error: 'League not found for that join code' });
+    }
+
+    res.json(serializeLeagueInvite(league, league.tournament, req.user));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 app.get('/api/leagues/:id', verifyToken, async (req, res) => {
   try {
     await ensureLeagueMembership(req.params.id, req.user);
@@ -2007,13 +2980,43 @@ app.delete('/api/leagues/:id/members/me', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'League owners must delete the league instead of leaving it' });
     }
 
-    await prisma.leagueMember.delete({
-      where: {
-        leagueId_userId: {
-          leagueId: req.params.id,
+    const scopeKey = buildLeagueScopeKey(req.params.id);
+    await prisma.$transaction([
+      prisma.groupPrediction.deleteMany({
+        where: {
           userId: req.user.id,
+          tournamentId: league.tournamentId,
+          scopeKey,
         },
-      },
+      }),
+      prisma.knockoutPrediction.deleteMany({
+        where: {
+          userId: req.user.id,
+          tournamentId: league.tournamentId,
+          scopeKey,
+        },
+      }),
+      prisma.score.deleteMany({
+        where: {
+          userId: req.user.id,
+          tournamentId: league.tournamentId,
+          scopeKey,
+        },
+      }),
+      prisma.leagueMember.delete({
+        where: {
+          leagueId_userId: {
+            leagueId: req.params.id,
+            userId: req.user.id,
+          },
+        },
+      }),
+    ]);
+
+    await syncPrimaryEntryAfterScopeRemoval({
+      userId: req.user.id,
+      tournamentId: league.tournamentId,
+      removedScopeKey: scopeKey,
     });
 
     res.json({ message: 'Left league successfully', tournamentId: league.tournamentId });
@@ -2025,13 +3028,49 @@ app.delete('/api/leagues/:id/members/me', verifyToken, async (req, res) => {
 app.delete('/api/leagues/:id', verifyToken, async (req, res) => {
   try {
     const { league } = await ensureLeagueOwner(req.params.id, req.user);
-
-    await prisma.leagueMember.deleteMany({
+    const scopeKey = buildLeagueScopeKey(req.params.id);
+    const leagueMembers = await prisma.leagueMember.findMany({
       where: { leagueId: req.params.id },
+      select: { userId: true },
     });
-    await prisma.tournamentLeague.delete({
-      where: { id: req.params.id },
-    });
+    const affectedUserIds = [...new Set([league.createdByUserId, ...leagueMembers.map((member) => member.userId)])];
+
+    await prisma.$transaction([
+      prisma.groupPrediction.deleteMany({
+        where: {
+          tournamentId: league.tournamentId,
+          scopeKey,
+        },
+      }),
+      prisma.knockoutPrediction.deleteMany({
+        where: {
+          tournamentId: league.tournamentId,
+          scopeKey,
+        },
+      }),
+      prisma.score.deleteMany({
+        where: {
+          tournamentId: league.tournamentId,
+          scopeKey,
+        },
+      }),
+      prisma.leagueMember.deleteMany({
+        where: { leagueId: req.params.id },
+      }),
+      prisma.tournamentLeague.delete({
+        where: { id: req.params.id },
+      }),
+    ]);
+
+    await Promise.all(
+      affectedUserIds.map((userId) =>
+        syncPrimaryEntryAfterScopeRemoval({
+          userId,
+          tournamentId: league.tournamentId,
+          removedScopeKey: scopeKey,
+        })
+      )
+    );
 
     res.json({ message: 'League deleted successfully', tournamentId: league.tournamentId });
   } catch (error) {
@@ -2051,6 +3090,7 @@ app.get('/api/leagues/:id/leaderboard', verifyToken, async (req, res) => {
 
     const leaderboard = await calculateLeaderboard(league.tournamentId, {
       userIds: members.map((member) => member.userId),
+      scopeKey: buildLeagueScopeKey(league.id),
     });
 
     res.json({
@@ -2355,6 +3395,23 @@ app.get('/api/tournaments/:id/leaderboard', optionalAuth, async (req, res) => {
     await ensureTournamentParticipationAccess(req.params.id, req.user);
     const leaderboard = await calculateLeaderboard(req.params.id);
     res.json(leaderboard);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.get('/api/leaderboard/global', verifyToken, async (req, res) => {
+  try {
+    const leaderboard = await calculateGlobalLeaderboard();
+    const currentUserIndex = leaderboard.players.findIndex((player) => player.userId === req.user.id);
+
+    res.json({
+      ...leaderboard,
+      currentUser: {
+        isVisible: req.user.showInGlobalRankings !== false,
+        rank: currentUserIndex >= 0 ? currentUserIndex + 1 : null,
+      },
+    });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }

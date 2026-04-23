@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Globe2,
+  LogOut,
+  ShieldCheck,
+  Target,
+  Trophy,
+  Users,
+} from 'lucide-react';
 import { get, patch, post } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -7,12 +16,13 @@ import { useLanguage } from '../i18n/LanguageContext';
 export default function Profile() {
   const { user, logout, loading: authLoading, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, formatNumber } = useLanguage();
 
   const [profile, setProfile] = useState(null);
   const [profileForm, setProfileForm] = useState({
     name: '',
     avatarUrl: '',
+    showInGlobalRankings: true,
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -36,6 +46,7 @@ export default function Profile() {
         setProfileForm({
           name: data?.user?.name || '',
           avatarUrl: data?.user?.avatarUrl || '',
+          showInGlobalRankings: data?.user?.showInGlobalRankings !== false,
         });
       } catch (err) {
         setError(err.message);
@@ -49,7 +60,7 @@ export default function Profile() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -107,119 +118,217 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
   }
 
+  const visibilityEnabled = profileForm.showInGlobalRankings;
+  const statCards = [
+    {
+      key: 'tournaments',
+      label: t('auth.tournamentsJoined'),
+      value: formatNumber(stats.tournamentCount || 0),
+      icon: Trophy,
+      tone: 'text-amber-300',
+    },
+    {
+      key: 'leagues',
+      label: t('auth.leaguesJoined'),
+      value: formatNumber(stats.leagueCount || 0),
+      icon: Users,
+      tone: 'text-cyan-300',
+    },
+    {
+      key: 'total',
+      label: t('leaderboard.total'),
+      value: formatNumber(stats.totalScore || 0),
+      icon: Target,
+      tone: 'text-emerald-300',
+    },
+    {
+      key: 'saved',
+      label: t('auth.savedPredictions'),
+      value: formatNumber(stats.savedPredictionCount || 0),
+      icon: ShieldCheck,
+      tone: 'text-violet-300',
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold text-white mb-8">
-          {t('nav.profile')}
-        </h1>
+    <div className="sport-shell min-h-screen">
+      <div className="max-w-6xl mx-auto px-4 py-10 md:py-12">
+        <div className="sport-panel-strong rounded-[2rem] p-6 md:p-8 mb-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-5">
+              {profileForm.avatarUrl ? (
+                <img
+                  src={profileForm.avatarUrl}
+                  alt={profile?.user?.name || user.name}
+                  className="w-24 h-24 rounded-[1.75rem] object-cover border border-white/10 shadow-[0_16px_40px_rgba(18,194,127,0.16)]"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-[1.75rem] bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-slate-950 text-5xl font-bold shadow-[0_18px_42px_rgba(18,194,127,0.22)]">
+                  {profile?.user?.name?.[0] || user.name?.[0] || 'U'}
+                </div>
+              )}
+
+              <div>
+                <div className="score-pill mb-4 text-emerald-200">
+                  {t('nav.profile')}
+                </div>
+                <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                  {profile?.user?.name || user.name}
+                </h1>
+                <p className="text-slate-300 text-lg">
+                  {profile?.user?.email || user.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="account-pill-group">
+              <div className="account-pill">
+                <Globe2 size={16} className={visibilityEnabled ? 'text-emerald-300' : 'text-slate-400'} />
+                <span>
+                  {visibilityEnabled ? t('auth.globalRankingsVisible') : t('leaderboard.hiddenRank')}
+                </span>
+              </div>
+              <div className="account-pill">
+                <ShieldCheck size={16} className="text-cyan-300" />
+                <span>{t('profile.security')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {error ? (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-8">
+          <div className="account-feedback account-feedback-error mb-8">
             {error}
           </div>
         ) : null}
 
         {success ? (
-          <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded mb-8">
+          <div className="account-feedback account-feedback-success mb-8">
             {success}
           </div>
         ) : null}
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 space-y-8">
-          <div className="flex items-center space-x-6">
-            {profileForm.avatarUrl ? (
-              <img
-                src={profileForm.avatarUrl}
-                alt={profile?.user?.name || user.name}
-                className="w-20 h-20 rounded-full object-cover border border-slate-700"
-              />
-            ) : (
-              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 text-4xl font-bold">
-                {profile?.user?.name?.[0] || user.name?.[0] || 'U'}
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5 mb-8">
+          {statCards.map((stat) => {
+            const Icon = stat.icon;
+
+            return (
+              <div key={stat.key} className="sport-panel rounded-[1.5rem] p-5">
+                <div className={`flex items-center gap-3 mb-3 ${stat.tone}`}>
+                  <Icon size={18} />
+                  <span className="score-pill">{stat.label}</span>
+                </div>
+                <p className="sport-display text-4xl text-white">
+                  {stat.value}
+                </p>
               </div>
-            )}
+            );
+          })}
+        </div>
+
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
+          <div className="sport-panel-strong rounded-[1.75rem] p-6 md:p-7 space-y-5">
+            <h2 className="sport-display text-3xl text-white">
+              {t('profile.profileDetails')}
+            </h2>
+
             <div>
-              <h2 className="text-3xl font-bold text-white">
-                {profile?.user?.name || user.name}
+              <label className="account-label">
+                {t('auth.displayName')}
+              </label>
+              <input
+                type="text"
+                value={profileForm.name}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+                className="account-input"
+              />
+            </div>
+
+            <div>
+              <label className="account-label">
+                {t('auth.avatarUrl')}
+              </label>
+              <input
+                type="url"
+                value={profileForm.avatarUrl}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, avatarUrl: event.target.value }))
+                }
+                className="account-input"
+                placeholder="https://"
+              />
+            </div>
+
+            <div className="account-toggle-card">
+              <div className="flex items-start justify-between gap-4">
+                <div className="pr-2">
+                  <div className="score-pill text-emerald-200 mb-3">
+                    <Globe2 size={14} />
+                    {t('nav.globalLeaderboard')}
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">
+                    {t('auth.globalRankingsVisible')}
+                  </h3>
+                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                    {t('auth.globalRankingsVisibleHelp')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      showInGlobalRankings: !prev.showInGlobalRankings,
+                    }))
+                  }
+                  className={`account-toggle ${profileForm.showInGlobalRankings ? 'account-toggle-on' : 'account-toggle-off'}`}
+                  aria-pressed={profileForm.showInGlobalRankings}
+                >
+                  <span className="account-toggle-thumb" />
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              disabled={savingProfile}
+              className="sport-button w-full py-3.5 rounded-2xl text-slate-950 font-bold disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {savingProfile ? t('auth.updatingProfile') : t('auth.updateProfile')}
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div className="sport-panel rounded-[1.75rem] p-6 md:p-7 space-y-5">
+              <h2 className="sport-display text-3xl text-white">
+                {t('profile.rankingPrivacy')}
               </h2>
-              <p className="text-gray-400">
-                {profile?.user?.email || user.email}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-6">
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 text-center">
-              <p className="text-gray-400 text-sm mb-2">{t('auth.tournamentsJoined')}</p>
-              <p className="text-white font-bold text-2xl">{stats.tournamentCount || 0}</p>
-            </div>
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 text-center">
-              <p className="text-gray-400 text-sm mb-2">{t('auth.leaguesJoined')}</p>
-              <p className="text-white font-bold text-2xl">{stats.leagueCount || 0}</p>
-            </div>
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 text-center">
-              <p className="text-gray-400 text-sm mb-2">{t('leaderboard.total')}</p>
-              <p className="text-emerald-400 font-bold text-2xl">{stats.totalScore || 0}</p>
-            </div>
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 text-center">
-              <p className="text-gray-400 text-sm mb-2">{t('auth.savedPredictions')}</p>
-              <p className="text-white font-bold text-2xl">{stats.savedPredictionCount || 0}</p>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8">
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 space-y-4">
-              <h3 className="text-2xl font-bold text-white">
-                {t('profile.profileDetails')}
-              </h3>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  {t('auth.displayName')}
-                </label>
-                <input
-                  type="text"
-                  value={profileForm.name}
-                  onChange={(event) =>
-                    setProfileForm((prev) => ({ ...prev, name: event.target.value }))
-                  }
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  {t('auth.avatarUrl')}
-                </label>
-                <input
-                  type="url"
-                  value={profileForm.avatarUrl}
-                  onChange={(event) =>
-                    setProfileForm((prev) => ({ ...prev, avatarUrl: event.target.value }))
-                  }
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <button
-                onClick={handleSaveProfile}
-                disabled={savingProfile}
-                className="w-full py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {savingProfile ? t('auth.updatingProfile') : t('auth.updateProfile')}
-              </button>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 space-y-4">
-              <h3 className="text-2xl font-bold text-white">
+              <p className="text-slate-300 leading-relaxed">
                 {t('profile.security')}
-              </h3>
+              </p>
+              <div className="account-subtle-panel">
+                <p className="text-sm text-slate-300">
+                  {visibilityEnabled
+                    ? t('auth.globalRankingsVisibleHelp')
+                    : t('leaderboard.visibilityOff')}
+                </p>
+              </div>
+            </div>
+
+            <div className="sport-panel-strong rounded-[1.75rem] p-6 md:p-7 space-y-5">
+              <h2 className="sport-display text-3xl text-white">
+                {t('profile.security')}
+              </h2>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">
+                <label className="account-label">
                   {t('auth.currentPassword')}
                 </label>
                 <input
@@ -228,11 +337,11 @@ export default function Profile() {
                   onChange={(event) =>
                     setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
                   }
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  className="account-input"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">
+                <label className="account-label">
                   {t('auth.newPassword')}
                 </label>
                 <input
@@ -241,33 +350,35 @@ export default function Profile() {
                   onChange={(event) =>
                     setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
                   }
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  className="account-input"
                 />
               </div>
               <button
                 onClick={handleChangePassword}
                 disabled={savingPassword}
-                className="w-full py-3 border-2 border-emerald-500 text-emerald-400 rounded-lg font-semibold hover:bg-emerald-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="sport-button-secondary w-full py-3.5 rounded-2xl text-emerald-300 font-bold hover:text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {savingPassword ? t('auth.changingPassword') : t('auth.changePassword')}
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="flex gap-4">
-            <button
-              onClick={() => navigate('/')}
-              className="flex-1 px-6 py-3 border-2 border-slate-700 text-white rounded-lg font-semibold hover:border-emerald-500 hover:bg-slate-700 transition"
-            >
-              {t('common.back')}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
-            >
-              {t('nav.logout')}
-            </button>
-          </div>
+        <div className="grid sm:grid-cols-2 gap-4 mt-8">
+          <button
+            onClick={() => navigate('/')}
+            className="account-secondary-action"
+          >
+            <ArrowLeft size={18} />
+            <span>{t('common.back')}</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="account-danger-action"
+          >
+            <LogOut size={18} />
+            <span>{t('nav.logout')}</span>
+          </button>
         </div>
       </div>
     </div>

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Copy, Link as LinkIcon } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { del, get, patch, post } from '../utils/api';
-import { getRoundLabel } from '../utils/tournament';
+import { getLocalizedName, getRoundLabel } from '../utils/tournament';
 
 export default function League() {
   const { id } = useParams();
-  const { t } = useLanguage();
+  const { language, t, formatNumber } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +20,8 @@ export default function League() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [primaryEntry, setPrimaryEntry] = useState(null);
   const [leagueForm, setLeagueForm] = useState({
     name: '',
     description: '',
@@ -37,8 +40,12 @@ export default function League() {
         setRounds(leaderboardData?.rounds || []);
 
         if (leaderboardData?.league?.tournamentId) {
-          const tournamentData = await get(`/tournaments/${leaderboardData.league.tournamentId}`);
+          const [tournamentData, primaryEntryData] = await Promise.all([
+            get(`/tournaments/${leaderboardData.league.tournamentId}`),
+            get(`/tournaments/${leaderboardData.league.tournamentId}/primary-entry`).catch(() => null),
+          ]);
           setTournament(tournamentData);
+          setPrimaryEntry(primaryEntryData);
         }
       } catch (err) {
         setError(err.message);
@@ -112,7 +119,7 @@ export default function League() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="sport-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -120,33 +127,82 @@ export default function League() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <p className="text-red-400">{error}</p>
+      <div className="sport-shell min-h-screen flex items-center justify-center px-4">
+        <div className="sport-panel app-empty max-w-2xl w-full">
+          <p className="text-red-400">{error}</p>
+        </div>
       </div>
     );
   }
 
   const isOwner = Boolean(league?.access?.isOwner);
+  const inviteUrl =
+    typeof window !== 'undefined' && league?.joinCode
+      ? `${window.location.origin}/league/invite/${league.joinCode}`
+      : '';
+
+  const handleCopyInviteLink = async () => {
+    if (!inviteUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2000);
+    } catch (err) {
+      setError(err.message || t('tournament.copyInviteFailed'));
+    }
+  };
+
+  const currentPrimaryScopeKey = primaryEntry?.currentScopeKey || 'tournament';
+  const leaguePrimaryOption =
+    primaryEntry?.options?.find((option) => option.scopeKey === `league:${id}`) || null;
+  const handleSetPrimaryEntry = async () => {
+    if (!leaguePrimaryOption?.hasPredictions) {
+      setError(t('tournament.primaryEntryNeedsPredictions'));
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await post(`/tournaments/${league?.tournamentId}/primary-entry`, {
+        scopeKey: `league:${id}`,
+      });
+      setPrimaryEntry(response?.primaryEntry || primaryEntry);
+      setSuccess(t('tournament.primaryEntrySaved'));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+    <div className="sport-shell min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">
+        <div className="app-page-header">
+          <div className="app-page-kicker score-pill text-cyan-300">
+            {t('nav.myLeagues')}
+          </div>
+          <h1 className="app-page-title sport-display">
             {league?.name || t('leaderboard.leagueLeaderboard')}
           </h1>
           {league?.description ? (
-            <p className="text-gray-300 text-lg mb-3">
+            <p className="app-page-description mb-3">
               {league.description}
             </p>
           ) : (
-            <p className="text-gray-300 text-lg mb-3">
+            <p className="app-page-description mb-3">
               {t('leaderboard.leagueDescription')}
             </p>
           )}
           {tournament ? (
             <div className="flex items-center gap-4">
-              <p className="text-gray-400">{tournament.name}</p>
+              <p className="text-gray-400">{getLocalizedName(tournament, language, tournament.name)}</p>
               <Link
                 to={`/tournament/${tournament.id}`}
                 className="text-emerald-400 hover:text-emerald-300 transition"
@@ -158,41 +214,113 @@ export default function League() {
         </div>
 
         {error ? (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-8">
+          <div className="app-alert app-alert-error mb-8">
             {error}
           </div>
         ) : null}
 
         {success ? (
-          <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded mb-8">
+          <div className="app-alert app-alert-success mb-8">
             {success}
           </div>
         ) : null}
 
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="sport-panel app-card">
             <p className="text-gray-400 text-sm mb-2">
               {t('tournament.leagueMembers')}
             </p>
             <p className="text-white font-bold text-2xl">
-              {league?.memberCount || 0}
+              {formatNumber(league?.memberCount || 0)}
             </p>
           </div>
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+          <div className="sport-panel app-card">
             <p className="text-gray-400 text-sm mb-2">
               {t('tournament.joinCode')}
             </p>
-            <p className="text-white font-bold text-2xl tracking-[0.2em]">
-              {league?.joinCode || '----'}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-white font-bold text-2xl tracking-[0.2em]">
+                  {league?.joinCode || '----'}
+                </p>
+                {league?.joinCode ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyInviteLink}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500 hover:text-slate-950"
+                  >
+                    <LinkIcon size={14} />
+                    {copiedInvite ? t('common.copied') : t('tournament.copyInviteLink')}
+                  </button>
+                ) : null}
+              </div>
+              {league?.joinCode ? (
+                <div className="account-subtle-panel">
+                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">
+                    {t('tournament.inviteLink')}
+                  </p>
+                  <div className="flex items-start gap-3">
+                    <Copy size={16} className="mt-1 text-emerald-400" />
+                    <p className="break-all text-sm text-gray-300">
+                      {inviteUrl}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="sport-panel app-card">
+            <p className="text-gray-400 text-sm mb-2">
+              {t('predict.makePredictions')}
             </p>
+            <p className="text-white font-semibold mb-4">
+              {t('tournament.leaguePredictionScopeHelp')}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate(`/league/${id}/predict`)}
+                disabled={!tournament?.access?.canSubmitPredictions}
+                className="app-button-primary sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {tournament?.access?.canSubmitPredictions
+                  ? t('tournament.openLeaguePredictions')
+                  : t('tournament.predictionsClosed')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSetPrimaryEntry}
+                disabled={
+                  saving ||
+                  !primaryEntry?.canChange ||
+                  !leaguePrimaryOption?.hasPredictions ||
+                  currentPrimaryScopeKey === `league:${id}`
+                }
+                className="app-button-secondary sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {currentPrimaryScopeKey === `league:${id}`
+                  ? t('tournament.currentPrimaryEntry')
+                  : t('tournament.setPrimaryEntry')}
+              </button>
+            </div>
+            {currentPrimaryScopeKey === `league:${id}` ? (
+              <p className="text-emerald-300 text-sm mt-4">
+                {t('tournament.primaryEntryHelp')}
+              </p>
+            ) : null}
+            {primaryEntry && !primaryEntry.canChange ? (
+              <p className="text-amber-300 text-sm mt-4">
+                {t('tournament.primaryEntryLocked')}
+              </p>
+            ) : null}
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-12">
-          <h2 className="text-2xl font-bold text-white mb-3">
+        <div className="sport-panel-strong app-card-strong mb-12">
+          <h2 className="app-section-title">
             {t('tournament.leagueSettings')}
           </h2>
-          <p className="text-gray-400 mb-6">
+          <p className="app-section-copy mb-6">
             {isOwner ? t('tournament.ownerLeagueHelp') : t('tournament.memberLeagueHelp')}
           </p>
 
@@ -200,7 +328,7 @@ export default function League() {
             <>
               <div className="grid md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="account-label">
                     {t('tournament.leagueName')}
                   </label>
                   <input
@@ -209,11 +337,11 @@ export default function League() {
                     onChange={(event) =>
                       setLeagueForm((prev) => ({ ...prev, name: event.target.value }))
                     }
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="account-label">
                     {t('tournament.leagueDescription')}
                   </label>
                   <input
@@ -222,7 +350,7 @@ export default function League() {
                     onChange={(event) =>
                       setLeagueForm((prev) => ({ ...prev, description: event.target.value }))
                     }
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    className="app-input"
                   />
                 </div>
               </div>
@@ -231,21 +359,21 @@ export default function League() {
                 <button
                   onClick={handleUpdateLeague}
                   disabled={saving}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50 transition"
+                  className="app-button-primary sm:w-auto"
                 >
                   {saving ? t('admin.saving') : t('common.save')}
                 </button>
                 <button
                   onClick={handleRegenerateCode}
                   disabled={saving}
-                  className="px-6 py-3 border-2 border-emerald-500 text-emerald-400 rounded-lg font-semibold hover:bg-emerald-500 hover:text-white disabled:opacity-50 transition"
+                  className="app-button-secondary sm:w-auto"
                 >
                   {saving ? t('tournament.regeneratingCode') : t('tournament.regenerateLeagueCode')}
                 </button>
                 <button
                   onClick={handleDeleteLeague}
                   disabled={saving}
-                  className="px-6 py-3 border-2 border-red-500 text-red-300 rounded-lg font-semibold hover:bg-red-500 hover:text-white disabled:opacity-50 transition"
+                  className="app-button-danger sm:w-auto"
                 >
                   {saving ? t('tournament.deletingLeague') : t('tournament.deleteLeague')}
                 </button>
@@ -255,7 +383,7 @@ export default function League() {
             <button
               onClick={handleLeaveLeague}
               disabled={saving}
-              className="px-6 py-3 border-2 border-red-500 text-red-300 rounded-lg font-semibold hover:bg-red-500 hover:text-white disabled:opacity-50 transition"
+              className="app-button-danger sm:w-auto"
             >
               {saving ? t('tournament.leavingLeague') : t('tournament.leaveLeague')}
             </button>
@@ -263,35 +391,35 @@ export default function League() {
         </div>
 
         {players.length === 0 ? (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-12 text-center">
+          <div className="sport-panel app-empty">
             <p className="text-gray-400 text-lg">
               {t('leaderboard.noPlayers')}
             </p>
           </div>
         ) : (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+          <div className="sport-panel-strong app-table-shell">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="app-table">
                 <thead>
-                  <tr className="border-b border-slate-700 bg-slate-900">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                  <tr>
+                    <th>
                       {t('leaderboard.rank')}
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                    <th>
                       {t('leaderboard.player')}
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">
+                    <th className="text-center">
                       {t('leaderboard.groupPts')}
                     </th>
                     {rounds.map((round) => (
                       <th
                         key={round.id}
-                        className="px-6 py-4 text-center text-sm font-semibold text-gray-300"
+                        className="text-center"
                       >
                         {getRoundLabel(round, t)}
                       </th>
                     ))}
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-emerald-400">
+                    <th className="text-center text-emerald-400">
                       {t('leaderboard.total')}
                     </th>
                   </tr>
@@ -303,14 +431,12 @@ export default function League() {
                     return (
                       <tr
                         key={player.id}
-                        className={`border-b border-slate-700 transition ${
-                          isCurrentUser ? 'bg-emerald-900 bg-opacity-20' : 'hover:bg-slate-700'
-                        }`}
+                        className={`app-table-row ${isCurrentUser ? 'app-table-row-current' : ''}`}
                       >
-                        <td className="px-6 py-4">
-                          <span className="font-bold text-white text-lg">{index + 1}</span>
+                        <td>
+                          <span className="font-bold text-white text-lg">{formatNumber(index + 1)}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-slate-900 font-bold">
                               {player.name?.[0] || 'U'}
@@ -323,19 +449,19 @@ export default function League() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center text-white font-semibold">
-                          {player.groupScore || 0}
+                        <td className="text-center font-semibold">
+                          {formatNumber(player.groupScore || 0)}
                         </td>
                         {rounds.map((round) => (
                           <td
                             key={round.id}
-                            className="px-6 py-4 text-center text-white font-semibold"
+                            className="text-center font-semibold"
                           >
-                            {player.roundScores?.[round.name] || 0}
+                            {formatNumber(player.roundScores?.[round.name] || 0)}
                           </td>
                         ))}
-                        <td className="px-6 py-4 text-center font-bold text-emerald-400 text-lg">
-                          {player.totalScore || 0}
+                        <td className="text-center font-bold text-emerald-400 text-lg">
+                          {formatNumber(player.totalScore || 0)}
                         </td>
                       </tr>
                     );

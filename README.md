@@ -11,6 +11,7 @@ A sports prediction app centered on Prode-style tournament picks, where users pr
 - **Bilingual** — English and Spanish, with browser-language detection and English fallback
 - **Themes** — Sports-oriented dark and light modes with persisted preference
 - **Leaderboard** — Live rankings with optional prize pool calculation (70/30 split when prizes are enabled)
+- **Global Rankings** — Logged-in players can view a cross-tournament leaderboard, and each profile can opt in or out of being shown there
 - **Private Groups** — Run tournaments as public competitions or closed groups with join codes
 - **Private Leagues** — Create invite-only leagues inside a tournament, each with its own join code and filtered leaderboard
 - **Admin Panel** — Create tournaments, edit safe structures, enter results, calculate scores, and manage tournament settings
@@ -157,10 +158,11 @@ Seed the database with the current football tournament catalog:
 
 ```bash
 npm run db:seed
+npm run db:backfill:translations
 ```
 
 Note:
-The World Cup seed uses the official April 2026 line-up, the official FIFA 2026 Round of 32 structure, and the real best-third-place slot format used by the expanded 48-team bracket. The other seeded tournaments are format-compatible football templates that fit the current group-stage plus knockout Prode engine. In the prediction UI, users explicitly place the advancing third-placed teams into the eligible knockout slots whenever a tournament mode uses best-third-place qualifiers.
+The World Cup seed uses the official April 2026 line-up, the official FIFA 2026 Round of 32 structure, and the real best-third-place slot format used by the expanded 48-team bracket. The other seeded tournaments are format-compatible football templates that fit the current group-stage plus knockout Prode engine. In the prediction UI, users explicitly place the advancing third-placed teams into the eligible knockout slots whenever a tournament mode uses best-third-place qualifiers. `npm run db:backfill:translations` safely fills in missing translated tournament, round, mode, and team names for existing local rows without reseeding.
 
 ### 6. Start the development servers
 
@@ -199,6 +201,7 @@ To test registration, create an account at http://localhost:5173/register.
 | `npm run db:generate` | Regenerate Prisma client |
 | `npm run db:validate` | Validate the Prisma schema |
 | `npm run db:seed` | Seed database with the current football tournament catalog |
+| `npm run db:backfill:translations` | Fill missing translated tournament, round, mode, and team names in the existing DB |
 | `npm run db:studio` | Open Prisma Studio (visual DB editor) |
 
 ### Documentation
@@ -214,6 +217,7 @@ To test registration, create an account at http://localhost:5173/register.
 What is implemented today:
 
 - Public and private tournaments with join codes
+- Authenticated global rankings with per-profile visibility control
 - Private leagues inside a tournament
 - Tournament-mode-aware scoring and rules display
 - World Cup 2026 best-third-place Round of 32 handling
@@ -254,6 +258,8 @@ It covers:
 - The admin panel lets you change access type, entry fee, currency, prize toggle, and regenerate the private join code
 - Tournament rules and scoring are mode-driven, so the UI should present the rules for the selected tournament mode
 - For World Cup 2026 mode and UEFA-style 24-team formats, the app also supports third-place group picks plus the best-third-place knockout slots
+- Global rankings are visible only to logged-in users and aggregate scores across tournaments without exposing private tournament details
+- Each user can opt out of appearing in global rankings from their profile, and the default is opt-in
 
 ### Private Leagues Inside A Tournament
 
@@ -297,6 +303,7 @@ If you prefer to do the steps manually:
 ```bash
 npx prisma migrate reset --skip-seed
 npm run db:seed
+npm run db:backfill:translations
 ```
 
 If you are using the Docker Postgres container from this README and want to fully wipe the database instance itself:
