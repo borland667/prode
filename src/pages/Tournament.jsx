@@ -4,6 +4,7 @@ import { Clock } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 import {
   buildTeamMap,
   getLocalizedName,
@@ -177,7 +178,7 @@ export default function Tournament() {
 
   if (loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -185,17 +186,17 @@ export default function Tournament() {
 
   if (pageError) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center px-4">
-        <div className="sport-panel app-empty max-w-2xl w-full">
+      <div className="ds-shell min-h-screen flex items-center justify-center px-4">
+        <Panel className="app-empty max-w-2xl w-full">
           <p className="text-red-400">{pageError}</p>
-        </div>
+        </Panel>
       </div>
     );
   }
 
   if (!tournament) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.noResults')}</p>
       </div>
     );
@@ -242,98 +243,64 @@ export default function Tournament() {
   const statusLabel = t(`tournament.${tournament.status}`) !== `tournament.${tournament.status}`
     ? t(`tournament.${tournament.status}`)
     : tournament.status;
+  const tournamentCountLabel = isPrivate ? t('tournament.members') : t('tournament.participants');
+  const participantTotal = formatNumber(isPrivate ? tournament.memberCount || 0 : tournament.participantCount || 0);
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell">
-        <div className="mb-12">
-          <div className="score-pill mb-5 text-emerald-200">
+    <div className="ds-shell min-h-screen">
+      <PageShell className="tournament-page">
+        <div className="tournament-hero">
+          <div className="tournament-hero__header">
+            <Pill className="text-emerald-200">
             {getSportLabel(tournament.sport, language)}
-          </div>
-          <h1 className="sport-display text-5xl md:text-6xl text-white mb-6">
+            </Pill>
+            <DisplayText as="h1" className="tournament-hero__title text-white">
             {getLocalizedName(tournament, language, tournament.name)}
-          </h1>
+            </DisplayText>
+          </div>
 
-          <div className="grid md:grid-cols-6 gap-6 mb-8">
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.mode')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {getModeLabel(tournament.mode, language)}
-              </p>
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.access')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {isPrivate ? t('tournament.privateAccess') : t('tournament.publicAccess')}
-              </p>
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.status')}
-              </p>
-              <p className="text-white font-semibold text-lg capitalize">
-                {statusLabel}
-              </p>
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.closingDate')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {closingDate ? formatDate(closingDate) : 'TBD'}
-              </p>
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {isPrivate ? t('tournament.members') : t('tournament.participants')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {formatNumber(isPrivate ? tournament.memberCount || 0 : tournament.participantCount || 0)}
-              </p>
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.prizes')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {tournament.prizesEnabled ? t('tournament.prizesOn') : t('tournament.prizesOff')}
-              </p>
-              {showPrizeInfo ? (
-                <p className="text-gray-400 text-sm mt-2">
-                  {formatCurrency(tournament.entryFee, tournament.currency, {
-                    maximumFractionDigits: 0,
-                  })}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2">
-                {t('tournament.predictionWindow')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {predictionsLocked ? t('tournament.closedNow') : t('tournament.openNow')}
-              </p>
-            </div>
-
-            <div className="sport-panel rounded-panel-md p-6">
-              <p className="text-gray-400 text-sm mb-2 flex items-center gap-2">
-                <Clock size={16} />
-                {t('home.tournamentEndsIn')}
-              </p>
-              <p className="text-white font-semibold text-lg">
-                {formatNumber(daysRemaining)}d {formatNumber(hoursRemaining)}h
-              </p>
-            </div>
+          <div className="tournament-summary-grid">
+            <TournamentStatCard
+              label={t('tournament.mode')}
+              value={getModeLabel(tournament.mode, language)}
+            />
+            <TournamentStatCard
+              label={t('tournament.access')}
+              value={isPrivate ? t('tournament.privateAccess') : t('tournament.publicAccess')}
+            />
+            <TournamentStatCard
+              label={t('tournament.status')}
+              value={statusLabel}
+              valueClassName="capitalize"
+            />
+            <TournamentStatCard
+              label={t('tournament.closingDate')}
+              value={closingDate ? formatDate(closingDate) : 'TBD'}
+            />
+            <TournamentStatCard
+              label={tournamentCountLabel}
+              value={participantTotal}
+            />
+            <TournamentStatCard
+              label={t('tournament.prizes')}
+              value={tournament.prizesEnabled ? t('tournament.prizesOn') : t('tournament.prizesOff')}
+              detail={
+                showPrizeInfo
+                  ? formatCurrency(tournament.entryFee, tournament.currency, {
+                      maximumFractionDigits: 0,
+                    })
+                  : ''
+              }
+            />
+            <TournamentStatCard
+              label={t('tournament.predictionWindow')}
+              value={predictionsLocked ? t('tournament.closedNow') : t('tournament.openNow')}
+            />
+            <TournamentStatCard
+              label={t('home.tournamentEndsIn')}
+              value={`${formatNumber(daysRemaining)}d ${formatNumber(hoursRemaining)}h`}
+              icon={<Clock size={16} />}
+            />
           </div>
 
           {success ? (
@@ -349,15 +316,15 @@ export default function Tournament() {
         ) : null}
 
         {user && tournament.access?.canViewPredictions ? (
-          <div className="sport-panel-strong app-card-strong mb-8">
-            <h2 className="app-section-title">
+          <Panel variant="strong" padding="normal" radius="2xl" className="tournament-section">
+            <DisplayText as="h2" className="app-section-title">
               {t('tournament.primaryEntry')}
-            </h2>
+            </DisplayText>
             <p className="app-section-copy mb-5">
               {t('tournament.primaryEntryHelp')}
             </p>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
+            <div className="tournament-primary-card__row">
+              <div className="tournament-primary-card__content">
                 <p className="mb-2 text-sm uppercase tracking-overline text-gray-500">
                   {t('tournament.currentPrimaryEntry')}
                 </p>
@@ -368,7 +335,7 @@ export default function Tournament() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button
+                <Button
                   type="button"
                   onClick={() => handleSetPrimaryEntry('tournament', tournamentPrimaryOption)}
                   disabled={
@@ -376,12 +343,13 @@ export default function Tournament() {
                     !canChangePrimaryEntry ||
                     currentPrimaryOption?.scopeKey === 'tournament'
                   }
-                  className="app-button-secondary tournament-cta-button"
+                  variant="secondary"
+                  className="tournament-cta-button"
                 >
                   {currentPrimaryOption?.scopeKey === 'tournament'
                     ? t('tournament.currentPrimaryEntry')
                     : t('tournament.setPrimaryEntry')}
-                </button>
+                </Button>
               </div>
             </div>
             {!canChangePrimaryEntry ? (
@@ -389,14 +357,14 @@ export default function Tournament() {
                 {t('tournament.primaryEntryLocked')}
               </p>
             ) : null}
-          </div>
+          </Panel>
         ) : null}
 
         {isPrivate && !isMember ? (
-            <div className="sport-panel-strong rounded-panel-lg border border-amber-500/60 p-6 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-3">
+            <Panel variant="strong" padding="normal" radius="xl" className="tournament-section border border-amber-500/60">
+              <DisplayText as="h2" className="text-2xl text-white">
                 {t('tournament.joinTournament')}
-              </h2>
+              </DisplayText>
               <p className="text-amber-200 mb-2">
                 {t('tournament.privateNotice')}
               </p>
@@ -417,80 +385,85 @@ export default function Tournament() {
                     placeholder={t('tournament.joinCode')}
                     className="app-input"
                   />
-                  <button
+                  <Button
                     onClick={handleJoinTournament}
                     disabled={joining}
-                    className="app-button-primary tournament-inline-submit"
+                    className="tournament-inline-submit"
                   >
                     {joining ? t('tournament.joining') : t('tournament.joinNow')}
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <Link
+                <Button
+                  as={Link}
                   to="/login"
-                  className="app-button-primary tournament-cta-button"
+                  className="tournament-cta-button"
                 >
                   {t('auth.login')}
-                </Link>
+                </Button>
               )}
 
               <p className="text-gray-400 text-sm mt-4">
                 {predictionsLocked ? t('tournament.predictionsClosedHelp') : t('tournament.joinHelp')}
               </p>
-            </div>
+            </Panel>
           ) : null}
 
           {canSubmitPredictions ? (
             <div className="tournament-action-row">
-              <button
+              <Button
                 onClick={() => navigate(`/tournament/${id}/predict`)}
-                className="app-button-primary tournament-cta-button"
+                className="tournament-cta-button"
               >
                 {hasPredictions ? t('predict.makePredictions') : t('home.enterPredictions')}
-              </button>
+              </Button>
 
               {hasPredictions && (
-                <Link
+                <Button
+                  as={Link}
                   to={`/leaderboard/${id}`}
-                  className="app-button-secondary tournament-cta-button"
+                  variant="secondary"
+                  className="tournament-cta-button"
                 >
                   {t('home.viewLeaderboard')}
-                </Link>
+                </Button>
               )}
             </div>
           ) : user && isMember && predictionsLocked ? (
-            <div className="sport-panel rounded-panel-lg border border-amber-500/30 p-6">
-              <h2 className="text-2xl font-bold text-white mb-3">
+            <Panel padding="normal" radius="xl" className="tournament-section border border-amber-500/30">
+              <DisplayText as="h2" className="text-2xl text-white">
                 {t('tournament.predictionsClosed')}
-              </h2>
+              </DisplayText>
               <p className="text-gray-300 mb-5">
                 {t('tournament.predictionsClosedHelp')}
               </p>
               <div className="flex flex-wrap gap-4">
                 {hasPredictions ? (
-                  <Link
+                  <Button
+                    as={Link}
                     to={`/leaderboard/${id}`}
-                    className="app-button-secondary tournament-cta-button"
+                    variant="secondary"
+                    className="tournament-cta-button"
                   >
                     {t('home.viewLeaderboard')}
-                  </Link>
+                  </Button>
                 ) : null}
               </div>
-            </div>
+            </Panel>
           ) : null}
         </div>
 
         {canManageLeagues ? (
-          <div className="mb-12">
-            <h2 className="sport-display text-4xl text-white mb-8">
+          <section className="tournament-section">
+            <DisplayText as="h2" className="text-4xl text-white">
               {t('tournament.leagues')}
-            </h2>
+            </DisplayText>
 
-            <div className="grid lg:grid-cols-2 gap-8 mb-8">
-              <div className="sport-panel rounded-panel-lg p-6">
-                <h3 className="sport-display text-2xl text-white mb-3">
+            <div className="tournament-league-grid">
+              <Panel padding="normal" radius="xl" className="tournament-section">
+                <DisplayText as="h3" className="text-2xl text-white">
                   {t('tournament.createLeague')}
-                </h3>
+                </DisplayText>
                 <p className="text-gray-400 mb-6">
                   {t('tournament.createLeagueHelp')}
                 </p>
@@ -509,20 +482,20 @@ export default function Tournament() {
                     rows={3}
                     className="app-textarea"
                   />
-                  <button
+                  <Button
                     onClick={handleCreateLeague}
                     disabled={creatingLeague}
-                    className="app-button-primary tournament-submit-button"
+                    className="tournament-submit-button"
                   >
                     {creatingLeague ? t('tournament.creatingLeague') : t('tournament.createLeagueNow')}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Panel>
 
-              <div className="sport-panel rounded-panel-lg p-6">
-                <h3 className="sport-display text-2xl text-white mb-3">
+              <Panel padding="normal" radius="xl" className="tournament-section">
+                <DisplayText as="h3" className="text-2xl text-white">
                   {t('tournament.joinLeague')}
-                </h3>
+                </DisplayText>
                 <p className="text-gray-400 mb-6">
                   {t('tournament.joinLeagueHelp')}
                 </p>
@@ -534,31 +507,32 @@ export default function Tournament() {
                     placeholder={t('tournament.joinCode')}
                     className="app-input"
                   />
-                  <button
+                  <Button
                     onClick={handleJoinLeague}
                     disabled={joiningLeague}
-                    className="app-button-primary tournament-inline-submit"
+                    className="tournament-inline-submit"
                   >
                     {joiningLeague ? t('tournament.joining') : t('tournament.joinLeagueNow')}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Panel>
             </div>
 
-            <div className="sport-panel rounded-panel-lg p-6">
-              <h3 className="sport-display text-2xl text-white mb-6">
+            <Panel padding="normal" radius="xl" className="tournament-section">
+              <DisplayText as="h3" className="text-2xl text-white">
                 {t('tournament.yourLeagues')}
-              </h3>
+              </DisplayText>
               {leagues.length === 0 ? (
                 <p className="text-gray-400">{t('tournament.noLeaguesYet')}</p>
               ) : (
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="tournament-owned-leagues">
                   {leagues.map((league) => (
-                    <div
+                    <Panel
                       key={league.id}
-                      className="rounded-panel-sm border border-white/8 bg-white/3 p-5"
+                      radius="md"
+                      className="tournament-league-card"
                     >
-                      <h4 className="sport-display text-xl text-white mb-2">{league.name}</h4>
+                      <DisplayText as="h4" className="text-xl text-white mb-2">{league.name}</DisplayText>
                       {league.description ? (
                         <p className="text-gray-400 mb-4">{league.description}</p>
                       ) : null}
@@ -575,23 +549,26 @@ export default function Tournament() {
                           </p>
                         ) : null}
                       </div>
-                      <div className="flex flex-wrap gap-3">
-                        <Link
+                      <div className="tournament-card-actions">
+                        <Button
+                          as={Link}
                           to={`/league/${league.id}`}
-                          className="app-button-secondary tournament-cta-button"
+                          variant="secondary"
+                          className="tournament-cta-button"
                         >
                           {t('tournament.openLeague')}
-                        </Link>
+                        </Button>
                         {canSubmitPredictions ? (
-                          <Link
+                          <Button
+                            as={Link}
                             to={`/league/${league.id}/predict`}
-                            className="app-button-primary tournament-cta-button"
+                            className="tournament-cta-button"
                           >
                             {t('tournament.openLeaguePredictions')}
-                          </Link>
+                          </Button>
                         ) : null}
                         {primaryEntry?.options?.find((option) => option.scopeKey === `league:${league.id}`)?.hasPredictions ? (
-                          <button
+                          <Button
                             type="button"
                             onClick={() =>
                               handleSetPrimaryEntry(
@@ -603,39 +580,42 @@ export default function Tournament() {
                               !canChangePrimaryEntry ||
                               currentPrimaryOption?.scopeKey === `league:${league.id}`
                             }
-                            className="app-button-secondary tournament-cta-button"
+                            variant="secondary"
+                            className="tournament-cta-button"
                           >
                             {currentPrimaryOption?.scopeKey === `league:${league.id}`
                               ? t('tournament.currentPrimaryEntry')
                               : t('tournament.setPrimaryEntry')}
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
-                    </div>
+                    </Panel>
                   ))}
                 </div>
               )}
-            </div>
-          </div>
+            </Panel>
+          </section>
         ) : null}
 
-        <div className="mb-12">
-            <h2 className="sport-display text-4xl text-white mb-8">
+        <section className="tournament-section">
+          <DisplayText as="h2" className="text-4xl text-white">
             {t('tournament.groups')}
-          </h2>
+          </DisplayText>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="tournament-groups-grid">
             {groups.map((group) => (
-              <div
+              <Panel
                 key={group.id}
-                className="sport-panel rounded-panel-lg p-6"
+                padding="normal"
+                radius="xl"
+                className="tournament-section"
               >
-                <div className="score-pill mb-4 text-emerald-200">
+                <Pill className="text-emerald-200">
                   {group.name}
-                </div>
-                <h3 className="sport-display text-2xl text-white mb-4">
+                </Pill>
+                <DisplayText as="h3" className="text-2xl text-white">
                   {group.name}
-                </h3>
+                </DisplayText>
 
                 <div className="space-y-2">
                   {group.teams?.length ? (
@@ -659,24 +639,24 @@ export default function Tournament() {
                     <p className="text-gray-400">{t('common.noResults')}</p>
                   )}
                 </div>
-              </div>
+              </Panel>
             ))}
           </div>
-        </div>
+        </section>
 
         {rounds.length ? (
-          <div className="mb-12">
-            <h2 className="sport-display text-4xl text-white mb-8">
+          <section className="tournament-section">
+            <DisplayText as="h2" className="text-4xl text-white">
               {t('tournament.knockoutBracket')}
-            </h2>
+            </DisplayText>
 
             <div className="space-y-8">
               {rounds.map((round) => (
-                <div key={round.id} className="sport-panel rounded-panel-lg p-6">
-                  <h3 className="sport-display text-2xl text-white mb-6">
+                <Panel key={round.id} padding="normal" radius="xl" className="tournament-section">
+                  <DisplayText as="h3" className="text-2xl text-white">
                     {getRoundLabel(round, t)}
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-6">
+                  </DisplayText>
+                  <div className="tournament-knockout-grid">
                     {(round.matches || []).map((match) => {
                       const matchup = resolveMatchParticipants({
                         match,
@@ -729,30 +709,45 @@ export default function Tournament() {
                       );
                     })}
                   </div>
-                </div>
+                </Panel>
               ))}
             </div>
-          </div>
+          </section>
         ) : null}
 
         {canSubmitPredictions && !hasPredictions && (
-          <div className="sport-panel-strong rounded-panel-2xl p-12 text-center">
-            <h3 className="sport-display text-4xl text-white mb-4">
+          <Panel variant="strong" padding="normal" radius="2xl" className="tournament-empty-state text-center">
+            <DisplayText as="h3" className="text-4xl text-white mb-4">
               {t('tournament.makeYourPredictions')}
-            </h3>
+            </DisplayText>
             <p className="text-emerald-200 mb-8 text-lg">
               {t('tournament.noPredictionsYet')}
             </p>
-            <button
+            <Button
               onClick={() => navigate(`/tournament/${id}/predict`)}
-              className="app-button-primary tournament-cta-button"
+              className="tournament-cta-button"
             >
               {t('tournament.startPredicting')}
-            </button>
-          </div>
+            </Button>
+          </Panel>
         )}
-      </div>
+      </PageShell>
     </div>
+  );
+}
+
+function TournamentStatCard({ label, value, detail, icon, valueClassName = '' }) {
+  return (
+    <Panel radius="md" className="tournament-stat-card">
+      <p className="tournament-stat-card__label">
+        {icon ? <span className="shrink-0">{icon}</span> : null}
+        <span>{label}</span>
+      </p>
+      <p className={`tournament-stat-card__value ${valueClassName}`.trim()}>
+        {value}
+      </p>
+      {detail ? <p className="tournament-stat-card__detail">{detail}</p> : null}
+    </Panel>
   );
 }
 

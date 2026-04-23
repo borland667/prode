@@ -12,6 +12,7 @@ import {
 import { get, patch, post } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function Profile() {
   const { user, logout, loading: authLoading, refreshUser } = useAuth();
@@ -60,7 +61,7 @@ export default function Profile() {
 
   if (authLoading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -118,7 +119,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -157,50 +158,50 @@ export default function Profile() {
   ];
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell-narrow">
-        <div className="sport-panel-strong mb-8 rounded-panel-2xl page-panel-pad">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-5">
+    <div className="ds-shell min-h-screen">
+      <PageShell size="narrow" className="profile-page">
+        <Panel variant="strong" padding="normal" radius="2xl" className="profile-hero">
+          <div className="profile-hero__layout">
+            <div className="profile-hero__identity">
               {profileForm.avatarUrl ? (
                 <img
                   src={profileForm.avatarUrl}
                   alt={profile?.user?.name || user.name}
-                  className="h-24 w-24 rounded-panel-lg border border-white/10 object-cover shadow-ds-profile-photo"
+                  className="profile-hero__avatar border border-white/10 object-cover shadow-ds-profile-photo"
                 />
               ) : (
-                <div className="surface-accent-gradient flex h-24 w-24 items-center justify-center rounded-panel-lg text-5xl font-bold shadow-ds-profile-avatar">
+                <div className="profile-hero__avatar surface-accent-gradient flex items-center justify-center text-5xl font-bold shadow-ds-profile-avatar">
                   {profile?.user?.name?.[0] || user.name?.[0] || 'U'}
                 </div>
               )}
 
-              <div>
-                <div className="score-pill mb-4 text-emerald-200">
+              <div className="profile-hero__copy">
+                <Pill compact className="mb-4 text-emerald-200">
                   {t('nav.profile')}
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                </Pill>
+                <h1 className="mb-2 text-4xl font-bold text-white md:text-5xl">
                   {profile?.user?.name || user.name}
                 </h1>
-                <p className="text-slate-300 text-lg">
+                <p className="text-lg text-slate-300">
                   {profile?.user?.email || user.email}
                 </p>
               </div>
             </div>
 
-            <div className="account-pill-group">
-              <div className="account-pill">
+            <div className="profile-hero__badges">
+              <Pill className="text-emerald-200">
                 <Globe2 size={16} className={visibilityEnabled ? 'text-emerald-300' : 'text-slate-400'} />
                 <span>
                   {visibilityEnabled ? t('auth.globalRankingsVisible') : t('leaderboard.hiddenRank')}
                 </span>
-              </div>
-              <div className="account-pill">
+              </Pill>
+              <Pill className="text-cyan-200">
                 <ShieldCheck size={16} className="text-cyan-300" />
                 <span>{t('profile.security')}</span>
-              </div>
+              </Pill>
             </div>
           </div>
-        </div>
+        </Panel>
 
         {error ? (
           <div className="account-feedback account-feedback-error mb-8">
@@ -214,31 +215,31 @@ export default function Profile() {
           </div>
         ) : null}
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5 mb-8">
+        <div className="profile-stat-grid">
           {statCards.map((stat) => {
             const Icon = stat.icon;
 
             return (
-              <div key={stat.key} className="sport-panel rounded-panel-sm p-5">
-                <div className={`flex items-center gap-3 mb-3 ${stat.tone}`}>
+              <Panel key={stat.key} radius="sm" className="profile-stat-card">
+                <div className={`mb-3 flex items-center gap-3 ${stat.tone}`}>
                   <Icon size={18} />
-                  <span className="score-pill">{stat.label}</span>
+                  <Pill compact>{stat.label}</Pill>
                 </div>
-                <p className="sport-display text-4xl text-white">
+                <DisplayText as="p" className="text-4xl text-white">
                   {stat.value}
-                </p>
-              </div>
+                </DisplayText>
+              </Panel>
             );
           })}
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.3fr_0.92fr] lg:gap-10">
-          <div className="sport-panel-strong space-y-5 rounded-panel-lg page-panel-pad">
-            <h2 className="sport-display text-3xl text-white">
+        <div className="profile-main-grid">
+          <Panel variant="strong" padding="normal" radius="lg" className="profile-section">
+            <DisplayText className="text-3xl text-white">
               {t('profile.profileDetails')}
-            </h2>
+            </DisplayText>
 
-            <div>
+            <div className="profile-field">
               <label className="account-label">
                 {t('auth.displayName')}
               </label>
@@ -252,7 +253,7 @@ export default function Profile() {
               />
             </div>
 
-            <div>
+            <div className="profile-field">
               <label className="account-label">
                 {t('auth.avatarUrl')}
               </label>
@@ -267,17 +268,17 @@ export default function Profile() {
               />
             </div>
 
-            <div className="account-toggle-card">
-              <div className="flex items-start justify-between gap-4">
-                <div className="pr-2">
-                  <div className="score-pill text-emerald-200 mb-3">
+            <div className="account-toggle-card profile-toggle-card">
+              <div className="profile-toggle-card__content">
+                <div className="min-w-0">
+                  <Pill className="mb-3 text-emerald-200">
                     <Globe2 size={14} />
                     {t('nav.globalLeaderboard')}
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">
+                  </Pill>
+                  <h3 className="profile-toggle-card__title">
                     {t('auth.globalRankingsVisible')}
                   </h3>
-                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                  <p className="profile-toggle-card__text">
                     {t('auth.globalRankingsVisibleHelp')}
                   </p>
                 </div>
@@ -297,37 +298,39 @@ export default function Profile() {
               </div>
             </div>
 
-            <button
+            <Button
               onClick={handleSaveProfile}
               disabled={savingProfile}
-              className="sport-button w-full py-3.5 rounded-2xl text-slate-950 font-bold disabled:opacity-50 disabled:cursor-not-allowed transition"
+              block
+              className="disabled:cursor-not-allowed disabled:opacity-50"
             >
               {savingProfile ? t('auth.updatingProfile') : t('auth.updateProfile')}
-            </button>
-          </div>
+            </Button>
+          </Panel>
 
-          <div className="space-y-6">
-            <div className="sport-panel space-y-5 rounded-panel-lg page-panel-pad">
-              <h2 className="sport-display text-3xl text-white">
+          <div className="profile-side-stack">
+            <Panel padding="normal" radius="lg" className="profile-section">
+              <DisplayText className="text-3xl text-white">
                 {t('profile.rankingPrivacy')}
-              </h2>
-              <p className="text-slate-300 leading-relaxed">
-                {t('profile.security')}
-              </p>
-              <div className="account-subtle-panel">
-                <p className="text-sm text-slate-300">
+              </DisplayText>
+              <div className="account-subtle-panel profile-subtle-panel">
+                <Pill compact className="mb-3 text-cyan-200">
+                  <Globe2 size={14} />
+                  {t('nav.globalLeaderboard')}
+                </Pill>
+                <p className="profile-subtle-panel__text">
                   {visibilityEnabled
                     ? t('auth.globalRankingsVisibleHelp')
                     : t('leaderboard.visibilityOff')}
                 </p>
               </div>
-            </div>
+            </Panel>
 
-            <div className="sport-panel-strong space-y-5 rounded-panel-lg page-panel-pad">
-              <h2 className="sport-display text-3xl text-white">
+            <Panel variant="strong" padding="normal" radius="lg" className="profile-section">
+              <DisplayText className="text-3xl text-white">
                 {t('profile.security')}
-              </h2>
-              <div>
+              </DisplayText>
+              <div className="profile-field">
                 <label className="account-label">
                   {t('auth.currentPassword')}
                 </label>
@@ -340,7 +343,7 @@ export default function Profile() {
                   className="account-input"
                 />
               </div>
-              <div>
+              <div className="profile-field">
                 <label className="account-label">
                   {t('auth.newPassword')}
                 </label>
@@ -353,34 +356,38 @@ export default function Profile() {
                   className="account-input"
                 />
               </div>
-              <button
+              <Button
+                variant="secondary"
                 onClick={handleChangePassword}
                 disabled={savingPassword}
-                className="sport-button-secondary w-full py-3.5 rounded-2xl text-emerald-300 font-bold hover:text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                block
+                className="disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {savingPassword ? t('auth.changingPassword') : t('auth.changePassword')}
-              </button>
-            </div>
+              </Button>
+            </Panel>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4 mt-8">
-          <button
+        <div className="profile-footer-actions">
+          <Button
+            variant="ghost"
             onClick={() => navigate('/')}
-            className="account-secondary-action"
+            block
           >
             <ArrowLeft size={18} />
             <span>{t('common.back')}</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
             onClick={handleLogout}
-            className="account-danger-action"
+            block
           >
             <LogOut size={18} />
             <span>{t('nav.logout')}</span>
-          </button>
+          </Button>
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

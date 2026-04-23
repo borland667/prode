@@ -17,6 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { get } from '../utils/api';
 import { getLocalizedName, getModeLabel } from '../utils/tournament';
+import { Button, DisplayText, Panel } from './ui/DesignSystem';
 
 function formatClosingDate(dateValue, formatDate) {
   if (!dateValue) {
@@ -51,26 +52,30 @@ function NavDropdown({
 
   return (
     <div className="relative group after:absolute after:left-0 after:right-0 after:top-full after:h-4 after:content-['']">
-      <button
-        type="button"
-        className="nav-pill-button"
+      <Button
+        variant="ghost"
+        size="sm"
+        className="nav-button"
       >
         <Icon size={14} />
         <span>{label}</span>
-      </button>
+      </Button>
 
       <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-96 pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
-        <div className="sport-panel-strong rounded-panel-md p-4 shadow-ds-popover">
+        <Panel variant="strong" radius="md" className="nav-dropdown-panel p-4 shadow-ds-popover">
           <div className="flex items-center justify-between mb-3">
-            <p className="sport-display text-lg text-white">{title}</p>
+            <DisplayText as="p" className="text-lg text-white">{title}</DisplayText>
             {footerTo ? (
-              <Link
+              <Button
+                as={Link}
                 to={footerTo}
                 onClick={handleNavigate}
-                className="text-sm font-semibold text-emerald-300 hover:text-white transition"
+                variant="ghost"
+                size="sm"
+                className="nav-dropdown-footer"
               >
                 {footerLabel}
-              </Link>
+              </Button>
             ) : null}
           </div>
 
@@ -85,7 +90,7 @@ function NavDropdown({
                   key={item.id}
                   to={item.to}
                   onClick={handleNavigate}
-                  className="flex items-start justify-between gap-3 rounded-2xl border border-white/8 bg-white/4 px-4 py-3 text-left transition hover:border-emerald-400/40 hover:bg-white/8"
+                  className="nav-dropdown-link"
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-white truncate">{item.title}</p>
@@ -99,7 +104,7 @@ function NavDropdown({
               ))
             )}
           </div>
-        </div>
+        </Panel>
       </div>
     </div>
   );
@@ -266,9 +271,9 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50">
+    <nav className="nav-frame sticky top-0 z-50">
       <div className="border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-1.5 sm:px-6 lg:px-8">
           <div className="flex min-h-9 items-center justify-between text-xs uppercase tracking-marquee text-slate-400 md:text-sm">
             <div className="flex items-center gap-2">
               <Activity size={12} className="text-emerald-400" />
@@ -302,12 +307,12 @@ export default function Navbar() {
 
       <div className="border-b border-white/5 bg-slate-950/75 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center min-h-20 gap-6">
+          <div className="flex justify-between items-center min-h-[4.5rem] gap-5">
             <Link
               to="/"
               className="flex items-center gap-3 text-white transition hover:text-emerald-300"
             >
-              <div className="surface-accent-gradient flex h-11 w-11 items-center justify-center rounded-2xl shadow-ds-brand-mark">
+              <div className="surface-accent-gradient flex h-10 w-10 items-center justify-center rounded-2xl shadow-ds-brand-mark">
                 <Shield size={22} />
               </div>
               <div className="leading-none">
@@ -318,7 +323,7 @@ export default function Navbar() {
               </div>
             </Link>
 
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2.5">
               <NavDropdown
                 icon={LayoutGrid}
                 label={t('nav.tournaments')}
@@ -329,7 +334,7 @@ export default function Navbar() {
                 footerTo="/#active-tournaments"
                 onNavigate={() => setIsOpen(false)}
                 renderMeta={(item) => (
-                  <span className={`score-pill ${item.accessType === 'private' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                  <span className={`nav-dropdown-meta ${item.accessType === 'private' ? 'is-private text-amber-300' : 'is-public text-emerald-300'}`}>
                     {item.accessType === 'private' ? t('tournament.privateAccess') : t('tournament.publicAccess')}
                   </span>
                 )}
@@ -344,50 +349,60 @@ export default function Navbar() {
                   emptyLabel={t('nav.noLeaguesYet')}
                   renderMeta={(item) =>
                     item.isOwner ? (
-                      <span className="score-pill text-cyan-300">{t('tournament.leagueSettings')}</span>
+                      <span className="nav-dropdown-meta text-cyan-300">{t('tournament.leagueSettings')}</span>
                     ) : null
                   }
                 />
               ) : null}
 
-              <Link
+              <Button
+                as={Link}
                 to={leaderboardLink}
                 onClick={handleLeaderboardClick}
-                className="nav-pill-button"
+                variant="ghost"
+                size="sm"
+                className="nav-button"
               >
                 <Trophy size={14} />
                 <span>{t('nav.leaderboard')}</span>
-              </Link>
+              </Button>
 
               {user ? (
-                <Link
+                <Button
+                  as={Link}
                   to="/leaderboard/global"
-                  className="nav-pill-button"
+                  variant="ghost"
+                  size="sm"
+                  className="nav-button"
                 >
                   <Trophy size={14} />
                   <span>{t('nav.globalLeaderboard')}</span>
-                </Link>
+                </Button>
               ) : null}
 
               {user?.isAdmin ? (
-                <Link
+                <Button
+                  as={Link}
                   to="/admin"
-                  className="nav-pill-button"
+                  variant="ghost"
+                  size="sm"
+                  className="nav-button"
                 >
                   {t('nav.admin')}
-                </Link>
+                </Button>
               ) : null}
 
-              <button
-                type="button"
+              <Button
                 onClick={toggleTheme}
-                className="nav-pill-button"
+                variant="ghost"
+                size="sm"
+                className="nav-button"
                 aria-label={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
                 title={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
               >
                 {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
                 <span>{theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}</span>
-              </button>
+              </Button>
 
               <div className="nav-segment">
                 <button
@@ -413,7 +428,7 @@ export default function Navbar() {
               </div>
 
               {user ? (
-                <div className="flex items-center space-x-4 border-l border-white/10 pl-5">
+                <div className="flex items-center gap-3 border-l border-white/10 pl-4">
                   <Link
                     to="/profile"
                     className="nav-profile-link"
@@ -431,19 +446,22 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-3 border-l border-white/10 pl-5">
+                <div className="flex items-center gap-2.5 border-l border-white/10 pl-4">
                   <Link
                     to="/login"
                     className="nav-quiet-button"
                   >
                     {t('nav.login')}
                   </Link>
-                  <Link
+                  <Button
+                    as={Link}
                     to="/register"
-                    className="sport-button rounded-full px-5 py-2.5 font-bold text-slate-950 transition"
+                    variant="primary"
+                    size="sm"
+                    className="nav-primary-button font-bold transition"
                   >
                     {t('nav.register')}
-                  </Link>
+                  </Button>
                 </div>
               )}
             </div>

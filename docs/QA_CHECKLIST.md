@@ -1,223 +1,321 @@
 # QA Checklist
 
-Use this document as the manual test plan for local development and release smoke testing.
+Use this document as the manual regression and release smoke-test plan.
 
-## Preflight
+## 1. Preflight
 
-- Run `nvm use`
-- Run `npm run db:migrate`
-- Run `npm run db:seed`
-- Run `npm run dev`
-- Open the app at `http://localhost:5173`
+Run:
 
-## Local Admin Setup
+```bash
+nvm use
+npm install
+npm run db:migrate
+npm run db:seed
+npm run db:backfill:translations
+npm run dev
+```
 
-The seed does not create an admin user automatically.
+Open:
 
-1. Register a normal account from the app.
-2. Open Prisma Studio with `npm run db:studio`.
-3. Open the `User` table and change that account's `role` to `ADMIN`.
-4. Refresh the app and confirm the `Admin` entry appears in the navbar.
+- app: `http://localhost:5173`
+- API health: `http://localhost:3001/api/health`
 
-## Test Accounts
+## 2. Local Admin Setup
 
-- `User A`: regular participant
-- `User B`: second participant for league and leaderboard checks
-- `Admin`: promoted account for tournament management
+The seed does not automatically create an admin user.
 
-## Flow 1: Guest Discovery
+1. Register a normal account.
+2. Run `npm run db:studio`.
+3. Open the `User` table.
+4. Change the account `role` to `ADMIN`.
+5. Refresh the app and confirm the admin route is available.
 
-- Open `/`
-- Confirm the home page loads without auth
-- Confirm the featured tournament card renders
-- Confirm the active tournaments section renders at least one tournament
-- Confirm the rules panel matches the featured tournament mode
-- Confirm light mode and dark mode both render correctly
-- Confirm the language toggle switches visible copy
+## 3. Suggested Test Accounts
 
-Expected:
-- No authenticated controls are required to browse the landing page
-- Tournament cards link to tournament detail pages
+- `Admin`
+- `User A`
+- `User B`
 
-## Flow 2: Registration, Login, Logout
+Use separate browsers or private windows when you need concurrent sessions.
 
-1. Register `User A`
-2. Log out
-3. Log in again with email/password
-4. Log out again
+## 4. Guest Experience
 
-Expected:
-- Registration lands on the authenticated experience
-- Login restores the same user
-- Logout removes authenticated navigation and returns to guest behavior
-
-## Flow 3: Forgot Password And Reset Password
-
-1. Open `/forgot-password`
-2. Submit `User A` email
-3. In local non-production mode, copy the returned reset URL from the success panel
-4. Open the reset URL
-5. Submit a new password
-6. Log in with the new password
+1. Open `/`.
+2. Confirm the landing page loads without auth.
+3. Confirm the featured tournament card renders.
+4. Confirm active tournaments render.
+5. Confirm rules are tied to the featured tournament mode.
+6. Switch language.
+7. Switch theme.
 
 Expected:
-- The forgot-password flow succeeds without exposing whether an email exists
-- Local dev shows a reset URL
-- The reset token works once
-- Login succeeds with the new password
 
-## Flow 4: Profile And Account Management
+- guest browsing works without login
+- copy changes with language
+- dates and numbers match the browser locale
+- the page remains readable in both light and dark modes
 
-1. Open `/profile`
-2. Confirm account stats load
-3. Update display name
-4. Update avatar URL
-5. Confirm the navbar/profile page reflect the new identity
-6. Change password from the security section
+## 5. Registration, Login, Logout
 
-Expected:
-- Profile data comes from real API state, not placeholders
-- Name/avatar updates persist immediately
-- Password change succeeds and future login uses the new password
-
-## Flow 5: Public Tournament Participation
-
-1. As `User A`, open the seeded public tournament page
-2. Confirm tournament metadata renders
-3. Confirm prediction CTA is visible while the tournament is open
-4. Enter predictions
-5. Save predictions
-6. Return to the tournament page
+1. Register `User A`.
+2. Log out.
+3. Log in again with the same account.
+4. Log out again.
 
 Expected:
-- User can submit group and knockout predictions
-- Returning to the tournament shows the prediction flow as already started
-- Predictions persist on reload
 
-## Flow 6: Private Tournament Join Flow
+- registration authenticates the new user
+- login restores the session
+- logout removes authenticated navigation
 
-1. As `Admin`, open `/admin`
-2. Switch the tournament to `private`
-3. Save settings
-4. Copy the join code
-5. As `User B`, open the same tournament
-6. Confirm the tournament requires a join code
-7. Try a bad code
-8. Try the correct code
+## 6. Forgot Password And Reset Password
 
-Expected:
-- Non-members cannot access prediction/leaderboard actions
-- Invalid code is rejected
-- Valid code grants membership and unlocks participation
-
-## Flow 7: Prediction Locking
-
-1. As `Admin`, set the tournament `closingDate` to a time in the past using the tournament builder or DB
-2. Reload the tournament as `User A`
-3. Attempt to open prediction entry
-4. Attempt to join the private tournament as a new user if applicable
-5. Attempt to save predictions directly if already inside the wizard
+1. Open `/forgot-password`.
+2. Submit `User A` email.
+3. In local development, capture the returned reset URL or token payload.
+4. Open the reset link.
+5. Set a new password.
+6. Log in with the new password.
 
 Expected:
-- Tournament status resolves to `closed`
-- Prediction CTAs disappear or switch to a locked state
-- API rejects new prediction submissions
-- API rejects new joins once the tournament is closed
 
-## Flow 8: League Lifecycle
+- forgot-password succeeds without leaking account existence
+- reset token works once
+- new password replaces the old one
 
-1. As `User A`, create a private league inside the tournament
-2. Confirm the new league appears in `Your leagues`
-3. Copy the league join code
-4. As `User B`, join the league
-5. Open the league page as both users
-6. As `User A` (owner), rename the league
-7. Regenerate the join code
-8. As `User B`, leave the league
-9. As `User A`, delete the league
+## 7. Profile And Global Ranking Visibility
 
-Expected:
-- League create/join works
-- League leaderboard is limited to league members
-- Owner can edit name/description and rotate code
-- Members can leave
-- Owner can delete the league
-
-## Flow 9: Admin Tournament Builder
-
-1. As `Admin`, open the tournament builder section
-2. Create a small test tournament with custom groups and rounds
-3. Confirm it appears in the tournament selector and on the homepage
-4. Edit that same tournament structure before any members/predictions exist
-5. After adding participation or predictions, try to edit structure again
+1. Open `/profile`.
+2. Confirm stats load.
+3. Update display name.
+4. Update avatar URL.
+5. Toggle global ranking visibility off.
+6. Reload the page.
+7. Toggle visibility back on.
+8. Change password from the profile page.
 
 Expected:
-- New tournaments can be created without seeding
-- Empty tournaments can be structurally edited
-- Tournaments with real activity reject unsafe structure edits
 
-## Flow 10: Admin Results And Automatic Score Updates
+- identity updates persist
+- navbar updates with the new name/avatar
+- visibility toggle persists
+- password change succeeds
 
-1. Ensure `User A` and `User B` both have predictions in the same tournament
-2. As `Admin`, enter group results
-3. Open the leaderboard in another session
-4. As `Admin`, enter knockout results
-5. Refresh the leaderboard again
-6. Optionally press `Calculate Scores`
+## 8. Public Tournament Participation
 
-Expected:
-- Leaderboard updates automatically after results are saved
-- Manual score calculation still works as a repair/re-sync action
-- Stored scores and displayed leaderboard stay aligned
-
-## Flow 11: Leaderboards And Prizes
-
-1. Open the tournament leaderboard
-2. Confirm round columns match the tournament structure
-3. Confirm total scores are populated
-4. If prizes are enabled, confirm prize pool math renders
-5. Disable prizes from admin and reload
+1. As `User A`, open the seeded public tournament.
+2. Confirm tournament metadata renders.
+3. Open the prediction wizard.
+4. Fill the group stage.
+5. Continue through knockout rounds.
+6. Save.
+7. Return to the tournament page.
 
 Expected:
-- Round scoring columns are dynamic
-- Prize pool appears only when enabled
-- Leaderboard remains viewable according to tournament access rules
 
-## Flow 12: Spectator Tournament View
+- the tournament page recognizes saved predictions
+- user can return to the prediction wizard before lock
+- predictions persist on reload
 
-1. Enter some group results and knockout winners as `Admin`
-2. Open the tournament page as a spectator or participant
-3. Review the group cards
-4. Review the knockout progress section
+## 9. Random Fill
+
+1. Open the prediction wizard for a tournament or league.
+2. Use the random-fill action.
+3. Confirm the flow advances to the final step.
+4. Move backward through the steps.
+5. Confirm all picks are populated consistently.
 
 Expected:
-- Group cards reorder to reflect saved standings
-- Top positions are visually obvious
-- Knockout rounds show resolved participants and marked winners
 
-## Optional Google Auth Check
+- random fill populates every step
+- downstream knockout picks remain valid
+- best-third-place assignments are unique where required
 
-Only run this if local Google OAuth is configured.
+## 10. Private Tournament Join
 
-1. Open login
-2. Use Google sign-in
-3. Confirm the app returns to the authenticated state
-4. Confirm an existing email account links correctly instead of duplicating users
+1. As `Admin`, set a tournament to `private`.
+2. Save and copy the tournament join code.
+3. As `User B`, open the tournament.
+4. Confirm prediction actions are blocked.
+5. Try an invalid code.
+6. Try the correct code.
 
-## Release Smoke Test Minimum
+Expected:
 
-Before shipping, at minimum re-run:
+- non-members cannot participate
+- bad code is rejected
+- valid code grants membership
+- prediction actions unlock after membership
 
-- Flow 1
-- Flow 2
-- Flow 5
-- Flow 7
-- Flow 8
-- Flow 9
-- Flow 10
-- Flow 12
+## 11. Prediction Locking
 
-## Notes
+1. As `Admin`, set the tournament closing date to the past.
+2. Reload as a normal user.
+3. Try to enter or save predictions.
+4. If the tournament is private, try to join after lock.
 
-- In local non-production mode, forgot-password returns a `resetUrl` in the API response so the reset flow can be tested without email infrastructure.
-- If you want a clean rerun, use `npx prisma migrate reset` and reseed.
+Expected:
+
+- prediction window shows locked/closed state
+- saves are rejected
+- new joins are blocked once the tournament is closed
+
+## 12. Scoped Predictions And Primary Entry
+
+1. As `User A`, save tournament-wide predictions.
+2. Create a league in the same tournament.
+3. Save a different prediction set inside that league.
+4. Open the tournament page.
+5. Set the league entry as the official primary entry.
+6. Switch it back to the tournament entry.
+
+Expected:
+
+- tournament and league predictions remain independent
+- the official-entry setting updates successfully
+- only scopes with predictions can be selected
+
+## 13. League Lifecycle
+
+1. As `User A`, create a league.
+2. Confirm it appears under personal leagues.
+3. Copy the join code.
+4. Copy the invite link.
+5. As `User B`, join by code.
+6. Open the invite link directly in a new session.
+7. Confirm the invite screen resolves correctly.
+8. Join the league from the invite screen if not already joined.
+9. As owner, rename the league and update the description.
+10. Regenerate the join code.
+11. As `User B`, leave the league.
+12. As owner, delete the league.
+
+Expected:
+
+- code join works
+- invite-link flow works
+- owner updates persist
+- join-code regeneration works
+- leaving and deleting behave correctly
+
+## 14. Tournament Leaderboard
+
+1. Open the tournament leaderboard.
+2. Confirm columns reflect tournament rounds.
+3. Confirm total score is present.
+4. If prizes are enabled, confirm prize information renders.
+5. Disable prizes from admin and reload.
+
+Expected:
+
+- tournament leaderboard reflects tournament-scope scores
+- round columns match the structure
+- prize UI only appears when enabled
+
+## 15. League Leaderboard
+
+1. Ensure at least two users are in the same league with predictions.
+2. Open the league page.
+3. Confirm only league members appear.
+4. Compare with the tournament leaderboard.
+
+Expected:
+
+- league leaderboard is filtered to that league
+- tournament leaderboard is not replaced by league-only results
+
+## 16. Global Rankings
+
+1. Ensure visible users have official entries and saved scores.
+2. Open `/leaderboard/global` while authenticated.
+3. Confirm the current user appears if visible.
+4. Turn visibility off from the profile page.
+5. Reload the global rankings.
+
+Expected:
+
+- global rankings require login
+- hidden users disappear from shared rankings
+- ranking is based on official tournament entries, not every possible league scope
+
+## 17. Spectator Tournament View
+
+1. As `Admin`, save group results.
+2. Save knockout results.
+3. Open the tournament page as a spectator or participant.
+4. Inspect the groups section.
+5. Inspect the knockout section.
+
+Expected:
+
+- groups reorder to reflect results
+- top placements are clear
+- knockout winners and resolved participants are visible
+
+## 18. Prediction Deletion API
+
+This is currently an API-level maintenance check.
+
+1. Save predictions for a tournament or league.
+2. Identify one prediction record ID from the database or API response path.
+3. Call `DELETE /api/predictions/:id` while the tournament is still open.
+4. Reload the relevant page.
+
+Expected:
+
+- predictions for the target scope are removed
+- associated score for that scope is removed
+- if the deleted scope was the official scope, the backend falls back safely when possible
+
+## 19. Admin Tournament Builder
+
+1. As `Admin`, open the admin page.
+2. Create a test tournament from JSON groups and rounds.
+3. Confirm it appears in the selector and homepage.
+4. Edit its structure before any participation exists.
+5. After adding members or predictions, try to edit structure again.
+
+Expected:
+
+- creation succeeds
+- empty tournaments are editable
+- active tournaments reject unsafe structural edits
+
+## 20. Admin Results And Score Recalculation
+
+1. Ensure at least two users have predictions in the same tournament.
+2. Save group results as `Admin`.
+3. Reload leaderboard views.
+4. Save knockout results.
+5. Reload leaderboard views again.
+6. Trigger manual `Calculate Scores`.
+
+Expected:
+
+- scores update after results are saved
+- manual recalculation still works
+- stored scores and displayed rankings stay aligned
+
+## 21. Optional Google OAuth Check
+
+Run only if local Google OAuth is configured.
+
+1. Open login.
+2. Use Google sign-in.
+3. Confirm the app returns authenticated.
+4. Confirm matching-email users are linked instead of duplicated.
+
+## 22. Minimum Release Smoke Test
+
+Before shipping, at minimum repeat:
+
+- guest experience
+- registration/login/logout
+- forgot-password/reset-password
+- public tournament predictions
+- private tournament join
+- scoped predictions and primary entry
+- league lifecycle
+- tournament leaderboard
+- global rankings
+- admin results and score recalculation

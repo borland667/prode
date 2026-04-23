@@ -1,127 +1,124 @@
-# Prode — Sports Prediction Game
+# Prode
 
-A sports prediction app centered on Prode-style tournament picks, where users predict group stage results and knockout round winners. Built with React, Express, PostgreSQL, and deployable to Netlify.
+Prode is a bilingual sports prediction app centered on Prode-style tournament picks. The current product is production-shaped around football tournaments that have:
 
-## Features
+- a group stage
+- a knockout bracket
+- optional best-third-place qualification slots
+- tournament-wide public or private access
+- optional prize configuration
+- private leagues inside a tournament
 
-- **Bracket Predictions** — Predict 1st/2nd in each group, then winners through the knockout rounds configured for the tournament
-- **Scoring System** — Group stage stays 4/3/2/1 pts, while knockout rounds scale linearly by tournament size
-- **Tournament Modes** — Rules, maximum score, and bracket behavior come from the tournament mode
-- **Auth** — Email/password registration, password reset, profile editing, and Google OAuth
-- **Bilingual** — English and Spanish, with browser-language detection and English fallback
-- **Themes** — Sports-oriented dark and light modes with persisted preference
-- **Leaderboard** — Live rankings with optional prize pool calculation (70/30 split when prizes are enabled)
-- **Global Rankings** — Logged-in players can view a cross-tournament leaderboard, and each profile can opt in or out of being shown there
-- **Private Groups** — Run tournaments as public competitions or closed groups with join codes
-- **Private Leagues** — Create invite-only leagues inside a tournament, each with its own join code and filtered leaderboard
-- **Admin Panel** — Create tournaments, edit safe structures, enter results, calculate scores, and manage tournament settings
-- **Spectator Views** — Tournament pages show current standings and knockout progress once results are entered
-- **Portable** — Netlify Functions now, Kubernetes later (see `docs/KEYCLOAK_MIGRATION.md`)
+The app currently supports one prediction engine: football group-stage plus knockout Prode. The product already uses generic tournament, mode, and sport metadata, but non-football formats such as NBA playoff series are not implemented yet.
+
+## Current Implementation Snapshot
+
+Implemented today:
+
+- public and private tournaments with join codes
+- tournament-scoped prediction flow for the main tournament entry
+- private leagues inside a tournament, each with its own prediction scope
+- official primary-entry selection per user per tournament
+- tournament leaderboard based on the tournament scope only
+- league leaderboard based on the corresponding league scope only
+- authenticated global rankings based on each user’s official primary entry and opt-in visibility setting
+- registration, login, logout, Google OAuth, forgot-password, reset-password, and profile management
+- browser language detection with English fallback
+- browser locale-aware date and number formatting
+- dark and light themes with persisted preference
+- World Cup 2026 support including best-third-place Round of 32 handling
+- seeded football tournament catalog beyond World Cup 2026
+- admin tournament builder, safe structure editing, tournament settings, results entry, and score recalculation
+- design-system-based UI migration in progress across the app
+
+Important current product rules:
+
+- the tournament page represents the tournament-wide official competition
+- users can also make separate predictions inside multiple private leagues
+- only one scope can count as the user’s official tournament entry at a time
+- global rankings only include logged-in users who have not opted out of visibility
+- the current global ranking uses official entries so multiple league entries do not inflate a user’s score
+
+## Seeded Tournament Catalog
+
+The local seed currently installs:
+
+- FIFA World Cup 2026
+- UEFA Euro
+- Copa América
+- AFC Asian Cup
+- Africa Cup of Nations
+
+Notes:
+
+- World Cup 2026 is the most complete seed and includes explicit best-third-place bracket handling.
+- The other seeded tournaments are curated, format-compatible football templates that fit the current engine. They are not live official imports.
 
 ## Tech Stack
 
-| Layer     | Technology                              |
-|-----------|-----------------------------------------|
-| Frontend  | React 19, Vite, Tailwind CSS            |
-| Backend   | Express.js (Netlify Functions)          |
-| Database  | PostgreSQL (Neon cloud or local Docker) |
-| ORM       | Prisma 7                                |
-| Auth      | JWT + Passport.js (Google OAuth)        |
-| Deploy    | Netlify (frontend + serverless API)     |
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 19, React Router 7, Vite 8 |
+| Styling | Tailwind CSS v4 via Vite plus semantic design-system classes in `src/index.css` |
+| Backend | Express 5 |
+| Database | PostgreSQL |
+| ORM | Prisma 7 |
+| Auth | JWT + Passport Google OAuth |
+| Email | Nodemailer |
+| Deploy Shape | SPA + API, Netlify-compatible |
 
----
+## Documentation Map
 
-## Local Development Setup
+- [README.md](./README.md): local setup, current features, commands, and operational notes
+- [docs/IMPLEMENTATION_STATUS.md](./docs/IMPLEMENTATION_STATUS.md): where the app stands today, what is working, and what is next
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): routes, backend responsibilities, schema model, prediction scopes, and API surface
+- [docs/QA_CHECKLIST.md](./docs/QA_CHECKLIST.md): manual QA and smoke-test checklist
+- [docs/ROADMAP.md](./docs/ROADMAP.md): prioritized next steps after the current implementation snapshot
+- [docs/DESIGN_SYSTEM.md](./docs/DESIGN_SYSTEM.md): UI primitives, styling rules, and migration guidance
+- [docs/KEYCLOAK_MIGRATION.md](./docs/KEYCLOAK_MIGRATION.md): future auth portability path
+- [AGENTS.md](./AGENTS.md): repository working standards and implementation expectations
+
+## Local Development
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v24.1.0
-- [nvm](https://github.com/nvm-sh/nvm) recommended
-- [Docker](https://docs.docker.com/get-docker/)
-- Git
+- Node.js `24.1.0`
+- `nvm` recommended
+- Docker
+- PostgreSQL if not using Docker
 
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/borland667/prode.git
-cd prode
-```
-
-### 2. Start PostgreSQL with Docker
-
-```bash
-docker run -d \
-  --name prode-postgres \
-  -e POSTGRES_USER=prode \
-  -e POSTGRES_PASSWORD=prode123 \
-  -e POSTGRES_DB=prode \
-  -p 5432:5432 \
-  postgres:16-alpine
-```
-
-Verify it's running:
-
-```bash
-docker ps
-```
-
-To stop/start later:
-
-```bash
-docker stop prode-postgres
-docker start prode-postgres
-```
-
-To reset the database completely:
-
-```bash
-docker rm -f prode-postgres
-# Then run the docker run command above again
-```
-
-### 3. Install dependencies
-
-If you use `nvm`:
+The repo includes `.nvmrc`, so the recommended setup is:
 
 ```bash
 nvm install
 nvm use
 ```
 
+### Install Dependencies
+
 ```bash
 npm install
 ```
 
-### 4. Configure environment
+### Configure Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your local settings:
+Recommended local values:
 
 ```env
-# Local Docker Postgres
 DATABASE_URL=postgresql://prode:prode123@localhost:5432/prode
-
-# Dedicated integration-test database target
-# Recommended: point this at your local Docker Postgres even if DATABASE_URL uses a remote DB
 TEST_DATABASE_URL=postgresql://prode:prode123@127.0.0.1:5432/prode
-
-# JWT secret (any random string for local dev)
 JWT_SECRET=local-dev-secret-change-me
 
-# Google OAuth (optional — skip for local dev without Google login)
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
 
-# Site URL
 SITE_URL=http://localhost:5173
 
-# Transactional email / password reset delivery
-# In local development you can leave SMTP unset and use the returned resetUrl.
-# In production, configure SMTP so forgot-password can deliver real email.
 EMAIL_FROM_ADDRESS=noreply@example.com
 EMAIL_FROM_NAME=Prode
 SMTP_HOST=localhost
@@ -131,185 +128,14 @@ SMTP_USER=
 SMTP_PASSWORD=
 ```
 
-### 5. Set up the database
+Notes:
 
-Apply the checked-in Prisma migrations to your local Postgres:
+- Google OAuth is optional in local development.
+- SMTP is optional in local development. Without SMTP, the forgot-password flow returns a local reset URL/token payload for testing.
 
-```bash
-npm run db:migrate
-```
-
-Generate the Prisma client:
+### Run PostgreSQL With Docker
 
 ```bash
-npx prisma generate
-```
-
-Seed the database with the current football tournament catalog:
-
-- FIFA World Cup 2026
-- UEFA Euro
-- Copa América
-- AFC Asian Cup
-- Africa Cup of Nations
-- Current app-mode Prode knockout/scoring rules for each seeded tournament
-- Prize pool enabled for the seeded World Cup, disabled for the other seeded tournaments
-- Public access by default, with private-group support available from the admin panel
-
-```bash
-npm run db:seed
-npm run db:backfill:translations
-```
-
-Note:
-The World Cup seed uses the official April 2026 line-up, the official FIFA 2026 Round of 32 structure, and the real best-third-place slot format used by the expanded 48-team bracket. The other seeded tournaments are format-compatible football templates that fit the current group-stage plus knockout Prode engine. In the prediction UI, users explicitly place the advancing third-placed teams into the eligible knockout slots whenever a tournament mode uses best-third-place qualifiers. `npm run db:backfill:translations` safely fills in missing translated tournament, round, mode, and team names for existing local rows without reseeding.
-
-### 6. Start the development servers
-
-```bash
-npm run dev
-```
-
-This runs both servers concurrently:
-- **Frontend** → http://localhost:5173 (Vite dev server with HMR)
-- **API** → http://localhost:3001 (Express, auto-restarts on file changes)
-
-Vite automatically proxies `/api/*` requests to the Express server.
-
-### 7. Open the app
-
-Go to http://localhost:5173 in your browser. You should see the Prode landing page with the seeded tournament catalog, including World Cup 2026.
-
-To test registration, create an account at http://localhost:5173/register.
-
----
-
-## Useful Commands
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start frontend + API together |
-| `npm run dev:web` | Start only the Vite frontend |
-| `npm run dev:api` | Start only the Express API |
-| `npm run build` | Build for production (output in `dist/`) |
-| `npm test` | Run automated unit tests for scoring and tournament utilities |
-| `npm run verify` | Run lint, Prisma schema validation, tests, and production build |
-| `npm run db:migrate` | Create/apply a local development migration |
-| `npm run db:migrate:deploy` | Apply checked-in migrations without creating new ones |
-| `npm run db:migrate:status` | Show migration status |
-| `npm run db:push` | Push schema directly without a migration (use sparingly) |
-| `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:validate` | Validate the Prisma schema |
-| `npm run db:seed` | Seed database with the current football tournament catalog |
-| `npm run db:backfill:translations` | Fill missing translated tournament, round, mode, and team names in the existing DB |
-| `npm run db:studio` | Open Prisma Studio (visual DB editor) |
-
-### Documentation
-
-- [README.md](README.md) — local setup, current feature summary, and operational notes
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — current architecture, data model, routes, and system boundaries
-- [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md) — manual QA and release smoke test checklist
-- [docs/ROADMAP.md](docs/ROADMAP.md) — next-step roadmap and product gaps still to close
-- [docs/KEYCLOAK_MIGRATION.md](docs/KEYCLOAK_MIGRATION.md) — future auth/infrastructure portability path
-
-### Current Product Status
-
-What is implemented today:
-
-- Public and private tournaments with join codes
-- Authenticated global rankings with per-profile visibility control
-- Private leagues inside a tournament
-- Tournament-mode-aware scoring and rules display
-- World Cup 2026 best-third-place Round of 32 handling
-- Additional seeded football tournaments that fit the current Prode engine
-- Password reset and profile/account management
-- Automatic score updates when admins save results
-- Admin tournament builder with structure safety checks
-- Guest browsing plus spectator progress views
-- Browser language detection and persisted light/dark theme preference
-
-Current boundaries and known limitations:
-
-- The core engine still assumes football-style group stage plus knockout progression
-- Non-football formats such as NBA playoffs still need a separate format engine
-- Seed data outside World Cup 2026 is format-compatible template data, not a live official feed
-- Prize pools are configurable, but payment collection and payout settlement are still manual
-- QA still relies heavily on manual flow coverage; CI now validates lint, Prisma schema, core unit tests, and production build, but broader API/UI test coverage is still next-step work
-
-### QA Checklist
-
-For end-to-end manual testing, use [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md).
-
-It covers:
-
-- guest and auth flows
-- password recovery
-- public/private tournament participation
-- prediction locking
-- private league lifecycle
-- admin tournament creation and result entry
-- spectator tournament views
-
-### Tournament Access And Prizes
-
-- Tournaments can now be `public` or `private`
-- Private tournaments use a join code and only members can submit predictions or view the leaderboard
-- Prize pools can be enabled or disabled per tournament
-- The admin panel lets you change access type, entry fee, currency, prize toggle, and regenerate the private join code
-- Tournament rules and scoring are mode-driven, so the UI should present the rules for the selected tournament mode
-- For World Cup 2026 mode and UEFA-style 24-team formats, the app also supports third-place group picks plus the best-third-place knockout slots
-- Global rankings are visible only to logged-in users and aggregate scores across tournaments without exposing private tournament details
-- Each user can opt out of appearing in global rankings from their profile, and the default is opt-in
-
-### Private Leagues Inside A Tournament
-
-- Any logged-in participant with access to a tournament can create a private league from the tournament page
-- Each league gets its own join code
-- Other participants can join that league from the same tournament page using the league code
-- League leaderboards are filtered to league members only, while predictions still belong to the tournament itself
-
-### Schema Change Workflow
-
-For any future Prisma schema change:
-
-```bash
-# 1. Edit prisma/schema.prisma
-# 2. Create and apply a migration locally
-npm run db:migrate -- --name your_change_name
-
-# 3. Regenerate the Prisma client if needed
-npm run db:generate
-```
-
-Use `npm run db:push` only for quick local experiments when you explicitly do not want a checked-in migration.
-
-### Resetting Your Local Database
-
-If you want a completely fresh local database with the current schema and seed data:
-
-```bash
-# Drop and recreate the local database schema
-npx prisma migrate reset
-```
-
-That command will:
-
-- drop all local data
-- reapply the checked-in migrations
-- run the Prisma seed command if prompted/available
-
-If you prefer to do the steps manually:
-
-```bash
-npx prisma migrate reset --skip-seed
-npm run db:seed
-npm run db:backfill:translations
-```
-
-If you are using the Docker Postgres container from this README and want to fully wipe the database instance itself:
-
-```bash
-docker rm -f prode-postgres
 docker run -d \
   --name prode-postgres \
   -e POSTGRES_USER=prode \
@@ -317,112 +143,213 @@ docker run -d \
   -e POSTGRES_DB=prode \
   -p 5432:5432 \
   postgres:16-alpine
+```
+
+Useful Docker commands:
+
+```bash
+docker ps
+docker stop prode-postgres
+docker start prode-postgres
+```
+
+### Apply Migrations
+
+Use checked-in migrations for schema changes:
+
+```bash
 npm run db:migrate
+```
+
+Generate the Prisma client if needed:
+
+```bash
+npm run db:generate
+```
+
+### Seed Data
+
+```bash
 npm run db:seed
+npm run db:backfill:translations
 ```
 
-### Development Notes
+`db:backfill:translations` is safe to run after seeding or against an existing local database. It fills missing Spanish names for tournaments, rounds, modes, and teams without requiring a full reseed.
 
-- `npm run dev` uses [`scripts/dev.cjs`](scripts/dev.cjs) so the API and Vite dev server shut down cleanly with `Ctrl+C`; the script starts the local `vite` CLI from `node_modules` with the project root as cwd (same toolchain as `npm run dev:web` and `vite build`, including Tailwind)
-- GitHub Actions now runs `npm run verify` on pushes to `main` and pull requests
-- The current automated test layer covers scoring and tournament utility logic with Node's built-in test runner
-- API integration tests use `TEST_DATABASE_URL` first and create an isolated temporary Postgres database per run
-- Password reset emails use SMTP when `SMTP_HOST`, `SMTP_PORT`, and `EMAIL_FROM_ADDRESS` are configured
-- Production builds use `vite build` so Tailwind v4 is compiled the same way as in dev
-- UI tokens: shared radii, shadows, tracking, and kicker text sizes live in `@theme` in `src/index.css` (use `rounded-panel-*`, `shadow-ds-*`, `tracking-overline`, etc.); reusable surfaces use classes like `surface-accent-gradient` and `sport-button` / `sport-panel` instead of one-off arbitrary values where possible
-- Page layout: route bodies use `page-shell` (default max width), `page-shell-narrow` (profile), or `page-shell-md` (league invite); large inner panels use `page-panel-pad` / `page-panel-pad-md` for consistent padding. Combine `page-panel-pad` with `page-panel-pad-loft-top` when headings need extra clearance from the panel top curve. Override vertical spacing with Tailwind utilities (for example `pt-0`, `md:pb-16`) when a section needs a different rhythm
-- Home metrics: the hero stat row and featured sidebar stat tiles share `home-metric-tile` + `home-metric-tile__kicker` on `sport-panel` (top-weighted padding, top-aligned content, shallow horizontal tile shape)
+### Start The App
 
-### Next Steps
-
-The highest-impact next steps are tracked in [docs/ROADMAP.md](docs/ROADMAP.md). The main product work still ahead is:
-
-- add additional tournament engines beyond football-style group + knockout
-- replace static seed templates with importable official tournament data pipelines
-- add automated tests around auth, predictions, scoring, and admin flows on top of the new CI baseline
-- add real transactional support for paid prize pools, invites, and notifications
-
----
-
-## Project Structure
-
-```
-prode/
-├── api/
-│   ├── app.cjs          # Express API (all routes)
-│   ├── db.cjs           # Prisma client singleton
-│   ├── scoring.cjs      # Scoring engine
-│   ├── seed.cjs         # Database seeder (football tournament catalog)
-│   └── server.cjs       # Local dev server entry
-├── netlify/
-│   └── functions/
-│       └── api.cjs      # Netlify Function wrapper
-├── prisma/
-│   └── schema.prisma    # Database schema
-├── src/
-│   ├── components/      # Navbar
-│   ├── context/         # AuthContext
-│   ├── i18n/            # Translations (EN/ES) + LanguageContext
-│   ├── pages/           # Home, Login, Register, Tournament,
-│   │                    # Predict, Leaderboard, Admin, Profile
-│   └── utils/           # API client helper
-├── docs/
-│   └── KEYCLOAK_MIGRATION.md
-├── netlify.toml         # Netlify deploy config
-└── package.json
+```bash
+npm run dev
 ```
 
----
+Local URLs:
 
-## Scoring Rules
+- frontend: `http://localhost:5173`
+- API: `http://localhost:3001`
+- health check: `http://localhost:3001/api/health`
 
-Based on the classic Argentine prode format, with scoring shown according to the selected tournament mode:
+`npm run dev` uses `scripts/dev.cjs` to supervise the API and Vite processes so local shutdown works cleanly with `Ctrl+C`.
 
-**Group Stage** (per group):
-- **4 pts** — Both teams correct, correct positions (1st and 2nd)
-- **3 pts** — Both teams correct, inverted positions
-- **2 pts** — One team correct, in the right position
-- **1 pt** — One team correct, but wrong position
-- Users also pick **3rd place** in each group when the tournament uses best-third-place knockout slots; that extra pick is used to build the bracket, but the group-stage score still comes from 1st/2nd accuracy
+## Local Database Reset
 
-**Knockout Rounds** (per correct advancing team):
-- Points scale linearly from the earliest knockout round to the final
-- The default step is **+2 points per round**
+If you want a clean local database while keeping the container:
 
-Current World Cup 2026 seeded mode example:
+```bash
+npx prisma migrate reset
+```
 
-| Round | Points per Correct | Max Matches | Max Points |
-|-------|-------------------|-------------|------------|
-| Round of 32 | 2 | 16 | 32 |
-| Round of 16 | 4 | 8 | 32 |
-| Quarter Finals | 6 | 4 | 24 |
-| Semi Finals | 8 | 2 | 16 |
-| Final (Champion) | 10 | 1 | 10 |
+If you want to skip the automatic seed and reseed manually:
 
-**Maximum possible score in the current 2026 app mode: 162 points**
+```bash
+npx prisma migrate reset --skip-seed
+npm run db:seed
+npm run db:backfill:translations
+```
 
----
+If you want to fully recreate the Docker database container:
 
-## Deploying to Netlify
+```bash
+docker rm -f prode-postgres
+```
 
-1. Push this repo to GitHub
-2. Connect the repo in [Netlify](https://app.netlify.com)
-3. Add environment variables in Netlify dashboard:
-   - `DATABASE_URL` — your Neon (or any Postgres) connection string
-   - `JWT_SECRET` — a strong random secret
-   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — from Google Cloud Console
-   - `GOOGLE_CALLBACK_URL` — `https://your-site.netlify.app/api/auth/google/callback`
-   - `SITE_URL` — `https://your-site.netlify.app`
-4. Deploy — Netlify auto-detects the build command from `netlify.toml`
+Then rerun the `docker run ... postgres:16-alpine` command above.
 
----
+Important:
 
-## Future: Migrating to Kubernetes + Keycloak
+- prefer checked-in migrations over `db push`
+- do not overwrite a shared or remote database when resetting locally
+- use `TEST_DATABASE_URL` for automated tests so test setup does not target the wrong database
 
-This project is designed to be portable. See [`docs/KEYCLOAK_MIGRATION.md`](docs/KEYCLOAK_MIGRATION.md) for a step-by-step guide on:
-- Deploying Keycloak as your identity provider on K8s
-- Switching from JWT/Passport to Keycloak OIDC tokens
-- Migrating existing users
-- Running the Express API as a standalone container
+## Commands
 
-The database is standard PostgreSQL with Prisma migrations — it works on Neon, RDS, CloudSQL, or self-hosted Postgres without any code changes.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start frontend and API together |
+| `npm run dev:web` | Start only the Vite frontend |
+| `npm run dev:api` | Start only the API server |
+| `npm run build` | Production frontend build |
+| `npm run lint` | ESLint |
+| `npm test` | Node test suite, including API integration and utility tests |
+| `npm run verify` | Lint, Prisma generate, Prisma validate, test suite, production build |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:validate` | Validate Prisma schema |
+| `npm run db:migrate` | Create/apply a local development migration |
+| `npm run db:migrate:deploy` | Apply checked-in migrations only |
+| `npm run db:migrate:status` | Show migration status |
+| `npm run db:push` | Push schema without migrations, use sparingly |
+| `npm run db:seed` | Seed the football tournament catalog |
+| `npm run db:backfill:translations` | Fill missing translated names in existing rows |
+| `npm run db:studio` | Open Prisma Studio |
+
+## Implemented User Flows
+
+### Guest Flows
+
+- browse the landing page
+- inspect the featured tournament
+- inspect active tournaments
+- open tournament detail pages
+- switch language and theme
+
+### Authenticated User Flows
+
+- register with email/password
+- log in with email/password
+- log in with Google when configured
+- request a password reset
+- reset password with a one-time token
+- update display name
+- update avatar URL
+- change password
+- opt in or out of global ranking visibility
+
+### Tournament Participation
+
+- join a private tournament with a join code
+- submit tournament-scope predictions
+- revisit and update tournament-scope predictions while the tournament is still open
+- clear predictions through the API before closing date using `DELETE /api/predictions/:id`
+- use random-fill from the prediction flow to generate a valid bracket across all steps
+- view group standings and knockout progress once results exist
+
+### League Participation
+
+- create a private league inside a tournament
+- join a league using a join code
+- share league invite links
+- submit league-scope predictions
+- choose a league scope as the official primary entry if it has predictions
+- leave a league
+- delete a league if you are the owner
+
+### Rankings
+
+- tournament leaderboard for the tournament-wide official scope
+- league leaderboard for league members only
+- global rankings across official entries for visible users only
+
+### Admin
+
+- create tournaments from JSON group/round structures
+- edit tournament structure only when the tournament is still structurally safe to change
+- update tournament settings:
+  - access type
+  - join code
+  - prize enable/disable
+  - entry fee
+  - currency
+- enter group results
+- enter knockout results
+- recalculate scores manually
+
+## Current Scoring And Prediction Model
+
+Group-stage scoring:
+
+- 4 points: both teams correct in correct order
+- 3 points: both teams correct in inverted order
+- 2 points: one team correct in correct position
+- 1 point: one team correct in wrong position
+- 0 points: no correct teams
+
+Knockout scoring:
+
+- stored on each `Round` as `pointsPerCorrect`
+- seeded tournaments currently use a linear scaling pattern through the bracket
+- rules display and maximum score are derived from the tournament mode plus round configuration
+
+World Cup 2026:
+
+- supports best-third-place slot assignment in the expanded 48-team bracket
+- users explicitly place eligible third-placed teams where required by the prediction flow
+
+## Testing And Verification
+
+Current automated coverage includes:
+
+- scoring logic
+- tournament utility logic
+- translation helper logic
+- email helper logic
+- end-to-end API integration coverage for core auth, tournament, league, and leaderboard flows
+- production build validation
+
+CI:
+
+- GitHub Actions runs `npm run verify`
+- CI provisions PostgreSQL for the test suite
+
+## Current Boundaries
+
+The app is not yet:
+
+- a generic multi-sport engine for non-football tournament formats
+- integrated with official live competition feeds
+- integrated with payment providers or automated payouts
+- fully migrated to the design system on every remaining route
+- covered by browser-level E2E tests
+
+For the current implementation snapshot and the prioritized next steps, see:
+
+- [docs/IMPLEMENTATION_STATUS.md](./docs/IMPLEMENTATION_STATUS.md)
+- [docs/ROADMAP.md](./docs/ROADMAP.md)

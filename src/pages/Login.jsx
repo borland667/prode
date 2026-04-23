@@ -31,13 +31,13 @@ export default function Login() {
   };
 
   return (
-    <div className="sport-shell app-auth-shell">
-      <div className="app-auth-card space-y-6">
+    <div className="ds-shell app-auth-shell">
+      <div className="app-auth-card">
           <div className="text-center">
-            <div className="score-pill mx-auto mb-4 text-emerald-200">
+            <div className="ds-pill mx-auto mb-4 text-emerald-200">
               {t('nav.profile')}
             </div>
-            <h1 className="sport-display text-5xl text-white mb-2">
+            <h1 className="ds-display app-auth-title text-white mb-2">
               {t('auth.login')}
             </h1>
             <p className="text-gray-400">
@@ -57,7 +57,7 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="app-auth-form">
             <div>
               <label className="account-label">
                 {t('auth.email')}
@@ -84,7 +84,7 @@ export default function Login() {
                 className="app-input"
                 placeholder="••••••••"
               />
-              <div className="mt-2 text-right">
+              <div className="app-auth-link-row">
                 <Link
                   to="/forgot-password"
                   className="text-sm text-emerald-400 hover:text-emerald-300 transition"

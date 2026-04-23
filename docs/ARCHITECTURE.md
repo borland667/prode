@@ -1,136 +1,63 @@
-# Prode — Architecture
+# Prode Architecture
 
-**Version:** 2026-04  
-**Status:** Active implementation snapshot
+Version: 2026-04-23  
+Status: implementation-aligned snapshot
 
-## 1. Overview
+## 1. Product Scope
 
-Prode is a sports prediction platform centered on tournament-mode-driven Prode flows. Today, the production-ready engine supports football tournaments that follow a familiar shape:
+Prode is currently built around a single tournament engine: football-style group-stage plus knockout prediction flows.
 
-- group-stage predictions
-- knockout-bracket predictions
-- optional best-third-place qualification handling
-- tournament-level access control
-- optional prize configuration
+Supported today:
+
+- group placement predictions
+- knockout winner predictions
+- optional best-third-place qualifier placement
+- tournament-wide public or private access
 - tournament-scoped private leagues
+- one official entry per user per tournament for tournament and global rankings
 
-The current seeded catalog includes:
+Not supported yet:
 
-- FIFA World Cup 2026
-- UEFA Euro
-- Copa América
-- AFC Asian Cup
-- Africa Cup of Nations
+- playoff-only engines without groups
+- best-of-series formats
+- pure round-robin or league-table competitions without a knockout bracket
+- official live data ingestion
+- payment processing and automated prize settlement
 
-World Cup 2026 is seeded as the main official-style experience. The other football tournaments are format-compatible seeds that fit the current engine.
+The product stores generic `sport`, `modeKey`, and `modeName` metadata, but those currently map back to the football Prode engine.
 
-## 2. Product Capabilities
-
-### 2.1 End-User Features
-
-- Guest landing page with featured tournament, mode-aware rules, and active tournament discovery
-- Registration, login, logout, Google OAuth, forgot-password, and reset-password flows
-- Profile editing, avatar updates, account stats, and password change
-- Authenticated global rankings with per-profile visibility preference
-- Public tournaments and private tournaments with join codes
-- Group-stage and knockout predictions
-- Support for best-third-place slot assignment when a mode requires it
-- Tournament leaderboard with dynamic round columns and optional prize pool display
-- Tournament-scoped private leagues with join codes and league-only leaderboards
-- Spectator-friendly standings and knockout-progress views
-- English and Spanish UI with browser-language detection and English fallback
-- Light and dark themes with persisted preference
-
-### 2.2 Admin Features
-
-- Tournament builder for creating new tournaments without seeding
-- Safe structure editing before participants, predictions, leagues, or results exist
-- Tournament settings management:
-  - access type
-  - join code generation/regeneration
-  - prize enable/disable
-  - entry fee and currency
-- Group result entry
-- Knockout result entry
-- Automatic score recalculation on result updates
-- Manual score recalculation as a recovery tool
-
-## 3. Current Scope And Boundaries
-
-### 3.1 Supported Today
-
-- Football tournaments with groups plus knockout rounds
-- Tournament modes whose rules can be derived from:
-  - group placement scoring
-  - linearly scaled knockout scoring
-  - optional best-third-place qualification rules
-
-### 3.2 Not Yet Supported
-
-- Seeded playoff formats without groups
-- Best-of-series formats such as NBA or MLB playoffs
-- Pure league-table competitions without knockout brackets
-- Payments and payout automation
-- Official external data ingestion pipelines
-- Deeper automated API and UI coverage beyond the current validation and unit-test baseline
-
-Those areas are product roadmap items rather than hidden support gaps.
-
-## 4. High-Level Architecture
+## 2. High-Level System
 
 ```text
-React SPA (Vite)
-  ├─ AuthContext
-  ├─ ThemeContext
-  ├─ LanguageContext
-  ├─ Tournament / Prediction / League UI
-  └─ Admin UI
-          │
-          ▼
+React SPA
+  ├─ ThemeProvider
+  ├─ AuthProvider
+  ├─ LanguageProvider
+  ├─ Navbar
+  └─ Route pages
+         │
+         ▼
 Express API (/api/*)
-  ├─ Auth + JWT
-  ├─ Tournament access control
-  ├─ Prediction persistence
-  ├─ League management
-  ├─ Admin tournament builder
-  └─ Scoring orchestration
-          │
-          ▼
+  ├─ Auth and profile
+  ├─ Tournament access and serialization
+  ├─ Prediction persistence by scope
+  ├─ League lifecycle
+  ├─ Leaderboards and global rankings
+  ├─ Admin tournament builder and results
+  └─ Score calculation
+         │
+         ▼
 Prisma ORM
-          │
-          ▼
+         │
+         ▼
 PostgreSQL
 ```
 
-### 4.1 Frontend
+## 3. Frontend Architecture
 
-- React 19
-- React Router 7
-- Vite 8 for development and production (`vite build`)
-- Tailwind v4 plus custom CSS tokens in `src/index.css` (`:root` / `[data-theme='light']`, `@theme` for shared radii/shadows/typography scales, and component classes such as `sport-panel`, `surface-accent-gradient`)
+### 3.1 Runtime Providers
 
-### 4.2 Backend
-
-- Express 5 app in [`api/app.cjs`](../api/app.cjs)
-- Local dev entrypoint in [`api/server.cjs`](../api/server.cjs)
-- Netlify function wrapper in `netlify/functions/api.cjs`
-- JWT-based auth with optional Google OAuth via Passport
-- Prisma 7 with PostgreSQL
-
-### 4.3 Local Development Process Model
-
-`npm run dev` uses [`scripts/dev.cjs`](../scripts/dev.cjs) to supervise:
-
-- `node --watch api/server.cjs`
-- `node node_modules/vite/bin/vite.js` (local Vite dev server; same as `npm run dev:web`)
-
-That wrapper exists so local shutdown is reliable with `Ctrl+C`.
-
-## 5. Frontend Architecture
-
-### 5.1 Providers
-
-The app root in [`src/App.jsx`](../src/App.jsx) is composed as:
+The app root is composed as:
 
 ```text
 Router
@@ -141,9 +68,17 @@ Router
          └─ Routes
 ```
 
-### 5.2 Core Routes
+Provider responsibilities:
 
-- `/` — landing page, featured tournament, mode-aware rules, active tournaments
+- `ThemeProvider`: light/dark theme resolution and persistence
+- `AuthProvider`: current user, token lifecycle, refresh, login, register, logout
+- `LanguageProvider`: language selection, browser locale detection, localized dates and numbers, translations
+
+### 3.2 Route Map
+
+Current routes in `src/App.jsx`:
+
+- `/`
 - `/login`
 - `/register`
 - `/forgot-password`
@@ -153,204 +88,406 @@ Router
 - `/leaderboard/:id`
 - `/leaderboard/global`
 - `/league/:id`
+- `/league/:id/predict`
+- `/league/invite/:joinCode`
 - `/profile`
 - `/admin`
 
-### 5.3 Frontend State Strategy
+### 3.3 Page Responsibilities
 
-- `AuthContext` manages current user and token-backed refresh/login/register/logout actions
-- `ThemeContext` resolves stored preference first, then OS color scheme
-- `LanguageContext` resolves stored language first, then browser locale
-- Page-level data is fetched per route with React hooks and `src/utils/api.js`
+- `Home.jsx`
+  - featured tournament
+  - rules by tournament mode
+  - active tournaments discovery
+  - guest and authenticated CTA entry points
+- `Tournament.jsx`
+  - tournament metadata
+  - tournament-wide official entry controls
+  - create/join league controls
+  - group and knockout spectator view
+- `Predict.jsx`
+  - tournament-scope or league-scope prediction wizard
+  - random-fill support
+  - best-third-place slot handling
+- `Leaderboard.jsx`
+  - tournament-wide leaderboard
+- `GlobalLeaderboard.jsx`
+  - authenticated global ranking
+  - visibility-aware summary
+- `League.jsx`
+  - league summary
+  - invite link and join code
+  - league settings and actions
+  - league leaderboard
+- `LeagueInvite.jsx`
+  - direct invite link flow
+- `Profile.jsx`
+  - identity editing
+  - password change
+  - global ranking visibility preference
+- `Admin.jsx`
+  - tournament creation
+  - safe structure editing
+  - settings updates
+  - result entry
+  - manual score recalculation
 
-### 5.4 Home Page Model
+### 3.4 Styling Model
 
-The landing page in [`src/pages/Home.jsx`](../src/pages/Home.jsx):
+The UI uses Tailwind CSS v4 through Vite plus semantic design-system classes in `src/index.css`.
 
-- loads active and upcoming tournaments
-- highlights one featured tournament
-- renders mode-aware scoring/rules sections
-- links users into predictions or leaderboards
-- exposes public tournament discovery for guests
+Canonical UI primitives:
 
-### 5.5 Prediction Flow Model
+- `PageShell`
+- `Panel`
+- `Button`
+- `Pill`
+- `DisplayText`
 
-The prediction UI assumes a tournament mode can describe:
+See `docs/DESIGN_SYSTEM.md`.
 
-- groups
-- advancing placements
-- knockout rounds
-- optional best-third-place slot logic
+## 4. Backend Architecture
 
-The flow is:
+The backend is a single Express app in `api/app.cjs` with:
 
-1. pick group standings
-2. resolve qualified teams
-3. place best-third teams if the mode requires it
-4. pick winners round by round
-5. persist one prediction set per user per tournament
-
-## 6. Backend Architecture
-
-### 6.1 Main Responsibilities
-
-[`api/app.cjs`](../api/app.cjs) currently handles:
-
-- auth and current-user lookup
-- password reset token lifecycle
+- auth and account endpoints
 - tournament listing and detail serialization
-- tournament join flow for private tournaments
-- prediction save/load flow
-- league CRUD and league membership
-- leaderboard serialization
-- authenticated global leaderboard aggregation
-- admin tournament creation and safe structure updates
-- admin settings and result entry
-- score calculation triggers
+- prediction load/save/delete endpoints
+- primary-entry selection endpoints
+- tournament join flow
+- league lifecycle endpoints
+- leaderboard endpoints
+- admin tournament builder endpoints
+- admin result and settings endpoints
+- health endpoint
 
-### 6.2 Authentication Model
+Runtime entry points:
 
-- Email/password users store bcrypt-hashed passwords
-- Google OAuth users can authenticate through Passport
-- The frontend stores the returned JWT token in `localStorage`
-- Protected API calls send `Authorization: Bearer <token>`
-- Password reset uses one-time hashed reset tokens in the database and can deliver reset links through SMTP when configured
+- local server: `api/server.cjs`
+- Netlify wrapper: `netlify/functions/api.cjs`
 
-### 6.3 Access Control Model
+## 5. Authentication And Session Model
 
-Tournament access is evaluated from:
+Supported auth methods:
 
-- tournament `accessType`
-- tournament membership
-- admin role
-- tournament closing state
+- email/password
+- Google OAuth when configured
 
-League access is evaluated from:
+Auth implementation:
 
-- ownership
-- membership
+- JWT signed with `JWT_SECRET`
+- token accepted from HTTP-only cookie or `Authorization: Bearer ...`
+- frontend also stores the returned token for API calls
+
+Password reset:
+
+- one-time hashed reset tokens stored in `PasswordResetToken`
+- TTL currently one hour
+- can send email through SMTP or return a local reset URL for non-production testing
+
+## 6. Access Control Model
+
+### 6.1 Tournament Access
+
+Tournament access is derived from:
+
+- `Tournament.accessType`
+- whether the viewer is a `TournamentMember`
+- whether the viewer is an admin
+- whether the tournament lifecycle is open or closed
+
+Tournament access flags returned by the API include:
+
+- `canJoin`
+- `canViewLeaderboard`
+- `canViewPredictions`
+- `canSubmitPredictions`
+- `predictionWindowOpen`
+- `predictionsLocked`
+- `lockedReason`
+
+### 6.2 League Access
+
+League access is derived from:
+
 - tournament participation access
+- league membership
+- ownership
 
-## 7. Domain Model
+League endpoints are authenticated. League leaderboards are only available to league members and authorized owners/admins.
 
-The Prisma schema in [`prisma/schema.prisma`](../prisma/schema.prisma) currently models:
+### 6.3 Global Rankings Privacy
+
+Global rankings require authentication and only include users with:
+
+- `showInGlobalRankings = true`
+- a valid official scope for at least one tournament
+
+Users can opt out from the profile page.
+
+## 7. Prediction Scope Model
+
+This is one of the most important current architectural rules.
+
+### 7.1 Scope Keys
+
+Predictions, scores, and official-entry selection are scoped by `scopeKey`.
+
+Current scope forms:
+
+- `tournament`
+- `league:<leagueId>`
+
+This means a user can hold:
+
+- one tournament-wide prediction set
+- zero or more league-specific prediction sets
+
+for the same tournament.
+
+### 7.2 Stored Scoped Data
+
+Scoped models:
+
+- `GroupPrediction.scopeKey`
+- `KnockoutPrediction.scopeKey`
+- `Score.scopeKey`
+- `TournamentPrimaryEntry.scopeKey`
+
+### 7.3 Primary Entry
+
+`TournamentPrimaryEntry` stores which scope currently counts as the user’s official tournament entry.
+
+Implications:
+
+- the tournament leaderboard uses the tournament-wide scope
+- league leaderboards use their own league scope
+- global rankings use the user’s official scope per tournament
+- multiple league entries do not multiply a user’s global score
+
+### 7.4 Prediction Deletion
+
+Predictions can be cleared by scope before lock using:
+
+- `DELETE /api/predictions/:id`
+
+The backend resolves the target scope and removes:
+
+- group predictions for that scope
+- knockout predictions for that scope
+- the score row for that scope
+
+If the removed scope was the official primary entry, the backend falls back to another available scope when possible.
+
+## 8. Domain Model
+
+The Prisma schema currently contains:
 
 - `User`
 - `Tournament`
-- `Group`
 - `Team`
+- `Group`
 - `Round`
 - `Match`
 - `GroupPrediction`
 - `KnockoutPrediction`
 - `GroupResult`
 - `Score`
+- `TournamentPrimaryEntry`
 - `TournamentMember`
 - `TournamentLeague`
 - `LeagueMember`
 - `PasswordResetToken`
 
-### 7.1 Important Domain Rules
+### 8.1 Key Model Responsibilities
 
-- One prediction set per user per tournament
-- One score row per user per tournament
-- Tournament structure is editable only before meaningful activity exists
-- Private tournaments require join-code membership before participation
-- League leaderboards are derived from tournament scores filtered to league members
+`User`
 
-### 7.2 Tournament Mode Metadata
+- identity and auth
+- role
+- avatar
+- global ranking visibility
 
-`Tournament` stores:
+`Tournament`
 
-- `modeKey`
-- `modeName`
-- `modeNameEs`
-- `sport`
+- base product container
+- mode metadata
+- sport metadata
+- lifecycle and access settings
+- prize settings
 
-The UI and seed layer use those fields to drive:
+`Group`, `Team`, `Round`, `Match`
 
-- rule labels
-- scoring summaries
-- bracket behavior
-- tournament presentation
+- tournament structure
+- team catalog for a tournament
+- knockout round ordering and point values
+- match slot labels and winners
 
-The current engine still assumes those mode values map to the football-style Prode implementation in `src/utils/tournament.js` and `api/scoring.cjs`.
+`GroupPrediction`, `KnockoutPrediction`
 
-## 8. Scoring Model
+- prediction persistence by scope
 
-### 8.1 Group Scoring
+`GroupResult`
+
+- saved group outcomes
+
+`Score`
+
+- persisted group, knockout, and total scores by scope
+
+`TournamentPrimaryEntry`
+
+- current official scope per user per tournament
+
+`TournamentMember`
+
+- membership for private tournaments
+
+`TournamentLeague`, `LeagueMember`
+
+- private league definitions and membership
+
+### 8.2 Important Schema Rules
+
+- `User.email` is unique
+- `Tournament.joinCode` is unique when present
+- `TournamentLeague.joinCode` is unique
+- group predictions are unique by user, tournament, group, and scope
+- knockout predictions are unique by user, match, and scope
+- scores are unique by user, tournament, and scope
+- each user has exactly one `TournamentPrimaryEntry` row per tournament
+- tournament membership is unique by user and tournament
+- league membership is unique by league and user
+
+## 9. Tournament Lifecycle And Safety Rules
+
+### 9.1 Lifecycle
+
+Tournament lifecycle combines:
+
+- stored status
+- closing date
+
+When closing date has passed, predictions lock even if stored status still says `upcoming` or `active`.
+
+### 9.2 Safe Structure Editing
+
+Tournament structure can only be edited when there are no:
+
+- tournament members
+- leagues
+- group predictions
+- knockout predictions
+- saved group results
+- scores
+
+This protects bracket integrity once activity exists.
+
+## 10. Scoring Model
+
+### 10.1 Group Stage
 
 Per group:
 
-- 4 points: both teams correct in correct positions
-- 3 points: both teams correct in inverted positions
-- 2 points: one team correct in the correct position
-- 1 point: one team correct in the wrong position
-- 0 points: no correct teams
+- 4 points: exact first and second
+- 3 points: correct teams, inverted order
+- 2 points: one team in the correct position
+- 1 point: one team but in the wrong position
+- 0 points: no relevant hits
 
-When a tournament mode uses best-third-place qualification, the `third` pick is used to build the knockout bracket, but the base group score still comes from first and second.
+When the mode uses best-third-place logic, the `third` prediction affects bracket resolution but does not change the base 4/3/2/1 score logic.
 
-### 8.2 Knockout Scoring
+### 10.2 Knockout Rounds
 
-Rounds store `pointsPerCorrect` directly on the `Round` model. The current seeded tournaments use a linear scale from the earliest knockout round to the final.
+Knockout scoring is persisted on each `Round` as `pointsPerCorrect`.
 
-Example for World Cup 2026:
+The current seeded tournaments use linearly increasing values through the bracket. The UI computes total maximum score by combining:
 
-- Round of 32: 2
-- Round of 16: 4
-- Quarter-finals: 6
-- Semi-finals: 8
-- Final: 10
+- `groupCount * 4`
+- the sum of all `round.matches.length * round.pointsPerCorrect`
 
-### 8.3 Score Persistence
+### 10.3 Score Calculation
 
-Scores are stored in `Score` rows:
+Scoring lives in `api/scoring.cjs`.
 
-- `groupScore`
-- `knockoutScore`
-- `totalScore`
+Scores are recalculated:
 
-Admin result entry triggers recalculation automatically, and a manual recalc endpoint exists for repair/re-sync use.
+- automatically after admin result saves
+- manually through `POST /api/tournaments/:id/calculate-scores`
 
-## 9. API Surface
+## 11. Best-Third-Place Handling
 
-All endpoints are prefixed with `/api`.
+World Cup 2026 and similar expanded modes require explicit handling for third-placed qualifiers.
 
-### 9.1 Auth
+Current behavior:
+
+- the backend and frontend parse slot labels such as `3[...]`
+- the prediction wizard forces a third-place pick when the bracket requires it
+- downstream knockout options are sanitized when upstream picks no longer qualify
+- random fill generates valid third-place assignments without duplicates
+
+Key logic lives in:
+
+- `src/utils/tournament.js`
+- `api/app.cjs`
+- `api/scoring.cjs`
+
+## 12. API Surface
+
+All routes are under `/api`.
+
+### 12.1 Auth And Account
 
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /auth/google`
 - `GET /auth/google/callback`
 - `GET /auth/me`
-- `POST /auth/logout`
 - `POST /auth/forgot-password`
 - `POST /auth/reset-password`
+- `POST /auth/logout`
+- `GET /account/profile`
+- `GET /account/navigation`
+- `PATCH /account/profile`
+- `POST /account/change-password`
 
-### 9.2 Tournaments
+### 12.2 Tournament Discovery And Participation
 
 - `GET /tournaments`
 - `GET /tournaments/:id`
 - `GET /tournaments/:id/groups`
 - `GET /tournaments/:id/my-predictions`
+- `GET /tournaments/:id/primary-entry`
+- `POST /tournaments/:id/primary-entry`
 - `POST /tournaments/:id/predictions`
 - `POST /tournaments/:id/join`
 - `GET /tournaments/:id/leagues`
 - `POST /tournaments/:id/leagues`
 - `POST /tournaments/:id/leagues/join`
 - `GET /tournaments/:id/leaderboard`
-- `GET /leaderboard/global`
+- `GET /leaderboard/:tournamentId`
 
-### 9.3 Leagues
+### 12.3 League Flows
 
+- `GET /leagues/invite/:joinCode`
 - `GET /leagues/:id`
+- `GET /leagues/:id/my-predictions`
+- `POST /leagues/:id/predictions`
 - `PATCH /leagues/:id`
 - `POST /leagues/:id/regenerate-code`
 - `DELETE /leagues/:id/members/me`
 - `DELETE /leagues/:id`
 - `GET /leagues/:id/leaderboard`
 
-### 9.4 Admin
+### 12.4 Scoped Prediction Maintenance
+
+- `DELETE /predictions/:id`
+
+### 12.5 Global Rankings
+
+- `GET /leaderboard/global`
+
+### 12.6 Admin
 
 - `POST /tournaments`
 - `PUT /tournaments/:id/structure`
@@ -359,96 +496,98 @@ All endpoints are prefixed with `/api`.
 - `POST /tournaments/:id/results/knockout`
 - `POST /tournaments/:id/calculate-scores`
 
-### 9.5 Ops
+### 12.7 Ops
 
 - `GET /health`
 
-## 10. Seeding And Modes
+## 13. Seeding, Translation, And Naming
 
-The seed script in [`api/seed.cjs`](../api/seed.cjs):
+### 13.1 Seed Script
 
-- seeds the current football tournament catalog
-- replaces matching seeded tournaments by name when rerun locally
-- defines tournament rounds and knockout slots explicitly
-- supports best-third-place slot labeling for World Cup and UEFA-style formats
+`api/seed.cjs` installs the current curated football catalog and its rounds.
 
-The seed currently serves two purposes:
+Current seed responsibilities:
 
-- local/demo data bootstrap
-- reference examples for supported tournament shapes
+- create/update seeded tournaments
+- generate groups and teams
+- create rounds with persisted point values
+- define bracket slot labels explicitly
 
-It is not yet an official live-data ingestion pipeline.
+### 13.2 Translation Backfill
 
-## 11. Deployment Model
+`api/backfill-translations.cjs` fills missing Spanish values for:
 
-### 11.1 Current
+- tournament names
+- mode names
+- round names
+- team names
 
-- Frontend built to `dist/`
-- Express app wrapped for Netlify Functions
-- PostgreSQL hosted anywhere Prisma can reach
+### 13.3 UI Localization
 
-### 11.2 Portability Goal
+The UI localizes:
 
-The stack is intentionally portable:
+- text labels
+- dates
+- numbers
+- tournament, mode, round, and team names when translated data exists
 
-- Express can run directly from `api/server.cjs`
-- Postgres is provider-agnostic
-- Auth can later move to Keycloak
+Terminology should stay audience-aware:
 
-See [`docs/KEYCLOAK_MIGRATION.md`](./KEYCLOAK_MIGRATION.md) for the future auth migration path.
+- English: “soccer”
+- Spanish: “futbol”
 
-## 12. Operational Notes
+## 14. Testing And Verification
 
-### 12.1 Schema Changes
+Automated tests currently cover:
 
-For any schema change:
+- scoring utilities
+- tournament utilities
+- translation helpers
+- email helpers
+- core API integration flows
+
+CI:
+
+- GitHub Actions workflow in `.github/workflows/ci.yml`
+- PostgreSQL service in CI
+- `npm run verify`
+
+Verification baseline:
+
+- ESLint
+- Prisma generate
+- Prisma schema validation
+- test suite
+- production build
+
+## 15. Deployment And Local Operations
+
+### 15.1 Local Dev
+
+`npm run dev` uses `scripts/dev.cjs` to supervise:
+
+- `node --watch api/server.cjs`
+- `vite`
+
+This exists so local shutdown behaves correctly with `Ctrl+C`.
+
+### 15.2 Database Operations
+
+Preferred schema workflow:
 
 1. update `prisma/schema.prisma`
 2. create a checked-in migration
 3. regenerate Prisma client if needed
-4. validate and test before committing
+4. run `npm run verify`
 
-The preferred workflow is migration-first, not `db push`.
+Avoid using `db push` as the normal schema workflow.
 
-### 12.2 Verification Baseline
+## 16. Current Architectural Gaps
 
-The repo now includes a lightweight operational verification path:
+The main outstanding architectural work is:
 
-- `npm run verify`
-- GitHub Actions workflow at `.github/workflows/ci.yml`
-
-Current automated checks cover:
-
-- ESLint
-- Prisma schema validation
-- unit tests for scoring and tournament utility logic
-- production build generation
-
-This is a deployment-safety baseline, not a replacement for broader API and UI test coverage.
-
-### 12.3 Local Reset
-
-For a clean local environment:
-
-```bash
-npx prisma migrate reset
-```
-
-or:
-
-```bash
-npx prisma migrate reset --skip-seed
-npm run db:seed
-```
-
-## 13. Roadmap Snapshot
-
-The main next-step work is:
-
-- add additional tournament engines beyond football group + knockout
-- support official external data imports and refresh workflows
-- add broader API/UI automated test coverage on top of the existing CI and unit-test baseline
-- add transactional prize and payment flows
-- expand notifications and tournament operations tooling
-
-See [`docs/ROADMAP.md`](./ROADMAP.md) for the maintained next-step list.
+- explicit format-family support beyond football group-plus-knockout
+- better separation between curated seed data and official data import pipelines
+- browser-level E2E coverage
+- prize/payment operations
+- broader admin bulk tooling

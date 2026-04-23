@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { del, get, patch, post } from '../utils/api';
 import { getLocalizedName, getRoundLabel } from '../utils/tournament';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function League() {
   const { id } = useParams();
@@ -119,7 +120,7 @@ export default function League() {
 
   if (loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -127,10 +128,10 @@ export default function League() {
 
   if (error) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center px-4">
-        <div className="sport-panel app-empty max-w-2xl w-full">
+      <div className="ds-shell min-h-screen flex items-center justify-center px-4">
+        <Panel className="app-empty max-w-2xl w-full">
           <p className="text-red-400">{error}</p>
-        </div>
+        </Panel>
       </div>
     );
   }
@@ -182,30 +183,30 @@ export default function League() {
   };
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell">
-        <div className="app-page-header">
-          <div className="app-page-kicker score-pill text-cyan-300">
+    <div className="ds-shell min-h-screen">
+      <PageShell className="league-page">
+        <div className="league-header">
+          <Pill className="text-cyan-300">
             {t('nav.myLeagues')}
-          </div>
-          <h1 className="app-page-title sport-display">
+          </Pill>
+          <DisplayText as="h1" className="app-page-title text-white">
             {league?.name || t('leaderboard.leagueLeaderboard')}
-          </h1>
+          </DisplayText>
           {league?.description ? (
-            <p className="app-page-description mb-3">
+            <p className="app-page-description">
               {league.description}
             </p>
           ) : (
-            <p className="app-page-description mb-3">
+            <p className="app-page-description">
               {t('leaderboard.leagueDescription')}
             </p>
           )}
           {tournament ? (
-            <div className="flex items-center gap-4">
+            <div className="league-header__meta">
               <p className="text-gray-400">{getLocalizedName(tournament, language, tournament.name)}</p>
               <Link
                 to={`/tournament/${tournament.id}`}
-                className="text-emerald-400 hover:text-emerald-300 transition"
+                className="league-header__back"
               >
                 {t('common.back')}
               </Link>
@@ -225,33 +226,35 @@ export default function League() {
           </div>
         ) : null}
 
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="sport-panel app-card">
+        <div className="league-summary-grid">
+          <Panel className="league-summary-card">
             <p className="text-gray-400 text-sm mb-2">
               {t('tournament.leagueMembers')}
             </p>
-            <p className="text-white font-bold text-2xl">
+            <DisplayText as="p" className="text-3xl text-white">
               {formatNumber(league?.memberCount || 0)}
-            </p>
-          </div>
-          <div className="sport-panel app-card">
+            </DisplayText>
+          </Panel>
+          <Panel className="league-summary-card league-invite-card">
             <p className="text-gray-400 text-sm mb-2">
               {t('tournament.joinCode')}
             </p>
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className="text-2xl font-bold tracking-overline-wide text-white">
+              <div className="league-invite-card__row">
+                <DisplayText as="p" className="text-3xl tracking-overline-wide text-white">
                   {league?.joinCode || '----'}
-                </p>
+                </DisplayText>
                 {league?.joinCode ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={handleCopyInviteLink}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500 hover:text-slate-950"
+                    variant="secondary"
+                    size="sm"
+                    className="league-invite-card__button"
                   >
                     <LinkIcon size={14} />
                     {copiedInvite ? t('common.copied') : t('tournament.copyInviteLink')}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               {league?.joinCode ? (
@@ -268,26 +271,26 @@ export default function League() {
                 </div>
               ) : null}
             </div>
-          </div>
-          <div className="sport-panel app-card">
+          </Panel>
+          <Panel className="league-summary-card league-action-card">
             <p className="text-gray-400 text-sm mb-2">
               {t('predict.makePredictions')}
             </p>
             <p className="text-white font-semibold mb-4">
               {t('tournament.leaguePredictionScopeHelp')}
             </p>
-            <div className="flex flex-wrap gap-3">
-              <button
+            <div className="league-action-card__actions">
+              <Button
                 type="button"
                 onClick={() => navigate(`/league/${id}/predict`)}
                 disabled={!tournament?.access?.canSubmitPredictions}
-                className="app-button-primary sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {tournament?.access?.canSubmitPredictions
                   ? t('tournament.openLeaguePredictions')
                   : t('tournament.predictionsClosed')}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleSetPrimaryEntry}
                 disabled={
@@ -296,12 +299,13 @@ export default function League() {
                   !leaguePrimaryOption?.hasPredictions ||
                   currentPrimaryScopeKey === `league:${id}`
                 }
-                className="app-button-secondary sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="secondary"
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {currentPrimaryScopeKey === `league:${id}`
                   ? t('tournament.currentPrimaryEntry')
                   : t('tournament.setPrimaryEntry')}
-              </button>
+              </Button>
             </div>
             {currentPrimaryScopeKey === `league:${id}` ? (
               <p className="text-emerald-300 text-sm mt-4">
@@ -313,20 +317,20 @@ export default function League() {
                 {t('tournament.primaryEntryLocked')}
               </p>
             ) : null}
-          </div>
+          </Panel>
         </div>
 
-        <div className="sport-panel-strong app-card-strong mb-12">
-          <h2 className="app-section-title">
+        <Panel variant="strong" className="league-settings app-card-strong">
+          <DisplayText as="h2" className="app-section-title text-white">
             {t('tournament.leagueSettings')}
-          </h2>
+          </DisplayText>
           <p className="app-section-copy mb-6">
             {isOwner ? t('tournament.ownerLeagueHelp') : t('tournament.memberLeagueHelp')}
           </p>
 
           {isOwner ? (
             <>
-              <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <div className="league-settings__fields">
                 <div>
                   <label className="account-label">
                     {t('tournament.leagueName')}
@@ -355,49 +359,52 @@ export default function League() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4">
-                <button
+              <div className="league-settings__actions">
+                <Button
                   onClick={handleUpdateLeague}
                   disabled={saving}
-                  className="app-button-primary sm:w-auto"
+                  className="disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? t('admin.saving') : t('common.save')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleRegenerateCode}
                   disabled={saving}
-                  className="app-button-secondary sm:w-auto"
+                  variant="secondary"
+                  className="disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? t('tournament.regeneratingCode') : t('tournament.regenerateLeagueCode')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleDeleteLeague}
                   disabled={saving}
-                  className="app-button-danger sm:w-auto"
+                  variant="danger"
+                  className="disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? t('tournament.deletingLeague') : t('tournament.deleteLeague')}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
-            <button
+            <Button
               onClick={handleLeaveLeague}
               disabled={saving}
-              className="app-button-danger sm:w-auto"
+              variant="danger"
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? t('tournament.leavingLeague') : t('tournament.leaveLeague')}
-            </button>
+            </Button>
           )}
-        </div>
+        </Panel>
 
         {players.length === 0 ? (
-          <div className="sport-panel app-empty">
+          <Panel className="app-empty">
             <p className="text-gray-400 text-lg">
               {t('leaderboard.noPlayers')}
             </p>
-          </div>
+          </Panel>
         ) : (
-          <div className="sport-panel-strong app-table-shell">
+          <Panel variant="strong" className="app-table-shell">
             <div className="overflow-x-auto">
               <table className="app-table">
                 <thead>
@@ -469,9 +476,9 @@ export default function League() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

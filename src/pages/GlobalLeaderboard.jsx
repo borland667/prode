@@ -4,6 +4,7 @@ import { Trophy } from 'lucide-react';
 import { get } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function GlobalLeaderboard() {
   const { user, loading: authLoading } = useAuth();
@@ -37,7 +38,7 @@ export default function GlobalLeaderboard() {
 
   if (authLoading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -49,7 +50,7 @@ export default function GlobalLeaderboard() {
 
   if (loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -57,72 +58,73 @@ export default function GlobalLeaderboard() {
 
   if (error) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-red-400">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell">
-        <div className="mb-10 grid items-start gap-8 xl:grid-cols-[1.3fr_0.92fr] xl:gap-10">
-          <div className="sport-panel-strong rounded-panel-2xl page-panel-pad">
-            <div className="score-pill mb-4 text-emerald-200">
+    <div className="ds-shell min-h-screen">
+      <PageShell className="global-leaderboard-page">
+        <div className="global-leaderboard-hero">
+          <Panel variant="strong" padding="normal" radius="2xl" className="global-leaderboard-hero__panel">
+            <Pill className="mb-4 text-emerald-200">
               {t('nav.globalLeaderboard')}
-            </div>
-            <h1 className="sport-display text-5xl md:text-6xl text-white mb-4">
+            </Pill>
+            <DisplayText as="h1" className="global-leaderboard-title text-white mb-4">
               {t('leaderboard.globalLeaderboard')}
-            </h1>
+            </DisplayText>
             <p className="text-slate-300 max-w-2xl text-lg leading-relaxed">
               {t('leaderboard.globalDescription')}
             </p>
-          </div>
+          </Panel>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="sport-panel rounded-panel-md p-6">
+          <div className="global-leaderboard-summary">
+            <Panel radius="md" className="global-leaderboard-stat">
               <p className="text-sm text-slate-400 mb-2">
                 {t('leaderboard.visiblePlayers')}
               </p>
-              <p className="sport-display text-4xl text-white">
+              <DisplayText as="p" className="text-4xl text-white">
                 {formatNumber(summary?.visiblePlayerCount || players.length)}
-              </p>
-            </div>
-            <div className="sport-panel rounded-panel-md p-6">
+              </DisplayText>
+            </Panel>
+            <Panel radius="md" className="global-leaderboard-stat">
               <p className="text-sm text-slate-400 mb-2">
                 {t('leaderboard.yourRank')}
               </p>
-              <p className="sport-display text-4xl text-white">
+              <DisplayText as="p" className="text-4xl text-white">
                 {currentUser?.isVisible
                   ? (currentUser?.rank ? formatNumber(currentUser.rank) : '--')
                   : t('leaderboard.hiddenRank')}
-              </p>
-            </div>
+              </DisplayText>
+            </Panel>
           </div>
         </div>
 
         {!currentUser?.isVisible ? (
-          <div className="sport-panel rounded-panel-md p-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <Panel radius="md" className="global-leaderboard-callout">
             <p className="text-slate-300">
               {t('leaderboard.visibilityOff')}
             </p>
-            <Link
+            <Button
+              as={Link}
               to="/profile"
-              className="sport-button px-5 py-3 rounded-full text-slate-950 font-bold text-center"
+              className="global-leaderboard-callout__action"
             >
               {t('nav.profile')}
-            </Link>
-          </div>
+            </Button>
+          </Panel>
         ) : null}
 
         {players.length === 0 ? (
-          <div className="sport-panel app-empty">
+          <Panel className="app-empty">
             <p className="text-gray-400 text-lg">
               {t('leaderboard.noGlobalPlayers')}
             </p>
-          </div>
+          </Panel>
         ) : (
-          <div className="sport-panel-strong app-table-shell">
+          <Panel variant="strong" className="app-table-shell">
             <div className="overflow-x-auto">
               <table className="app-table">
                 <thead>
@@ -207,9 +209,9 @@ export default function GlobalLeaderboard() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

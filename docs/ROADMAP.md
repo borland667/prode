@@ -1,97 +1,151 @@
 # Roadmap
 
-This document tracks the most important next steps after the current Prode implementation.
+This roadmap starts from the current implemented product, not from a blank slate.
 
-## Current State
+For the precise implementation snapshot, see `docs/IMPLEMENTATION_STATUS.md`.
 
-What is already in place:
+## 1. Highest Priority
 
-- multi-tournament football catalog seed data
-- tournament-mode-aware rules and scoring display
-- World Cup 2026 best-third-place Round of 32 flow
-- public and private tournaments
-- private leagues inside tournaments
-- email/password auth, Google OAuth, forgot-password, and reset-password
-- profile editing and password change
-- admin tournament builder and safe structure editing
-- admin results entry and automatic score persistence
-- bilingual UI with browser-language detection
-- light and dark sports-oriented themes
+### 1.1 Finish Design-System Migration
 
-## Priority Next Steps
+Goal:
 
-### 1. Additional Tournament Engines
+- bring all user-facing pages onto the shared design-system primitives and spacing rules
 
-The biggest product gap is format support beyond the current football-style Prode engine.
+Priority targets:
 
-Priority work:
+- `src/pages/Predict.jsx`
+- `src/pages/Leaderboard.jsx`
+- `src/pages/Admin.jsx`
+- `src/pages/LeagueInvite.jsx`
+- remaining mobile navigation controls
 
-- add a seeded-playoff engine for tournaments without groups
-- add support for best-of-series rounds
-- support league-table formats where standings matter more than knockout brackets
-- model tournament format families explicitly instead of assuming one shared bracket engine
+Definition of done:
 
-Examples this would unlock:
+- no new one-off button or panel styling on those screens
+- shared button, panel, page, and badge components used consistently
+- old ad-hoc layout classes reduced where practical
 
-- NBA playoffs
-- NHL playoffs
-- MLB postseason
-- UEFA Champions League league-phase or similar hybrid formats
+### 1.2 Add Browser-Level E2E Coverage
 
-### 2. Official Data Import Pipelines
+Goal:
 
-Today, World Cup 2026 is the strongest seed and the rest are curated format-compatible templates.
+- complement the current Node integration and utility tests with true browser flow coverage
 
-Next-step work:
+Priority flows:
 
-- define a repeatable import format for tournaments, teams, groups, and rounds
-- support idempotent imports from official sources or curated files
-- separate demo seed data from production import workflows
-- add validation tooling for bracket-slot consistency
+- register/login/logout
+- forgot-password/reset-password
+- public tournament predictions
+- private tournament join
+- league create/join/invite
+- primary-entry selection
+- global ranking visibility toggle
 
-### 3. Automated Testing And CI
+## 2. Core Product Expansion
 
-QA is still largely manual and documented in `docs/QA_CHECKLIST.md`, but the repo now has a CI baseline for lint, Prisma schema validation, core unit tests, and production build verification.
+### 2.1 Introduce Explicit Tournament Format Families
 
-Next-step work:
+Current limitation:
 
-- add API tests for auth, tournament access, predictions, leagues, and scoring
-- add UI smoke tests for primary user flows
-- expand CI beyond the current unit-test layer into broader behavioral tests
-- block merges on failing checks where branch protection is enabled
+- the app stores generic sport and mode metadata, but only one football group-plus-knockout engine exists
 
-### 4. Prize And Payment Operations
+Next step:
 
-Prize configuration exists, but payment handling is still manual.
+- model format families explicitly
+- stop assuming all tournaments share the current bracket logic
 
-Next-step work:
+Target formats after that:
 
-- track paid entries explicitly
-- support payment providers such as Stripe or Mercado Pago
-- model payout rules and settlement status
-- improve leaderboard and admin reporting for prize-bearing tournaments
+- playoff-only brackets
+- best-of-series brackets
+- league-table competitions
+- hybrid formats
 
-### 5. Communication And Notifications
+### 2.2 Add A Second Engine
 
-Useful follow-up capabilities:
+The first engine after football should be chosen intentionally.
 
-- transactional emails for password reset in non-local environments
-- tournament invite emails for private tournaments and leagues
-- closing-date reminders
-- result and leaderboard update notifications
+Strong candidates:
 
-## Product Improvements After Core Gaps
+- NBA-style playoff bracket
+- NHL-style playoff bracket
+- Champions League-style hybrid competition
 
-- richer tournament cards and sport-specific visual identity per format
-- better admin bulk-edit/import tooling
-- season archives and historical leaderboards
-- audit trails for admin structure and result changes
-- improved mobile ergonomics for large brackets
+## 3. Tournament Data Operations
 
-## Recommended Order
+### 3.1 Official Import Pipeline
 
-1. Add explicit tournament format families and the next tournament engine
-2. Add automated tests and CI around the current engine
-3. Add official import pipelines and validation tooling
-4. Add payment and prize operations
-5. Add notification and communication workflows
+Goal:
+
+- move from curated seed data to repeatable imports
+
+Needed:
+
+- import format definition
+- idempotent importer
+- validation of groups, rounds, slots, and references
+- import-vs-seed separation
+
+### 3.2 Admin Bulk Tooling
+
+Goal:
+
+- reduce fragile manual JSON editing for tournament structure
+
+Potential improvements:
+
+- schema-guided JSON validation in the UI
+- CSV or JSON upload helpers
+- safer round/group editors
+
+## 4. Prize And Payment Operations
+
+Current state:
+
+- prize toggles and entry-fee metadata exist
+- no payment provider integration
+- no payout lifecycle
+
+Needed:
+
+- payment capture
+- paid-entry state
+- prize split configuration if rules evolve
+- settlement reporting
+
+## 5. Communication And Notifications
+
+Current state:
+
+- password reset email support exists
+- league sharing is currently link/code based
+
+Needed:
+
+- invite emails
+- tournament close reminders
+- leaderboard update notifications
+- admin operational alerts
+
+## 6. Operational Hardening
+
+Needed:
+
+- stronger audit trails for admin changes
+- better observability around score recalculation and access errors
+- migration and seed safety notes for more environments
+- deployment playbooks beyond the local/dev path
+
+## 7. Recommended Order
+
+Recommended next sequence:
+
+1. finish design-system migration
+2. add browser E2E smoke tests
+3. define format families
+4. build the next tournament engine
+5. introduce official import tooling
+6. improve admin bulk tooling
+7. add payment and prize operations
+8. add broader notifications and operational workflows
