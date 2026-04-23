@@ -155,23 +155,25 @@
   }
 }
 
-/* Home hero + featured sidebar: label + big value, top-aligned (no vertical centering) */
+/* Home hero + featured sidebar: label + big value, top-aligned, wide/shallow tile */
 .home-metric-tile {
   box-sizing: border-box;
   display: flex;
+  width: 100%;
   min-height: 0;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   text-align: center;
-  gap: 1rem;
-  padding: 2.375rem 1.25rem 1.625rem;
+  gap: 0.5rem;
+  /* Top-heavy padding, kept shallow for a wide tile silhouette */
+  padding: 1.125rem 1.25rem 0.6875rem;
 }
 
 @media (min-width: 768px) {
   .home-metric-tile {
-    gap: 1.125rem;
-    padding: 2.625rem 1.5rem 1.875rem;
+    gap: 0.5625rem;
+    padding: 1.25rem 1.5rem 0.8125rem;
   }
 }
 

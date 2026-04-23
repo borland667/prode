@@ -183,7 +183,9 @@ export default function Home() {
                         <StatIcon size={18} className="shrink-0" />
                         <span className="score-pill max-w-full truncate">{stat.label}</span>
                       </div>
-                      <div className="sport-display text-4xl tabular-nums text-white">{stat.value}</div>
+                      <div className="sport-display text-4xl leading-none tabular-nums text-white">
+                        {stat.value}
+                      </div>
                     </div>
                   );
                 })}
@@ -259,14 +261,16 @@ export default function Home() {
                   <CalendarDays size={18} className="shrink-0" />
                   <span className="score-pill">{t('tournament.closingDate')}</span>
                 </div>
-                <p className="sport-display text-3xl tabular-nums text-white">{featuredClosingDate}</p>
+                <p className="sport-display text-3xl leading-none tabular-nums text-white">
+                  {featuredClosingDate}
+                </p>
               </div>
               <div className="sport-panel home-metric-tile rounded-panel-lg">
                 <div className="home-metric-tile__kicker text-amber-300">
                   <Trophy size={18} className="shrink-0" />
                   <span className="score-pill">{t('home.maximumScore')}</span>
                 </div>
-                <p className="sport-display text-3xl tabular-nums text-white">
+                <p className="sport-display text-3xl leading-none tabular-nums text-white">
                   {featuredTournament?.rules?.totalMaximumPoints
                     ? formatNumber(featuredTournament.rules.totalMaximumPoints)
                     : '--'}
