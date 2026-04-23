@@ -598,9 +598,11 @@ export default function Tournament() {
         ) : null}
 
         <section className="tournament-section">
-          <DisplayText as="h2" className="text-4xl text-white">
-            {t('tournament.groups')}
-          </DisplayText>
+          <div className="tournament-section__header">
+            <DisplayText as="h2" className="text-4xl text-white">
+              {t('tournament.groups')}
+            </DisplayText>
+          </div>
 
           <div className="tournament-groups-grid">
             {groups.map((group) => (
@@ -608,29 +610,33 @@ export default function Tournament() {
                 key={group.id}
                 padding="normal"
                 radius="xl"
-                className="tournament-section"
+                className="tournament-group-card"
               >
-                <Pill className="text-emerald-200">
-                  {group.name}
-                </Pill>
-                <DisplayText as="h3" className="text-2xl text-white">
-                  {group.name}
-                </DisplayText>
+                <div className="tournament-group-card__header">
+                  <Pill className="text-emerald-200">
+                    {group.name}
+                  </Pill>
+                  <span className="tournament-group-card__count">
+                    {formatNumber(group.teams?.length || 0)}
+                  </span>
+                </div>
 
-                <div className="space-y-2">
+                <div className="tournament-group-list">
                   {group.teams?.length ? (
                     getGroupDisplayTeams(group, actualGroupSelections, teamMap).map((team, index) => (
                       <div
                         key={team.id}
-                        className="flex items-center justify-between p-3 bg-slate-950/70 rounded-2xl border border-white/8"
+                        className="tournament-group-row"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-gray-500 font-semibold w-6">
-                            {formatNumber(index + 1)}.
+                        <div className="tournament-group-row__main">
+                          <span className="tournament-group-row__rank">
+                            {formatNumber(index + 1)}
                           </span>
-                          <span className="text-white">{getLocalizedName(team, language, team.name)}</span>
+                          <span className="tournament-group-row__name">
+                            {getLocalizedName(team, language, team.name)}
+                          </span>
                         </div>
-                        <span className="text-gray-400 text-sm">
+                        <span className="tournament-group-row__meta">
                           {group.result && index < 3 ? positionLabel(index) : team.code || ''}
                         </span>
                       </div>
@@ -646,16 +652,23 @@ export default function Tournament() {
 
         {rounds.length ? (
           <section className="tournament-section">
-            <DisplayText as="h2" className="text-4xl text-white">
-              {t('tournament.knockoutBracket')}
-            </DisplayText>
+            <div className="tournament-section__header">
+              <DisplayText as="h2" className="text-4xl text-white">
+                {t('tournament.knockoutBracket')}
+              </DisplayText>
+            </div>
 
             <div className="space-y-8">
               {rounds.map((round) => (
                 <Panel key={round.id} padding="normal" radius="xl" className="tournament-section">
-                  <DisplayText as="h3" className="text-2xl text-white">
-                    {getRoundLabel(round, t)}
-                  </DisplayText>
+                  <div className="tournament-round-header">
+                    <DisplayText as="h3" className="text-2xl text-white">
+                      {getRoundLabel(round, t)}
+                    </DisplayText>
+                    <Pill compact className="text-cyan-200">
+                      {formatNumber(round.matches?.length || 0)}
+                    </Pill>
+                  </div>
                   <div className="tournament-knockout-grid">
                     {(round.matches || []).map((match) => {
                       const matchup = resolveMatchParticipants({
@@ -674,34 +687,34 @@ export default function Tournament() {
                       return (
                         <div
                           key={match.id}
-                          className="rounded-panel-sm border border-white/8 bg-slate-950/60 p-5"
+                          className="tournament-match-card"
                         >
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="score-pill text-emerald-200">{match.code}</span>
-                            <span className="text-sm text-gray-400 capitalize">
+                          <div className="tournament-match-card__header">
+                            <Pill compact className="text-emerald-200">{match.code}</Pill>
+                            <span className="tournament-match-card__status">
                               {match.status}
                             </span>
                           </div>
 
-                          <div className="space-y-3 mb-4">
-                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.home.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/2'}`}>
-                              <span className="text-white">
+                          <div className="tournament-match-card__teams">
+                            <div className={`tournament-match-row ${match.winner === matchup.home.teamId ? 'is-winner' : ''}`}>
+                              <span className="tournament-match-row__name">
                                 {matchup.home.teamName || matchup.home.slotLabel || match.homeLabel}
                               </span>
                               {match.winner === matchup.home.teamId ? (
-                                <span className="text-emerald-300 font-semibold">
+                                <Pill compact className="tournament-match-row__winner">
                                   {t('tournament.winner')}
-                                </span>
+                                </Pill>
                               ) : null}
                             </div>
-                            <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${match.winner === matchup.away.teamId ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/8 bg-white/2'}`}>
-                              <span className="text-white">
+                            <div className={`tournament-match-row ${match.winner === matchup.away.teamId ? 'is-winner' : ''}`}>
+                              <span className="tournament-match-row__name">
                                 {matchup.away.teamName || matchup.away.slotLabel || match.awayLabel}
                               </span>
                               {match.winner === matchup.away.teamId ? (
-                                <span className="text-emerald-300 font-semibold">
+                                <Pill compact className="tournament-match-row__winner">
                                   {t('tournament.winner')}
-                                </span>
+                                </Pill>
                               ) : null}
                             </div>
                           </div>

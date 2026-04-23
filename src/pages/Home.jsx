@@ -14,6 +14,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
 import { getLocalizedName, getModeLabel, getModeRuleSections } from '../utils/tournament';
+import { Button, DisplayText, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function Home() {
   const { language, t, formatDate, formatNumber } = useLanguage();
@@ -429,43 +430,45 @@ export default function Home() {
             {t('common.loading')}
           </div>
         ) : tournaments.length === 0 ? (
-          <div className="ds-panel-strong grid items-center gap-8 rounded-panel-xl ds-panel-pad lg:grid-cols-[1.15fr_0.85fr]">
-            <div>
-              <div className="ds-pill mb-5 text-emerald-200">
+          <Panel variant="strong" padding="normal" radius="xl" className="home-tournament-empty">
+            <div className="home-tournament-empty__copy">
+              <Pill className="text-emerald-200">
                 Tournament Center
-              </div>
-              <h3 className="ds-display text-3xl md:text-4xl text-white mb-4">
+              </Pill>
+              <DisplayText as="h3" className="text-3xl md:text-4xl text-white">
                 {t('home.noTournaments')}
-              </h3>
+              </DisplayText>
               <p className="text-slate-300 text-lg leading-relaxed max-w-2xl">
                 {t('home.description')}
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="ds-panel rounded-panel-sm p-5">
+            <div className="home-tournament-empty__aside">
+              <Panel radius="md" className="home-tournament-empty__stat">
                 <p className="text-xs uppercase tracking-overline text-slate-500 mb-2">
                   Private Leagues
                 </p>
                 <p className="ds-display text-2xl text-white">On</p>
-              </div>
-              <div className="ds-panel rounded-panel-sm p-5">
+              </Panel>
+              <Panel radius="md" className="home-tournament-empty__stat">
                 <p className="text-xs uppercase tracking-overline text-slate-500 mb-2">
                   Prize Pools
                 </p>
                 <p className="ds-display text-2xl text-white">Optional</p>
-              </div>
-              <div className="ds-panel rounded-panel-sm p-5 sm:col-span-2">
-                <Link
+              </Panel>
+              <Panel radius="md" className="home-tournament-empty__cta">
+                <Button
+                  as={Link}
                   to="/"
-                  className="flex items-center justify-between text-white font-semibold hover:text-emerald-300 transition"
+                  variant="secondary"
+                  className="home-tournament-empty__action"
                 >
                   <span>{t('nav.tournaments')}</span>
                   <ArrowRight size={18} />
-                </Link>
-              </div>
+                </Button>
+              </Panel>
             </div>
-          </div>
+          </Panel>
         ) : (
           <div className="home-tournament-grid">
             {tournaments.map((tournament) => (
