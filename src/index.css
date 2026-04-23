@@ -1485,6 +1485,13 @@ html {
   gap: 1rem;
 }
 
+.leaderboard-switcher__group {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--line-soft);
+}
+
 .leaderboard-switcher__header {
   display: grid;
   gap: 0.35rem;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
@@ -8,13 +8,16 @@ import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/De
 
 export default function Leaderboard() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const { language, t, formatNumber, formatCurrency } = useLanguage();
   const { user } = useAuth();
 
   const [tournaments, setTournaments] = useState([]);
+  const [leagues, setLeagues] = useState([]);
   const [players, setPlayers] = useState([]);
   const [rounds, setRounds] = useState([]);
   const [tournament, setTournament] = useState(null);
+  const [currentLeague, setCurrentLeague] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,16 +41,33 @@ export default function Leaderboard() {
 
         const tournamentData = await get(`/tournaments/${selectedTournamentId}`);
         setTournament(tournamentData);
+        setCurrentLeague(null);
 
         if (!tournamentData?.access?.canViewLeaderboard) {
           setError(t('tournament.membersOnlyLeaderboard'));
           return;
         }
 
-        const leaderboardData = await get(`/tournaments/${selectedTournamentId}/leaderboard`);
+        const leagueId = searchParams.get('league');
+        let accessibleLeagues = [];
+
+        if (user) {
+          accessibleLeagues = await get(`/tournaments/${selectedTournamentId}/leagues`).catch(() => []);
+        }
+
+        setLeagues(accessibleLeagues || []);
+
+        const selectedLeague = leagueId
+          ? (accessibleLeagues || []).find((entry) => entry.id === leagueId)
+          : null;
+
+        const leaderboardData = selectedLeague
+          ? await get(`/leagues/${selectedLeague.id}/leaderboard`)
+          : await get(`/tournaments/${selectedTournamentId}/leaderboard`);
 
         setPlayers(leaderboardData?.players || []);
         setRounds(leaderboardData?.rounds || []);
+        setCurrentLeague(leaderboardData?.league || selectedLeague || null);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -56,10 +76,15 @@ export default function Leaderboard() {
     };
 
     fetchData();
-  }, [id, t]);
+  }, [id, searchParams, t, user]);
 
   const tournamentName = getLocalizedName(tournament, language, tournament?.name || '');
   const selectedTournamentId = tournament?.id || id || tournaments[0]?.id || null;
+  const selectedLeagueId = currentLeague?.id || searchParams.get('league') || null;
+  const boardTitle = currentLeague?.name || t('leaderboard.leaderboard');
+  const boardDescription = currentLeague?.id
+    ? currentLeague.description || t('leaderboard.leagueDescription')
+    : tournamentName || t('home.noTournaments');
 
   if (loading) {
     return (
@@ -119,10 +144,10 @@ export default function Leaderboard() {
         <Panel variant="strong" padding="normal" radius="xl" className="leaderboard-hero__copy">
           <Pill className="text-emerald-200">{t('tournament.standings')}</Pill>
           <DisplayText as="h1" className="leaderboard-title text-white">
-            {t('leaderboard.leaderboard')}
+            {boardTitle}
           </DisplayText>
           <p className="text-slate-300 text-lg leading-relaxed">
-            {tournamentName || t('home.noTournaments')}
+            {boardDescription}
           </p>
         </Panel>
 
@@ -153,7 +178,7 @@ export default function Leaderboard() {
 
           <div className="leaderboard-switcher__list">
             {tournaments.map((entry) => {
-              const isSelected = entry.id === selectedTournamentId;
+              const isSelected = entry.id === selectedTournamentId && !selectedLeagueId;
 
               return (
                 <Button
@@ -170,6 +195,37 @@ export default function Leaderboard() {
               );
             })}
           </div>
+
+          {selectedTournamentId && leagues.length > 0 ? (
+            <div className="leaderboard-switcher__group">
+              <div className="leaderboard-switcher__header">
+                <DisplayText as="h3" className="text-xl text-white">
+                  {t('leaderboard.privateLeagueBoards')}
+                </DisplayText>
+                <p className="text-slate-400">
+                  {t('leaderboard.selectLeagueHelp')}
+                </p>
+              </div>
+
+              <div className="leaderboard-switcher__list">
+                {leagues.map((league) => {
+                  const isSelected = league.id === selectedLeagueId;
+
+                  return (
+                    <Button
+                      key={league.id}
+                      as={Link}
+                      to={`/leaderboard/${selectedTournamentId}?league=${league.id}`}
+                      variant={isSelected ? 'primary' : 'secondary'}
+                      className="leaderboard-switcher__item"
+                    >
+                      <span className="truncate">{league.name}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </Panel>
       ) : null}
 
