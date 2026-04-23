@@ -286,22 +286,26 @@ export default function Navbar() {
 
   return (
     <nav className="nav-frame sticky top-0 z-50">
-      <div className="nav-strip border-b">
-        <div className="mx-auto max-w-7xl px-4 py-1.5 sm:px-6 lg:px-8">
-          <div className="flex min-h-9 items-center justify-between text-xs uppercase tracking-marquee text-slate-400 md:text-sm">
-            <div className="flex items-center gap-2">
+      <div className="nav-shell">
+        <div className="nav-strip border-b">
+          <div className="nav-strip__container mx-auto max-w-7xl py-1.5">
+          <div className="nav-strip__inner">
+            <div className="nav-strip__brand">
               <Activity size={12} className="text-emerald-400" />
               <span className="sport-display">Matchday Live</span>
             </div>
             {topBarItems.length > 0 ? (
-              <div className="hidden lg:flex items-center gap-5">
+              <div className="nav-strip__stats">
                 {topBarItems.map((item) => (
-                  <div key={`${item.label}-${item.value || 'label'}`} className="flex items-center gap-2 min-w-0">
-                    <span className={`truncate ${item.accent ? 'text-emerald-300' : 'text-slate-500'}`}>
+                  <div
+                    key={`${item.label}-${item.value || 'label'}`}
+                    className={`nav-strip__stat ${item.accent ? 'is-accent' : ''}`}
+                  >
+                    <span className="nav-strip__stat-label">
                       {item.label}
                     </span>
                     {item.value ? (
-                      <span className="truncate normal-case tracking-normal text-slate-200 font-semibold">
+                      <span className="nav-strip__stat-value">
                         {item.value}
                       </span>
                     ) : null}
@@ -309,18 +313,18 @@ export default function Navbar() {
                 ))}
               </div>
             ) : (
-              <div className="hidden lg:flex items-center gap-6">
-                <span>{t('nav.quickAccess')}</span>
-                <span>{t('nav.tournaments')}</span>
-                <span>{t('nav.leaderboard')}</span>
+              <div className="nav-strip__fallback">
+                <span className="nav-strip__fallback-item">{t('nav.quickAccess')}</span>
+                <span className="nav-strip__fallback-item">{t('nav.tournaments')}</span>
+                <span className="nav-strip__fallback-item">{t('nav.leaderboard')}</span>
               </div>
             )}
           </div>
         </div>
-      </div>
+        </div>
 
-      <div className="nav-main-bar border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="nav-main-bar border-b">
+          <div className="nav-main-bar__container max-w-7xl mx-auto">
           <div className="flex justify-between items-center min-h-[4.5rem] gap-5">
             <Link
               to="/"
@@ -654,6 +658,7 @@ export default function Navbar() {
             </div>
           ) : null}
         </div>
+      </div>
       </div>
     </nav>
   );
