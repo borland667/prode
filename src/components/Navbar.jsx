@@ -32,6 +32,7 @@ function formatClosingDate(dateValue, formatDate) {
 }
 
 function NavDropdown({
+  dropdownId,
   icon,
   label,
   title,
@@ -41,6 +42,8 @@ function NavDropdown({
   footerTo,
   headerAction,
   onNavigate,
+  isOpen,
+  setOpenDropdown,
   renderMeta,
 }) {
   const Icon = icon;
@@ -49,11 +52,22 @@ function NavDropdown({
       document.activeElement.blur();
     }
 
+    setOpenDropdown(null);
     onNavigate?.();
   };
 
   return (
-    <div className="relative group after:absolute after:left-0 after:right-0 after:top-full after:h-4 after:content-['']">
+    <div
+      className="relative after:absolute after:left-0 after:right-0 after:top-full after:h-4 after:content-['']"
+      onMouseEnter={() => setOpenDropdown(dropdownId)}
+      onMouseLeave={() => setOpenDropdown(null)}
+      onFocus={() => setOpenDropdown(dropdownId)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpenDropdown(null);
+        }
+      }}
+    >
       <Button
         variant="ghost"
         size="sm"
@@ -63,7 +77,13 @@ function NavDropdown({
         <span>{label}</span>
       </Button>
 
-      <div className="pointer-events-none invisible absolute left-0 top-full z-50 w-96 pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
+      <div
+        className={`absolute left-0 top-full z-50 w-96 pt-3 transition duration-150 ${
+          isOpen
+            ? 'pointer-events-auto visible opacity-100'
+            : 'pointer-events-none invisible opacity-0'
+        }`}
+      >
         <Panel variant="strong" radius="md" className="nav-dropdown-panel ds-panel-pad-compact shadow-ds-popover">
           <div className="nav-dropdown-header">
             <DisplayText as="p" className="nav-dropdown-title text-white">{title}</DisplayText>
@@ -130,6 +150,7 @@ function NavDropdown({
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const [featuredTournament, setFeaturedTournament] = useState(null);
   const [availableTournaments, setAvailableTournaments] = useState([]);
   const [navCollections, setNavCollections] = useState({ tournaments: [], leagues: [] });
@@ -248,6 +269,7 @@ export default function Navbar() {
     await logout();
     navigate('/');
     setIsOpen(false);
+    setOpenDropdown(null);
   };
 
   const scrollToSection = (sectionId) => {
@@ -262,6 +284,7 @@ export default function Navbar() {
 
   const handleTournamentsClick = (event) => {
     setIsOpen(false);
+    setOpenDropdown(null);
 
     if (location.pathname === '/' && scrollToSection('active-tournaments')) {
       event.preventDefault();
@@ -270,6 +293,7 @@ export default function Navbar() {
 
   const handleLeaderboardClick = (event) => {
     setIsOpen(false);
+    setOpenDropdown(null);
 
     if (availableTournaments.length > 0) {
       return;
@@ -343,6 +367,7 @@ export default function Navbar() {
 
             <div className="hidden md:flex items-center gap-2.5">
               <NavDropdown
+                dropdownId="tournaments"
                 icon={LayoutGrid}
                 label={t('nav.tournaments')}
                 title={t('nav.tournaments')}
@@ -351,6 +376,8 @@ export default function Navbar() {
                 footerLabel={t('nav.viewAll')}
                 footerTo="/#active-tournaments"
                 onNavigate={() => setIsOpen(false)}
+                isOpen={openDropdown === 'tournaments'}
+                setOpenDropdown={setOpenDropdown}
                 renderMeta={(item) => (
                   <Pill compact className={`nav-dropdown-meta ${item.accessType === 'private' ? 'is-private text-amber-300' : 'is-public text-emerald-300'}`}>
                     {item.accessType === 'private' ? t('tournament.privateAccess') : t('tournament.publicAccess')}
@@ -360,6 +387,7 @@ export default function Navbar() {
 
               {user ? (
                 <NavDropdown
+                  dropdownId="leagues"
                   icon={Users}
                   label={t('nav.myLeagues')}
                   title={t('nav.myLeagues')}
@@ -373,6 +401,8 @@ export default function Navbar() {
                         }
                       : null
                   }
+                  isOpen={openDropdown === 'leagues'}
+                  setOpenDropdown={setOpenDropdown}
                   renderMeta={(item) =>
                     item.isOwner ? (
                       <Pill compact className="nav-dropdown-meta text-cyan-300">{t('tournament.leagueSettings')}</Pill>
