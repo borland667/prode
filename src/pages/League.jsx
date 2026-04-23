@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Copy, Link as LinkIcon } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -23,6 +23,7 @@ export default function League() {
   const [saving, setSaving] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [primaryEntry, setPrimaryEntry] = useState(null);
+  const [copySourceScopeKey, setCopySourceScopeKey] = useState('');
   const [leagueForm, setLeagueForm] = useState({
     name: '',
     description: '',
@@ -57,6 +58,32 @@ export default function League() {
 
     fetchData();
   }, [id]);
+
+  const currentPrimaryScopeKey = primaryEntry?.currentScopeKey || 'tournament';
+  const leaguePrimaryOption =
+    primaryEntry?.options?.find((option) => option.scopeKey === `league:${id}`) || null;
+  const copySourceOptions = useMemo(
+    () =>
+      (primaryEntry?.options || []).filter(
+        (option) => option.scopeKey !== `league:${id}` && option.hasPredictions
+      ),
+    [primaryEntry, id]
+  );
+
+  useEffect(() => {
+    if (!copySourceOptions.length) {
+      setCopySourceScopeKey('');
+      return;
+    }
+
+    setCopySourceScopeKey((currentValue) => {
+      if (copySourceOptions.some((option) => option.scopeKey === currentValue)) {
+        return currentValue;
+      }
+
+      return copySourceOptions[0].scopeKey;
+    });
+  }, [copySourceOptions]);
 
   const handleUpdateLeague = async () => {
     setSaving(true);
@@ -156,9 +183,6 @@ export default function League() {
     }
   };
 
-  const currentPrimaryScopeKey = primaryEntry?.currentScopeKey || 'tournament';
-  const leaguePrimaryOption =
-    primaryEntry?.options?.find((option) => option.scopeKey === `league:${id}`) || null;
   const handleSetPrimaryEntry = async () => {
     if (!leaguePrimaryOption?.hasPredictions) {
       setError(t('tournament.primaryEntryNeedsPredictions'));
@@ -175,6 +199,30 @@ export default function League() {
       });
       setPrimaryEntry(response?.primaryEntry || primaryEntry);
       setSuccess(t('tournament.primaryEntrySaved'));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopyPredictions = async () => {
+    if (!copySourceScopeKey) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await post(`/leagues/${id}/predictions/copy`, {
+        sourceScopeKey: copySourceScopeKey,
+      });
+      if (response?.primaryEntry) {
+        setPrimaryEntry(response.primaryEntry);
+      }
+      setSuccess(t('tournament.copyPredictionsSuccess'));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -307,6 +355,43 @@ export default function League() {
                   : t('tournament.setPrimaryEntry')}
               </Button>
             </div>
+            {copySourceOptions.length > 0 ? (
+              <div className="league-copy-panel">
+                <div className="league-copy-panel__header">
+                  <p className="text-white font-semibold">
+                    {t('tournament.copyPredictionsToLeague')}
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    {t('tournament.copyPredictionsHelp')}
+                  </p>
+                </div>
+                <div className="league-copy-panel__controls">
+                  <select
+                    value={copySourceScopeKey}
+                    onChange={(event) => setCopySourceScopeKey(event.target.value)}
+                    className="app-select"
+                    disabled={saving || !primaryEntry?.canChange}
+                  >
+                    {copySourceOptions.map((option) => (
+                      <option key={option.scopeKey} value={option.scopeKey}>
+                        {option.type === 'league'
+                          ? `${option.label} (${t('tournament.primaryEntryLeague')})`
+                          : `${option.label} (${t('tournament.primaryEntryTournament')})`}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    onClick={handleCopyPredictions}
+                    disabled={saving || !primaryEntry?.canChange || !copySourceScopeKey}
+                    variant="secondary"
+                    className="disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('tournament.copyPredictionsNow')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {currentPrimaryScopeKey === `league:${id}` ? (
               <p className="text-emerald-300 text-sm mt-4">
                 {t('tournament.primaryEntryHelp')}

@@ -1628,6 +1628,67 @@ async function clearPredictionsForScope({ userId, tournamentId, scopeKey = TOURN
   });
 }
 
+async function ensureAccessibleScopeKey({ userId, tournamentId, scopeKey }) {
+  if (scopeKey === TOURNAMENT_SCOPE_KEY) {
+    return;
+  }
+
+  if (!isLeagueScopeKey(scopeKey)) {
+    throw createHttpError(400, 'Invalid prediction scope');
+  }
+
+  const leagueId = getLeagueIdFromScopeKey(scopeKey);
+  const { league } = await ensureLeagueMembership(leagueId, { id: userId });
+
+  if (league.tournamentId !== tournamentId) {
+    throw createHttpError(400, 'That prediction scope does not belong to this tournament');
+  }
+}
+
+async function copyPredictionsBetweenScopes({
+  userId,
+  tournamentId,
+  sourceScopeKey,
+  targetScopeKey,
+}) {
+  if (!sourceScopeKey || !targetScopeKey || sourceScopeKey === targetScopeKey) {
+    throw createHttpError(400, 'Source and target prediction scopes must be different');
+  }
+
+  await Promise.all([
+    ensureAccessibleScopeKey({ userId, tournamentId, scopeKey: sourceScopeKey }),
+    ensureAccessibleScopeKey({ userId, tournamentId, scopeKey: targetScopeKey }),
+  ]);
+
+  const sourcePredictions = await getPredictionsForScope({
+    userId,
+    tournamentId,
+    scopeKey: sourceScopeKey,
+  });
+
+  if (!sourcePredictions.groupPredictions.length && !sourcePredictions.knockoutPredictions.length) {
+    throw createHttpError(400, 'You need saved predictions in the source entry before copying them');
+  }
+
+  await savePredictionsForScope({
+    userId,
+    tournamentId,
+    scopeKey: targetScopeKey,
+    groupPredictions: sourcePredictions.groupPredictions.map((prediction) => ({
+      groupId: prediction.groupId,
+      first: prediction.first,
+      second: prediction.second,
+      third: prediction.third || '',
+    })),
+    knockoutPredictions: sourcePredictions.knockoutPredictions.map((prediction) => ({
+      matchId: prediction.matchId,
+      predictedWinner: prediction.predictedWinner,
+      selectedHomeTeamId: prediction.selectedHomeTeamId || '',
+      selectedAwayTeamId: prediction.selectedAwayTeamId || '',
+    })),
+  });
+}
+
 async function getScoringContext(tournamentId) {
   const [rounds, groupResults, knockoutMatches] = await Promise.all([
     prisma.round.findMany({
@@ -2633,6 +2694,30 @@ app.post('/api/leagues/:id/predictions', verifyToken, async (req, res) => {
     await persistTournamentScores(league.tournamentId);
 
     res.json({ message: 'Predictions saved successfully' });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/leagues/:id/predictions/copy', verifyToken, async (req, res) => {
+  try {
+    const { league } = await ensureLeagueMembership(req.params.id, req.user);
+    await ensureTournamentPredictionSubmissionAccess(league.tournamentId, req.user);
+
+    const sourceScopeKey = String(req.body.sourceScopeKey || '').trim();
+    await copyPredictionsBetweenScopes({
+      userId: req.user.id,
+      tournamentId: league.tournamentId,
+      sourceScopeKey,
+      targetScopeKey: buildLeagueScopeKey(league.id),
+    });
+
+    await persistTournamentScores(league.tournamentId);
+
+    res.json({
+      message: 'Predictions copied successfully',
+      primaryEntry: await listPrimaryEntryOptions(req.user.id, league.tournamentId),
+    });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }
