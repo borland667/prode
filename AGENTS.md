@@ -17,6 +17,7 @@ These rules must be preserved when changing product behavior:
 - tournament predictions and league predictions are separate scopes
 - `scopeKey = "tournament"` is the tournament-wide scope
 - `scopeKey = "league:<leagueId>"` is a league-specific scope
+- league scopes may copy an existing saved prediction set, but still persist their own rows after the copy
 - each user has one official primary entry per tournament
 - global rankings use the official primary entry only
 - opting into global rankings is controlled by `showInGlobalRankings`
@@ -41,6 +42,8 @@ Rules:
 - prefer `npm run db:migrate:deploy` for applying checked-in migrations
 - avoid `db push` as the normal workflow
 - never make undocumented schema changes
+- production migrations should run from GitHub Actions on `main` using the `PRODUCTION_DATABASE_URL` GitHub secret
+- production migration automation must be secret-gated and skip cleanly when the required secret is not configured
 
 ## 4. API And Data Safety
 

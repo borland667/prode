@@ -551,6 +551,7 @@ CI:
 - GitHub Actions workflow in `.github/workflows/ci.yml`
 - PostgreSQL service in CI
 - `npm run verify`
+- secret-gated production migration job on pushes to `main`
 
 Verification baseline:
 
@@ -581,6 +582,20 @@ Preferred schema workflow:
 4. run `npm run verify`
 
 Avoid using `db push` as the normal schema workflow.
+
+### 15.3 Production Migration Automation
+
+Production schema changes are applied from GitHub Actions rather than from the Netlify build.
+
+Current automation contract:
+
+- workflow: `.github/workflows/ci.yml`
+- trigger: push to `main`
+- gate: runs only when GitHub secret `PRODUCTION_DATABASE_URL` is configured
+- order: `migrate-production` waits for `verify`
+- command: `npm run db:migrate:deploy`
+
+This keeps the migration path explicit and checked-in while allowing repositories without configured production secrets to keep using the same CI workflow safely.
 
 ## 16. Current Architectural Gaps
 

@@ -278,6 +278,7 @@ Important:
 - join a league using a join code
 - share league invite links
 - submit league-scope predictions
+- copy an existing tournament or league prediction set into a private league scope
 - choose a league scope as the official primary entry if it has predictions
 - leave a league
 - delete a league if you are the owner
@@ -338,6 +339,30 @@ CI:
 
 - GitHub Actions runs `npm run verify`
 - CI provisions PostgreSQL for the test suite
+- on pushes to `main`, GitHub Actions also runs `npm run db:migrate:deploy` for production when the `PRODUCTION_DATABASE_URL` GitHub secret is configured
+- if `PRODUCTION_DATABASE_URL` is not present, the production migration job is skipped without failing CI
+
+## Deployment And Production Migrations
+
+Netlify remains the production host shape for the SPA and serverless API. Production database migrations are applied from GitHub Actions rather than from the Netlify build itself.
+
+Current production deployment expectation:
+
+- pushing to `main` triggers `.github/workflows/ci.yml`
+- the `verify` job must pass first
+- after `verify`, the `migrate-production` job runs `npm run db:migrate:deploy`
+- the migration job only runs when the GitHub secret `PRODUCTION_DATABASE_URL` is configured
+- if that secret is absent, the migration job is skipped and the workflow still completes successfully
+
+Required GitHub secret:
+
+- `PRODUCTION_DATABASE_URL`: the production PostgreSQL connection string Prisma should use for `migrate deploy`
+
+Operational notes:
+
+- keep production schema changes migration-first and checked into `prisma/migrations`
+- do not rely on `db push` in production
+- GitHub Actions and Netlify are separate systems, so application changes should stay forward-compatible with normal deploy timing
 
 ## Current Boundaries
 

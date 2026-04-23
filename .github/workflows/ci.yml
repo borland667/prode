@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -43,3 +46,31 @@ jobs:
 
       - name: Verify project
         run: npm run verify
+
+  migrate-production:
+    name: Deploy production migrations
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.PRODUCTION_DATABASE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: production-migrations-main
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply production migrations
+        run: npm run db:migrate:deploy
