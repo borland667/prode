@@ -702,7 +702,12 @@ export default function Tournament() {
 
               <div className="space-y-6">
                 {rounds.map((round) => (
-                  <Panel key={round.id} padding="compact" radius="xl" className="tournament-round-panel">
+                  <Panel
+                    key={round.id}
+                    padding="compact"
+                    radius="xl"
+                    className={`tournament-round-panel ${(round.matches?.length || 0) === 1 ? 'tournament-round-panel--single' : ''}`}
+                  >
                     <div className="tournament-round-header">
                       <DisplayText as="h3" className="text-2xl text-white">
                         {getRoundLabel(round, t)}
