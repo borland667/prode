@@ -249,9 +249,9 @@ export default function Admin() {
 
   if (authLoading || loading) {
     return (
-      <div className="ds-shell min-h-screen flex items-center justify-center">
+      <PageShell className="min-h-[50vh] place-items-center">
         <p className="text-gray-400">{t('common.loading')}</p>
-      </div>
+      </PageShell>
     );
   }
 
@@ -439,7 +439,7 @@ export default function Admin() {
 
   return (
     <div className="ds-shell min-h-screen">
-      <PageShell>
+      <PageShell className="admin-page">
         <header className="space-y-4 mb-10">
           <Pill className="text-emerald-200">
             {t('nav.admin')}
@@ -464,13 +464,14 @@ export default function Admin() {
           </div>
         ) : null}
 
-        <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            <div>
-              <h2 className="app-section-title">
+        <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong admin-panel mb-8">
+          <div className="admin-section-header">
+            <div className="admin-section-copy-block">
+              <Pill className="text-cyan-200">{t('admin.tournamentBuilder')}</Pill>
+              <DisplayText as="h2" className="admin-section-title">
                 {t('admin.tournamentBuilder')}
-              </h2>
-              <p className="app-section-copy max-w-3xl">
+              </DisplayText>
+              <p className="ds-copy admin-section-copy">
                 {t('admin.tournamentBuilderHelp')}
               </p>
             </div>
@@ -494,7 +495,7 @@ export default function Admin() {
             </div>
           ) : null}
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 admin-form-grid">
             <div>
               <label className="account-label">
                 {t('admin.tournamentName')}
@@ -635,15 +636,15 @@ export default function Admin() {
               />
             </div>
 
-            <Panel as="label" padding="compact" radius="xl" className="app-card flex items-center justify-between gap-4 cursor-pointer">
-              <span className="text-white font-semibold">
+            <Panel as="label" padding="compact" radius="xl" className="app-card admin-toggle-card flex items-center justify-between gap-4 cursor-pointer">
+              <span className="admin-toggle-card__label">
                 {t('admin.prizesEnabled')}
               </span>
               <input
                 type="checkbox"
                 checked={builderForm.prizesEnabled}
                 onChange={(event) => handleBuilderFieldChange('prizesEnabled', event.target.checked)}
-                className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+                className="admin-checkbox h-5 w-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
               />
             </Panel>
 
@@ -724,10 +725,13 @@ export default function Admin() {
           </div>
         </Panel>
 
-        <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
-          <label className="account-label text-base">
-            {t('admin.selectTournament')}
-          </label>
+        <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong admin-panel mb-8">
+          <div className="admin-section-copy-block mb-5">
+            <Pill className="text-emerald-200">{t('admin.selectTournament')}</Pill>
+            <DisplayText as="h2" className="admin-section-title admin-section-title--compact">
+              {t('admin.selectTournament')}
+            </DisplayText>
+          </div>
           <select
             value={selectedTournament}
             onChange={(e) => setSelectedTournament(e.target.value)}
@@ -744,15 +748,18 @@ export default function Admin() {
 
         {tournament ? (
           <>
-            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
-              <h2 className="app-section-title">
-                {t('admin.tournamentSettings')}
-              </h2>
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong admin-panel mb-8">
+              <div className="admin-section-copy-block mb-6">
+                <Pill className="text-amber-200">{t('admin.tournamentSettings')}</Pill>
+                <DisplayText as="h2" className="admin-section-title admin-section-title--compact">
+                  {t('admin.tournamentSettings')}
+                </DisplayText>
+              </div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                <Panel padding="compact" radius="xl" className="app-card">
+                <Panel padding="compact" radius="xl" className="app-card admin-subpanel">
                   <label className="flex items-center justify-between gap-4 cursor-pointer">
-                    <span className="text-white font-semibold">
+                    <span className="admin-toggle-card__label">
                       {t('admin.prizesEnabled')}
                     </span>
                     <input
@@ -764,7 +771,7 @@ export default function Admin() {
                           prizesEnabled: event.target.checked,
                         }))
                       }
-                      className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+                      className="admin-checkbox h-5 w-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
                     />
                   </label>
 
@@ -807,7 +814,7 @@ export default function Admin() {
                   </div>
                 </Panel>
 
-                <Panel padding="compact" radius="xl" className="app-card">
+                <Panel padding="compact" radius="xl" className="app-card admin-subpanel">
                   <div>
                     <label className="account-label">
                       {t('admin.accessType')}
@@ -847,7 +854,7 @@ export default function Admin() {
                         />
                       </div>
 
-                      <label className="flex items-center gap-3 mt-4 cursor-pointer text-gray-300">
+                      <label className="admin-regenerate-toggle">
                         <input
                           type="checkbox"
                           checked={settings.regenerateJoinCode}
@@ -857,7 +864,7 @@ export default function Admin() {
                               regenerateJoinCode: event.target.checked,
                             }))
                           }
-                          className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+                          className="admin-checkbox h-4 w-4 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
                         />
                         <span>
                           {t('admin.regenerateJoinCode')}
@@ -880,10 +887,13 @@ export default function Admin() {
               </div>
             </Panel>
 
-            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
-              <h2 className="app-section-title">
-                {t('admin.groupResults')}
-              </h2>
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong admin-panel mb-8">
+              <div className="admin-section-copy-block mb-6">
+                <Pill className="text-emerald-200">{t('admin.groupResults')}</Pill>
+                <DisplayText as="h2" className="admin-section-title admin-section-title--compact">
+                  {t('admin.groupResults')}
+                </DisplayText>
+              </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {groups.map((group) => (
@@ -891,9 +901,9 @@ export default function Admin() {
                     key={group.id}
                     padding="compact"
                     radius="xl"
-                    className="app-card"
+                    className="app-card admin-subpanel"
                   >
-                    <h3 className="text-lg font-bold text-emerald-400 mb-4">
+                    <h3 className="admin-group-title">
                       {group.name}
                     </h3>
 
@@ -1003,15 +1013,24 @@ export default function Admin() {
               </Button>
             </Panel>
 
-            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
-              <h2 className="app-section-title">
-                {t('admin.knockoutResults')}
-              </h2>
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong admin-panel mb-8">
+              <div className="admin-section-copy-block mb-6">
+                <Pill className="text-cyan-200">{t('admin.knockoutResults')}</Pill>
+                <DisplayText as="h2" className="admin-section-title admin-section-title--compact">
+                  {t('admin.knockoutResults')}
+                </DisplayText>
+              </div>
 
               <div className="space-y-8 mb-8">
                 {rounds.map((round) => (
-                  <div key={round.id}>
-                    <h3 className="text-xl font-bold text-emerald-400 mb-4">
+                  <section key={round.id} className="admin-round-section">
+                    <div className="admin-round-header">
+                      <Pill className="text-emerald-200">{getRoundLabel(round, t)}</Pill>
+                      <p className="admin-round-meta">
+                        {round.matches?.length || 0} {t('common.matches')}
+                      </p>
+                    </div>
+                    <h3 className="admin-round-title">
                       {getRoundLabel(round, t)}
                     </h3>
 
@@ -1058,7 +1077,7 @@ export default function Admin() {
                             key={match.id}
                             padding="compact"
                             radius="xl"
-                            className="app-card"
+                            className="app-card admin-subpanel"
                           >
                             <label className="account-label">
                               {match.code}: {match.homeLabel} vs {match.awayLabel}
@@ -1153,11 +1172,11 @@ export default function Admin() {
                         );
                       })}
                     </div>
-                  </div>
+                  </section>
                 ))}
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <Button
                   onClick={handleSaveKnockoutResults}
                   disabled={saving}
@@ -1178,7 +1197,7 @@ export default function Admin() {
             </Panel>
           </>
         ) : (
-          <Panel padding="normal" radius="xl" className="app-empty">
+          <Panel padding="normal" radius="xl" className="app-empty admin-empty-state">
             <p className="text-gray-400 text-lg">
               {t('admin.selectTournament')}
             </p>

@@ -2545,6 +2545,10 @@ html.theme-light .nav-dropdown-settings,
   .prediction-footer__button--ghost {
     width: 100%;
   }
+
+  .admin-section-header {
+    margin-bottom: 1.4rem;
+  }
 }
 
 .app-alert {
@@ -2570,6 +2574,118 @@ html.theme-light .nav-dropdown-settings,
   border-radius: 1.7rem;
   padding: 3rem 1.5rem;
   text-align: center;
+}
+
+.admin-page {
+  gap: 0;
+}
+
+.admin-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-section-copy-block {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-section-title {
+  margin: 0;
+  color: var(--text-main);
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.admin-section-title--compact {
+  font-size: clamp(1.55rem, 2vw, 2.1rem);
+}
+
+.admin-section-copy {
+  max-width: 52rem;
+}
+
+.admin-form-grid {
+  align-items: start;
+}
+
+.admin-subpanel {
+  height: 100%;
+}
+
+.admin-toggle-card {
+  min-height: 4.6rem;
+}
+
+.admin-toggle-card__label {
+  color: var(--text-main);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.admin-checkbox {
+  accent-color: var(--accent);
+}
+
+.admin-regenerate-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.admin-group-title {
+  margin: 0 0 1rem;
+  color: var(--accent-strong);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-round-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-round-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.admin-round-title {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.admin-round-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-empty-state {
+  min-height: 11rem;
+  display: grid;
+  place-items: center;
 }
 
 .app-table-shell {
