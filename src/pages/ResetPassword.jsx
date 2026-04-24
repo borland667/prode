@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { post } from '../utils/api';
 import { useLanguage } from '../i18n/LanguageContext';
+import { Button } from '../components/ui/DesignSystem';
 
 export default function ResetPassword() {
   const { t } = useLanguage();
@@ -82,17 +83,13 @@ export default function ResetPassword() {
                 required
                 disabled={!token}
                 className="app-input disabled:opacity-50"
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !token}
-              className="app-button-primary"
-            >
+            <Button type="submit" disabled={loading || !token} variant="primary" block>
               {loading ? t('auth.changingPassword') : t('auth.resetPassword')}
-            </button>
+            </Button>
           </form>
 
           <div className="text-center text-sm text-gray-400">

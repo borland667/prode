@@ -38,10 +38,14 @@ Use Tailwind utilities on these components for layout only, such as `grid`, `gap
 - Avoid page-specific button sizing. Buttons should come from `ds-button*` classes and local layout wrappers should only control width.
 - Avoid page-specific panel padding. Use `ds-panel-pad*` unless the component has a documented exception.
 - If a visual pattern appears twice, promote it to `src/index.css` before tuning it in JSX.
+- Avoid hardcoded user-facing UI copy when translations or API data should drive the content.
+- Avoid page-shell vignette or darkening overlays unless they are explicitly part of the current visual system and tokenized in the design layer.
 
 ## Migration Notes
 
-The home page and auth surfaces now use the design-system layer first. Remaining routes can be migrated incrementally by replacing old aliases:
+The design system is now the default UI path across the app, including the navbar, home, auth, tournament, leaderboard, league, invite, prediction, profile, and admin surfaces. Legacy aliases remain in `src/index.css` for compatibility while older selectors are retired incrementally.
+
+When migrating or polishing older markup, replace old aliases with the canonical primitives and classes:
 
 - `sport-panel` -> `ds-panel`
 - `sport-panel-strong` -> `ds-panel-strong`

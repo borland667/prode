@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { Button } from '../components/ui/DesignSystem';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -32,7 +33,7 @@ export default function Register() {
       await register(name, email, password);
       navigate(redirectTo);
     } catch (err) {
-      setError(err.message);
+      setError(t(err.message));
     } finally {
       setLoading(false);
     }
@@ -76,7 +77,7 @@ export default function Register() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="app-input"
-                placeholder="Your Name"
+                placeholder={t('auth.namePlaceholder')}
               />
             </div>
 
@@ -90,7 +91,7 @@ export default function Register() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="app-input"
-                placeholder="your@email.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
             </div>
 
@@ -104,7 +105,7 @@ export default function Register() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="app-input"
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
               />
             </div>
 
@@ -118,32 +119,29 @@ export default function Register() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="app-input"
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="app-button-primary"
-            >
+            <Button type="submit" disabled={loading} variant="primary" block>
               {loading ? t('common.loading') : t('auth.register')}
-            </button>
+            </Button>
           </form>
 
           <div className="app-divider">
-            <span>O</span>
+            <span>{t('common.or')}</span>
           </div>
 
-          <button
+          <Button
             onClick={() => {
               sessionStorage.setItem('postAuthRedirect', redirectTo);
               loginWithGoogle();
             }}
-            className="app-button-secondary"
+            variant="secondary"
+            block
           >
             {t('auth.signupGoogle')}
-          </button>
+          </Button>
 
           <div className="text-center text-sm text-gray-400">
             <Link

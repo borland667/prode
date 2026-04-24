@@ -262,7 +262,7 @@ html.theme-light body {
   background:
     radial-gradient(circle at top left, rgba(13, 165, 103, 0.12), transparent 24%),
     radial-gradient(circle at top right, rgba(218, 143, 24, 0.12), transparent 18%),
-    linear-gradient(180deg, #f8fbfe 0%, #edf4fa 42%, #e7eff6 100%);
+    linear-gradient(180deg, #f8fbfe 0%, #f2f7fb 100%);
 }
 
 body::before {
@@ -356,12 +356,7 @@ html {
 
 .ds-shell::after,
 .sport-shell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at center, transparent 55%, rgba(4, 10, 18, 0.45) 100%);
+  content: none;
 }
 
 .ds-panel,
@@ -724,6 +719,7 @@ html {
 
 .nav-dropdown-panel {
   min-width: 0;
+  width: min(28rem, calc(100vw - 2rem));
 }
 
 .nav-dropdown-header {
@@ -780,7 +776,7 @@ html {
 
 .nav-dropdown-link {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.9rem;
   border-radius: 1.35rem;
@@ -801,28 +797,32 @@ html {
 
 .nav-dropdown-link__copy {
   display: grid;
-  gap: 0.18rem;
+  gap: 0.28rem;
   min-width: 0;
   flex: 1;
 }
 
 .nav-dropdown-link__title {
   color: var(--text-main);
-  font-size: 1rem;
+  font-size: 1.04rem;
   font-weight: 700;
-  line-height: 1.3;
-  white-space: nowrap;
+  line-height: 1.18;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .nav-dropdown-link__subtitle {
   color: var(--text-muted);
-  font-size: 0.88rem;
-  line-height: 1.35;
-  white-space: nowrap;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .nav-dropdown-link__meta {
@@ -830,6 +830,7 @@ html {
   align-items: center;
   gap: 0.55rem;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .nav-dropdown-meta {
@@ -857,6 +858,25 @@ html {
 .nav-dropdown-meta.is-private {
   border-color: rgba(245, 158, 11, 0.24);
   background: rgba(245, 158, 11, 0.08);
+}
+
+.nav-dropdown-settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.08);
+  color: #0f7aa3;
+}
+
+html.theme-light .nav-dropdown-settings,
+:root[data-theme='light'] .nav-dropdown-settings {
+  color: #0e7490;
+  border-color: rgba(14, 116, 144, 0.16);
+  background: rgba(14, 116, 144, 0.08);
 }
 
 .nav-segment {
@@ -1958,6 +1978,57 @@ html {
   color: var(--accent-strong);
 }
 
+:root[data-theme='light'] .tournament-group-row {
+  border-color: rgba(16, 32, 51, 0.12);
+  background:
+    linear-gradient(180deg, rgba(250, 253, 255, 0.98), rgba(239, 246, 251, 0.98)),
+    radial-gradient(circle at left top, rgba(13, 165, 103, 0.08), transparent 50%);
+  box-shadow: 0 10px 24px rgba(28, 52, 84, 0.06);
+}
+
+:root[data-theme='light'] .tournament-group-row__rank {
+  color: #3e6f95;
+}
+
+:root[data-theme='light'] .tournament-group-row__name {
+  color: #102033;
+}
+
+:root[data-theme='light'] .tournament-group-row__meta {
+  color: #55718a;
+}
+
+:root[data-theme='light'] .tournament-group-card__count,
+:root[data-theme='light'] .tournament-match-card__status {
+  color: #4f6b83;
+}
+
+:root[data-theme='light'] .tournament-match-card {
+  border-color: rgba(16, 32, 51, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 247, 251, 0.98)),
+    radial-gradient(circle at top right, rgba(13, 165, 103, 0.06), transparent 48%);
+  box-shadow: 0 14px 36px rgba(28, 52, 84, 0.08);
+}
+
+:root[data-theme='light'] .tournament-match-row {
+  border-color: rgba(16, 32, 51, 0.1);
+  background: rgba(248, 251, 255, 0.96);
+}
+
+:root[data-theme='light'] .tournament-match-row.is-winner {
+  border-color: rgba(13, 165, 103, 0.34);
+  background: rgba(13, 165, 103, 0.12);
+}
+
+:root[data-theme='light'] .tournament-match-row__name {
+  color: #102033;
+}
+
+:root[data-theme='light'] .tournament-match-row__winner {
+  color: #0a8a56;
+}
+
 @media (min-width: 640px) {
   .profile-hero__identity {
     flex-direction: row;
@@ -3017,8 +3088,7 @@ html.theme-light .sport-button-secondary,
 }
 
 html.theme-light .sport-shell::after {
-  background:
-    radial-gradient(circle at center, transparent 58%, rgba(255, 255, 255, 0.18) 100%);
+  content: none;
 }
 
 html.theme-light .sport-panel {

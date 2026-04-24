@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 import {
   buildTeamMap,
   buildRandomPredictionSet,
@@ -94,7 +95,7 @@ export default function Predict() {
 
   if (authLoading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -222,7 +223,7 @@ export default function Predict() {
 
   if (loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -230,7 +231,7 @@ export default function Predict() {
 
   if (!tournament) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.noResults')}</p>
       </div>
     );
@@ -239,16 +240,16 @@ export default function Predict() {
   const activeStep = steps[currentStep];
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell">
-        <div className="app-page-header">
-          <div className="app-page-kicker score-pill text-emerald-200">
+    <div className="ds-shell min-h-screen">
+      <PageShell>
+        <header className="space-y-4 mb-10">
+          <Pill className="text-emerald-200">
             {league?.name || getLocalizedName(tournament, language, tournament.name)}
-          </div>
-          <h1 className="app-page-title sport-display">
+          </Pill>
+          <DisplayText as="h1" className="text-white">
             {t('predict.makePredictions')}
-          </h1>
-          <p className="app-page-description">
+          </DisplayText>
+          <p className="ds-copy max-w-3xl">
             {isLeagueScope
               ? t('predict.leaguePredictionHelp')
               : t('predict.tournamentPredictionHelp')}
@@ -258,7 +259,7 @@ export default function Predict() {
               {getLocalizedName(tournament, language, tournament.name)}
             </p>
           ) : null}
-        </div>
+        </header>
 
         {error && (
           <div className="app-alert app-alert-error mb-8">
@@ -272,7 +273,7 @@ export default function Predict() {
           </div>
         ) : null}
 
-        <div className="sport-panel app-card-strong mb-8">
+        <Panel variant="strong" padding="normal" radius="2xl" className="mb-8">
           <div className="flex items-center justify-between">
             {steps.map((step, index) => (
               <div key={step.key} className="flex items-center flex-1">
@@ -309,9 +310,9 @@ export default function Predict() {
               {activeStep.label}
             </span>
           </div>
-        </div>
+        </Panel>
 
-        <div className="sport-panel-strong app-card-strong mb-8">
+        <Panel variant="strong" padding="normal" radius="2xl" className="mb-8">
           {activeStep.type === 'groups' ? (
             <GroupStageStep
               groups={groups}
@@ -377,28 +378,29 @@ export default function Predict() {
               t={t}
             />
           )}
-        </div>
+        </Panel>
 
-        <div className="sport-panel prediction-footer">
+        <Panel padding="normal" radius="2xl" className="prediction-footer">
           <div className="prediction-footer__meta">
             <div className="prediction-footer__actions">
-              <button
-                type="button"
+              <Button
                 onClick={handleRandomFill}
                 disabled={saving}
-                className="app-button-secondary prediction-footer__button prediction-footer__button--secondary"
+                variant="secondary"
+                className="prediction-footer__button prediction-footer__button--secondary"
               >
                 {t('predict.randomFill')}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
                 disabled={currentStep === 0}
-                className="app-button-ghost prediction-footer__button prediction-footer__button--ghost"
+                variant="ghost"
+                className="prediction-footer__button prediction-footer__button--ghost"
               >
                 <ChevronLeft size={20} />
                 {t('predict.previous')}
-              </button>
+              </Button>
             </div>
             <p className="prediction-footer__help">
               {isLeagueScope
@@ -409,30 +411,32 @@ export default function Predict() {
 
           <div className="prediction-footer__cta">
             {currentStep === steps.length - 1 ? (
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="app-button-primary prediction-footer__button prediction-footer__button--primary"
+                variant="primary"
+                className="prediction-footer__button prediction-footer__button--primary"
               >
                 {saving ? t('predict.savingPredictions') : t('predict.savePredictions')}
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 onClick={() => {
                   if (validateStep(currentStep)) {
                     setNotice('');
                     setCurrentStep(currentStep + 1);
                   }
                 }}
-                className="app-button-primary prediction-footer__button prediction-footer__button--primary"
+                variant="primary"
+                className="prediction-footer__button prediction-footer__button--primary"
               >
                 {t('predict.next')}
                 <ChevronRight size={20} />
-              </button>
+              </Button>
             )}
           </div>
-        </div>
-      </div>
+        </Panel>
+      </PageShell>
     </div>
   );
 }
@@ -446,10 +450,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, lan
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {groups.map((group) => (
-          <div
-            key={group.id}
-            className="sport-panel app-card"
-          >
+          <Panel key={group.id} padding="compact" radius="xl" className="app-card">
             <h3 className="text-lg font-bold text-emerald-400 mb-4">
               {group.name}
             </h3>
@@ -522,7 +523,7 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, lan
                 </div>
               ) : null}
             </div>
-          </div>
+          </Panel>
         ))}
       </div>
     </div>
@@ -570,10 +571,7 @@ function RoundStep({
           const awayBestThirdOptions = getBestThirdOptions(match.awayLabel, groups, groupPredictions, teamMap);
 
           return (
-            <div
-              key={match.id}
-              className="sport-panel app-card"
-            >
+            <Panel key={match.id} padding="compact" radius="xl" className="app-card">
               <p className="text-sm text-gray-400 mb-4 font-semibold">
                 {match.code}: {match.homeLabel} vs {match.awayLabel}
               </p>
@@ -655,7 +653,7 @@ function RoundStep({
                   </select>
                 ) : null}
               </div>
-            </div>
+            </Panel>
           );
         })}
       </div>

@@ -21,6 +21,15 @@ export const PT = {
     register: 'Cadastrar',
     logout: 'Sair',
     language: 'Idioma',
+    liveStatus: 'Partida ao vivo',
+    brandSubtitle: 'Clube de palpites',
+    languages: {
+      en: 'Inglês',
+      es: 'Espanhol',
+      pt: 'Português',
+      it: 'Italiano',
+      nl: 'Holandês',
+    },
   },
 
   // Auth
@@ -65,6 +74,10 @@ export const PT = {
     globalRankingsVisibleHelp:
       'Quando ativado, sua pontuação total pode aparecer no ranking global para usuários autenticados em todos os torneios.',
     continueToInvite: 'Entre para continuar com este convite',
+    emailPlaceholder: 'seu@email.com',
+    namePlaceholder: 'Seu nome',
+    passwordPlaceholder: '••••••••',
+    loginFailed: 'Falha ao entrar',
   },
 
   // Home
@@ -83,6 +96,7 @@ export const PT = {
     step3Title: 'Vença',
     step3Desc: 'Ganhe pontos por palpites certos e suba na classificação.',
     activeTournaments: 'Torneios ativos',
+    activeTournamentsHelp: 'Explore todas as tabelas ativas e entre direto nos palpites ou na classificação.',
     noTournaments: 'Nenhum torneio disponível',
     scoringRules: 'Regras de pontuação',
     scoringMode: 'Modo de pontuação',
@@ -399,5 +413,9 @@ export const PT = {
     no: 'Não',
     copy: 'Copiar',
     copied: 'Copiado',
+    or: 'Ou',
+    teams: 'equipes',
+    matches: 'partidas',
+    tbd: 'A definir',
   },
 };

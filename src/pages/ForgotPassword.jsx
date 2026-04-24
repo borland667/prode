@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { post } from '../utils/api';
 import { useLanguage } from '../i18n/LanguageContext';
+import { Button } from '../components/ui/DesignSystem';
 
 export default function ForgotPassword() {
   const { t } = useLanguage();
@@ -75,17 +76,13 @@ export default function ForgotPassword() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 className="app-input"
-                placeholder="your@email.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="app-button-primary"
-            >
+            <Button type="submit" disabled={loading} variant="primary" block>
               {loading ? t('auth.sendingResetLink') : t('auth.sendResetLink')}
-            </button>
+            </Button>
           </form>
 
           <div className="text-center text-sm text-gray-400">

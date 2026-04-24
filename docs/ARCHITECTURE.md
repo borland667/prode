@@ -1,6 +1,6 @@
 # Prode Architecture
 
-Version: 2026-04-23  
+Version: 2026-04-24  
 Status: implementation-aligned snapshot
 
 ## 1. Product Scope
@@ -85,6 +85,7 @@ Current routes in `src/App.jsx`:
 - `/reset-password`
 - `/tournament/:id`
 - `/tournament/:id/predict`
+- `/leaderboard`
 - `/leaderboard/:id`
 - `/leaderboard/global`
 - `/league/:id`
@@ -110,7 +111,9 @@ Current routes in `src/App.jsx`:
   - random-fill support
   - best-third-place slot handling
 - `Leaderboard.jsx`
+  - shared standings hub
   - tournament-wide leaderboard
+  - private league board switcher within the selected tournament
 - `GlobalLeaderboard.jsx`
   - authenticated global ranking
   - visibility-aware summary
@@ -143,6 +146,8 @@ Canonical UI primitives:
 - `Button`
 - `Pill`
 - `DisplayText`
+
+User-facing copy should come from translations or API data, not hardcoded tournament- or route-specific strings embedded in JSX.
 
 See `docs/DESIGN_SYSTEM.md`.
 
@@ -473,6 +478,7 @@ All routes are under `/api`.
 - `GET /leagues/:id`
 - `GET /leagues/:id/my-predictions`
 - `POST /leagues/:id/predictions`
+- `POST /leagues/:id/predictions/copy`
 - `PATCH /leagues/:id`
 - `POST /leagues/:id/regenerate-code`
 - `DELETE /leagues/:id/members/me`

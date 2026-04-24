@@ -21,6 +21,15 @@ export const NL = {
     register: 'Registreren',
     logout: 'Uitloggen',
     language: 'Taal',
+    liveStatus: 'Live wedstrijddag',
+    brandSubtitle: 'Voorspelclub',
+    languages: {
+      en: 'Engels',
+      es: 'Spaans',
+      pt: 'Portugees',
+      it: 'Italiaans',
+      nl: 'Nederlands',
+    },
   },
 
   // Auth
@@ -65,6 +74,10 @@ export const NL = {
     globalRankingsVisibleHelp:
       'Indien ingeschakeld kan je totaalscore zichtbaar zijn in het globale klassement voor ingelogde gebruikers over alle toernooien.',
     continueToInvite: 'Log in om door te gaan met deze uitnodiging',
+    emailPlaceholder: 'jij@email.com',
+    namePlaceholder: 'Je naam',
+    passwordPlaceholder: '••••••••',
+    loginFailed: 'Inloggen mislukt',
   },
 
   // Home
@@ -83,6 +96,7 @@ export const NL = {
     step3Title: 'Win',
     step3Desc: 'Verdien punten voor juiste voorspellingen en klim in de ranglijst.',
     activeTournaments: 'Actieve toernooien',
+    activeTournamentsHelp: 'Bekijk alle actieve toernooiborden en ga direct naar voorspellingen of de ranglijst.',
     noTournaments: 'Geen toernooien beschikbaar',
     scoringRules: 'Score-regels',
     scoringMode: 'Scoremodus',
@@ -399,5 +413,9 @@ export const NL = {
     no: 'Nee',
     copy: 'Kopiëren',
     copied: 'Gekopieerd',
+    or: 'Of',
+    teams: 'teams',
+    matches: 'wedstrijden',
+    tbd: 'N.n.b.',
   },
 };

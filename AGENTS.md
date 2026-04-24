@@ -80,6 +80,8 @@ Canonical styling rules:
 - prefer extending shared styles before adding page-specific one-offs
 - do not introduce new hardcoded colors or bespoke button styles when a shared variant should exist
 - when a new visual pattern appears more than once, promote it into the design system
+- do not hardcode user-facing copy when the text should come from translations or API data
+- do not add shell-level vignette or darkening overlays unless they are an intentional design-system surface pattern
 
 Reference:
 

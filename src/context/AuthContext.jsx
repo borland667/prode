@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || data.message || 'Login failed');
+        throw new Error(data.error || data.message || 'auth.loginFailed');
       }
 
       const data = await response.json();

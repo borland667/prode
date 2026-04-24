@@ -418,9 +418,7 @@ export default function Home() {
               {t('home.activeTournaments')}
             </h2>
             <p className="text-slate-400 mt-3 max-w-2xl">
-              {featuredTournament
-                ? getLocalizedName(featuredTournament, language, featuredTournament.name)
-                : t('home.noTournaments')}
+              {t('home.activeTournamentsHelp')}
             </p>
           </div>
           <div className="hidden md:flex ds-pill text-emerald-200">

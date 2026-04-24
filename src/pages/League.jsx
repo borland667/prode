@@ -237,15 +237,15 @@ export default function League() {
           <Pill className="text-cyan-300">
             {t('nav.myLeagues')}
           </Pill>
-          <DisplayText as="h1" className="app-page-title text-white">
+          <DisplayText as="h1" className="text-white">
             {league?.name || t('leaderboard.leagueLeaderboard')}
           </DisplayText>
           {league?.description ? (
-            <p className="app-page-description">
+            <p className="ds-copy">
               {league.description}
             </p>
           ) : (
-            <p className="app-page-description">
+            <p className="ds-copy">
               {t('leaderboard.leagueDescription')}
             </p>
           )}

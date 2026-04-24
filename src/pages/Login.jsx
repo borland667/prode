@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { Button } from '../components/ui/DesignSystem';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ export default function Login() {
       await login(email, password);
       navigate(redirectTo);
     } catch (err) {
-      setError(err.message);
+      setError(t(err.message));
     } finally {
       setLoading(false);
     }
@@ -68,7 +69,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="app-input"
-                placeholder="your@email.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
             </div>
 
@@ -82,7 +83,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="app-input"
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
               />
               <div className="app-auth-link-row">
                 <Link
@@ -94,28 +95,25 @@ export default function Login() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="app-button-primary"
-            >
+            <Button type="submit" disabled={loading} variant="primary" block>
               {loading ? t('common.loading') : t('auth.login')}
-            </button>
+            </Button>
           </form>
 
           <div className="app-divider">
-            <span>O</span>
+            <span>{t('common.or')}</span>
           </div>
 
-          <button
+          <Button
             onClick={() => {
               sessionStorage.setItem('postAuthRedirect', redirectTo);
               loginWithGoogle();
             }}
-            className="app-button-secondary"
+            variant="secondary"
+            block
           >
             {t('auth.loginGoogle')}
-          </button>
+          </Button>
 
           <div className="text-center text-sm text-gray-400">
             <Link

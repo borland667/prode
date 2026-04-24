@@ -21,6 +21,15 @@ export const IT = {
     register: 'Registrati',
     logout: 'Esci',
     language: 'Lingua',
+    liveStatus: 'Live matchday',
+    brandSubtitle: 'Club pronostici',
+    languages: {
+      en: 'Inglese',
+      es: 'Spagnolo',
+      pt: 'Portoghese',
+      it: 'Italiano',
+      nl: 'Olandese',
+    },
   },
 
   // Auth
@@ -65,6 +74,10 @@ export const IT = {
     globalRankingsVisibleHelp:
       'Se attivato, il tuo punteggio totale può comparire nel ranking globale per utenti autenticati su tutti i tornei.',
     continueToInvite: 'Accedi per continuare con questo invito',
+    emailPlaceholder: 'tu@email.com',
+    namePlaceholder: 'Il tuo nome',
+    passwordPlaceholder: '••••••••',
+    loginFailed: 'Accesso non riuscito',
   },
 
   // Home
@@ -83,6 +96,7 @@ export const IT = {
     step3Title: 'Vinci',
     step3Desc: 'Guadagna punti con i pronostici esatti e scala la classifica.',
     activeTournaments: 'Tornei attivi',
+    activeTournamentsHelp: 'Esplora tutte le classifiche attive e vai subito ai pronostici o alla classifica.',
     noTournaments: 'Nessun torneo disponibile',
     scoringRules: 'Regole di punteggio',
     scoringMode: 'Modalità di punteggio',
@@ -399,5 +413,9 @@ export const IT = {
     no: 'No',
     copy: 'Copia',
     copied: 'Copiato',
+    or: 'Oppure',
+    teams: 'squadre',
+    matches: 'partite',
+    tbd: 'Da definire',
   },
 };

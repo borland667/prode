@@ -5,6 +5,7 @@ import { get, post } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getLocalizedName } from '../utils/tournament';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function LeagueInvite() {
   const { joinCode } = useParams();
@@ -64,7 +65,7 @@ export default function LeagueInvite() {
 
   if (authLoading || loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -72,10 +73,10 @@ export default function LeagueInvite() {
 
   if (error && !invite) {
     return (
-      <div className="sport-shell flex min-h-screen items-center justify-center px-4">
-        <div className="sport-panel w-full max-w-2xl rounded-panel-lg page-panel-pad">
+      <div className="ds-shell flex min-h-screen items-center justify-center px-4">
+        <Panel className="w-full max-w-2xl page-panel-pad">
           <p className="text-red-400 text-lg">{error}</p>
-        </div>
+        </Panel>
       </div>
     );
   }
@@ -88,15 +89,15 @@ export default function LeagueInvite() {
   const registerRedirect = `/register?redirect=${encodeURIComponent(`/league/invite/${joinCode}`)}`;
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell-md">
-        <div className="sport-panel-strong rounded-panel-2xl page-panel-pad">
-          <div className="score-pill mb-5 text-emerald-200">
+    <div className="ds-shell min-h-screen">
+      <PageShell size="md">
+        <Panel variant="strong" radius="2xl" className="page-panel-pad">
+          <Pill className="mb-5 text-emerald-200">
             {t('tournament.leagueInviteResolved')}
-          </div>
-          <h1 className="sport-display text-5xl md:text-6xl text-white mb-4">
+          </Pill>
+          <DisplayText as="h1" className="text-5xl md:text-6xl text-white mb-4">
             {invite.league?.name || t('tournament.joinLeagueInviteTitle')}
-          </h1>
+          </DisplayText>
           <p className="text-lg text-slate-300 mb-8 max-w-3xl">
             {invite.league?.description || t('tournament.joinLeagueInviteHelp')}
           </p>
@@ -114,96 +115,99 @@ export default function LeagueInvite() {
           ) : null}
 
           <div className="grid md:grid-cols-3 gap-4 mb-8">
-            <div className="sport-panel rounded-panel-xs p-5">
+            <Panel radius="sm" className="p-5">
               <div className="flex items-center gap-3 text-emerald-300 mb-3">
                 <Users size={18} />
-                <span className="score-pill">{t('tournament.leagueMembers')}</span>
+                <Pill compact>{t('tournament.leagueMembers')}</Pill>
               </div>
-              <p className="sport-display text-4xl text-white">
+              <DisplayText as="p" className="text-4xl text-white">
                 {formatNumber(invite.league?.memberCount || 0)}
-              </p>
-            </div>
-            <div className="sport-panel rounded-panel-xs p-5">
+              </DisplayText>
+            </Panel>
+            <Panel radius="sm" className="p-5">
               <div className="flex items-center gap-3 text-cyan-300 mb-3">
                 <Shield size={18} />
-                <span className="score-pill">{t('tournament.access')}</span>
+                <Pill compact>{t('tournament.access')}</Pill>
               </div>
               <p className="text-white font-semibold text-lg capitalize">
                 {invite.tournament?.accessType || 'public'}
               </p>
-            </div>
-            <div className="sport-panel rounded-panel-xs p-5">
+            </Panel>
+            <Panel radius="sm" className="p-5">
               <div className="flex items-center gap-3 text-amber-300 mb-3">
                 <Trophy size={18} />
-                <span className="score-pill">{t('nav.tournaments')}</span>
+                <Pill compact>{t('nav.tournaments')}</Pill>
               </div>
               <p className="text-white font-semibold text-lg">
                 {getLocalizedName(invite.tournament, language, invite.tournament?.name || '')}
               </p>
-            </div>
+            </Panel>
           </div>
 
           {!user ? (
-            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Panel radius="md" className="p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.signInToJoinLeague')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Link
+                <Button
+                  as={Link}
                   to={loginRedirect}
-                  className="sport-button-secondary px-5 py-3 rounded-full text-emerald-300 font-bold text-center"
+                  variant="secondary"
                 >
                   {t('auth.login')}
-                </Link>
-                <Link
+                </Button>
+                <Button
+                  as={Link}
                   to={registerRedirect}
-                  className="sport-button px-5 py-3 rounded-full text-slate-950 font-bold text-center"
+                  variant="primary"
                 >
                   {t('auth.register')}
-                </Link>
+                </Button>
               </div>
-            </div>
+            </Panel>
           ) : invite.access?.requiresTournamentJoin ? (
-            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Panel radius="md" className="p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.needTournamentAccessFirst')}
               </p>
-              <Link
+              <Button
+                as={Link}
                 to={`/tournament/${invite.tournament.id}`}
-                className="sport-button-secondary px-5 py-3 rounded-full text-emerald-300 font-bold text-center"
+                variant="secondary"
               >
                 {t('tournament.openTournament')}
-              </Link>
-            </div>
+              </Button>
+            </Panel>
           ) : invite.access?.isLeagueMember ? (
-            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Panel radius="md" className="p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.joinedLeague')}
               </p>
-              <Link
+              <Button
+                as={Link}
                 to={`/league/${invite.league.id}`}
-                className="sport-button px-5 py-3 rounded-full text-slate-950 font-bold text-center"
+                variant="primary"
               >
                 {t('tournament.goToLeague')}
-              </Link>
-            </div>
+              </Button>
+            </Panel>
           ) : (
-            <div className="sport-panel rounded-panel-md p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Panel radius="md" className="p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <p className="text-slate-300">
                 {t('tournament.joinLeagueInviteHelp')}
               </p>
-              <button
-                type="button"
+              <Button
                 onClick={handleJoinLeague}
                 disabled={joining || !invite.access?.canJoinLeague}
-                className="sport-button px-5 py-3 rounded-full text-slate-950 font-bold disabled:opacity-50"
+                variant="primary"
               >
                 {joining ? t('tournament.joining') : t('tournament.joinLeagueFromInvite')}
-              </button>
-            </div>
+              </Button>
+            </Panel>
           )}
-        </div>
-      </div>
+        </Panel>
+      </PageShell>
     </div>
   );
 }

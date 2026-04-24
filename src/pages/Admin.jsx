@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, patch, post, put } from '../utils/api';
+import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 import {
   buildTeamMap,
   getEligibleBestThirdGroups,
@@ -248,7 +249,7 @@ export default function Admin() {
 
   if (authLoading || loading) {
     return (
-      <div className="sport-shell min-h-screen flex items-center justify-center">
+      <div className="ds-shell min-h-screen flex items-center justify-center">
         <p className="text-gray-400">{t('common.loading')}</p>
       </div>
     );
@@ -437,19 +438,19 @@ export default function Admin() {
   };
 
   return (
-    <div className="sport-shell min-h-screen">
-      <div className="page-shell">
-        <div className="app-page-header">
-          <div className="app-page-kicker score-pill text-emerald-200">
+    <div className="ds-shell min-h-screen">
+      <PageShell>
+        <header className="space-y-4 mb-10">
+          <Pill className="text-emerald-200">
             {t('nav.admin')}
-          </div>
-          <h1 className="app-page-title sport-display">
+          </Pill>
+          <DisplayText as="h1" className="text-white">
             {t('admin.adminPanel')}
-          </h1>
-          <p className="app-page-description">
+          </DisplayText>
+          <p className="ds-copy max-w-3xl">
             {t('admin.tournamentBuilderHelp')}
           </p>
-        </div>
+        </header>
 
         {error ? (
           <div className="app-alert app-alert-error mb-8">
@@ -463,7 +464,7 @@ export default function Admin() {
           </div>
         ) : null}
 
-        <div className="sport-panel-strong app-card-strong mb-8">
+        <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
             <div>
               <h2 className="app-section-title">
@@ -473,18 +474,18 @@ export default function Admin() {
                 {t('admin.tournamentBuilderHelp')}
               </p>
             </div>
-            <button
-              type="button"
+            <Button
               onClick={() => {
                 setSelectedTournament('');
                 setBuilderMode('create');
                 setBuilderError('');
                 setBuilderForm(createEmptyBuilderForm());
               }}
-              className="app-button-secondary sm:w-auto"
+              variant="secondary"
+              className="sm:w-auto"
             >
               {t('admin.newTournament')}
-            </button>
+            </Button>
           </div>
 
           {builderError ? (
@@ -634,7 +635,7 @@ export default function Admin() {
               />
             </div>
 
-            <label className="sport-panel app-card flex items-center justify-between gap-4 cursor-pointer">
+            <Panel as="label" padding="compact" radius="xl" className="app-card flex items-center justify-between gap-4 cursor-pointer">
               <span className="text-white font-semibold">
                 {t('admin.prizesEnabled')}
               </span>
@@ -644,7 +645,7 @@ export default function Admin() {
                 onChange={(event) => handleBuilderFieldChange('prizesEnabled', event.target.checked)}
                 className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
               />
-            </label>
+            </Panel>
 
             <div>
               <label className="account-label">
@@ -708,21 +709,22 @@ export default function Admin() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-4">
-            <button
+            <Button
               onClick={handleSaveStructure}
               disabled={builderSaving}
-              className="app-button-primary sm:w-auto"
+              variant="primary"
+              className="sm:w-auto"
             >
               {builderSaving
                 ? t('admin.saving')
                 : builderMode === 'edit'
                   ? t('admin.updateStructure')
                   : t('admin.createTournament')}
-            </button>
+            </Button>
           </div>
-        </div>
+        </Panel>
 
-        <div className="sport-panel-strong app-card-strong mb-8">
+        <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
           <label className="account-label text-base">
             {t('admin.selectTournament')}
           </label>
@@ -738,17 +740,17 @@ export default function Admin() {
               </option>
             ))}
           </select>
-        </div>
+        </Panel>
 
         {tournament ? (
           <>
-            <div className="sport-panel-strong app-card-strong mb-8">
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
               <h2 className="app-section-title">
                 {t('admin.tournamentSettings')}
               </h2>
 
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="sport-panel app-card">
+                <Panel padding="compact" radius="xl" className="app-card">
                   <label className="flex items-center justify-between gap-4 cursor-pointer">
                     <span className="text-white font-semibold">
                       {t('admin.prizesEnabled')}
@@ -803,9 +805,9 @@ export default function Admin() {
                       />
                     </div>
                   </div>
-                </div>
+                </Panel>
 
-                <div className="sport-panel app-card">
+                <Panel padding="compact" radius="xl" className="app-card">
                   <div>
                     <label className="account-label">
                       {t('admin.accessType')}
@@ -863,30 +865,33 @@ export default function Admin() {
                       </label>
                     </>
                   ) : null}
-                </div>
+                </Panel>
               </div>
 
               <div className="mt-6">
-                <button
+                <Button
                   onClick={handleSaveSettings}
                   disabled={saving}
-                  className="app-button-primary sm:w-auto"
+                  variant="primary"
+                  className="sm:w-auto"
                 >
                   {saving ? t('admin.saving') : t('admin.saveSettings')}
-                </button>
+                </Button>
               </div>
-            </div>
+            </Panel>
 
-            <div className="sport-panel-strong app-card-strong mb-8">
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
               <h2 className="app-section-title">
                 {t('admin.groupResults')}
               </h2>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {groups.map((group) => (
-                  <div
+                  <Panel
                     key={group.id}
-                    className="sport-panel app-card"
+                    padding="compact"
+                    radius="xl"
+                    className="app-card"
                   >
                     <h3 className="text-lg font-bold text-emerald-400 mb-4">
                       {group.name}
@@ -984,20 +989,21 @@ export default function Admin() {
                         </div>
                       ) : null}
                     </div>
-                  </div>
+                  </Panel>
                 ))}
               </div>
 
-              <button
+              <Button
                 onClick={handleSaveGroupResults}
                 disabled={saving}
-                className="app-button-primary sm:w-auto"
+                variant="primary"
+                className="sm:w-auto"
               >
                 {saving ? t('admin.saving') : t('common.save')}
-              </button>
-            </div>
+              </Button>
+            </Panel>
 
-            <div className="sport-panel-strong app-card-strong mb-8">
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong mb-8">
               <h2 className="app-section-title">
                 {t('admin.knockoutResults')}
               </h2>
@@ -1048,9 +1054,11 @@ export default function Admin() {
                         ].filter(Boolean);
 
                         return (
-                          <div
+                          <Panel
                             key={match.id}
-                            className="sport-panel app-card"
+                            padding="compact"
+                            radius="xl"
+                            className="app-card"
                           >
                             <label className="account-label">
                               {match.code}: {match.homeLabel} vs {match.awayLabel}
@@ -1141,7 +1149,7 @@ export default function Admin() {
                                 </option>
                               ))}
                             </select>
-                          </div>
+                          </Panel>
                         );
                       })}
                     </div>
@@ -1150,31 +1158,33 @@ export default function Admin() {
               </div>
 
               <div className="flex gap-4">
-                <button
+                <Button
                   onClick={handleSaveKnockoutResults}
                   disabled={saving}
-                  className="app-button-primary sm:w-auto"
+                  variant="primary"
+                  className="sm:w-auto"
                 >
                   {saving ? t('admin.saving') : t('common.save')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleCalculateScores}
                   disabled={saving}
-                  className="app-button-secondary sm:w-auto"
+                  variant="secondary"
+                  className="sm:w-auto"
                 >
                   {saving ? t('admin.calculating') : t('admin.calculateScores')}
-                </button>
+                </Button>
               </div>
-            </div>
+            </Panel>
           </>
         ) : (
-          <div className="sport-panel app-empty">
+          <Panel padding="normal" radius="xl" className="app-empty">
             <p className="text-gray-400 text-lg">
               {t('admin.selectTournament')}
             </p>
-          </div>
+          </Panel>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

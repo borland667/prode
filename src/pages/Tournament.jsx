@@ -293,7 +293,7 @@ export default function Tournament() {
             />
             <TournamentStatCard
               label={t('tournament.closingDate')}
-              value={closingDate ? formatDate(closingDate) : 'TBD'}
+              value={closingDate ? formatDate(closingDate) : t('common.tbd')}
             />
             <TournamentStatCard
               label={tournamentCountLabel}
@@ -632,7 +632,7 @@ export default function Tournament() {
                 </DisplayText>
               </div>
               <Pill compact className="text-cyan-200">
-                {formatNumber(groups.length)} {groups.length === 1 ? 'group' : 'groups'}
+                {formatNumber(groups.length)} {t('tournament.groups').toLowerCase()}
               </Pill>
             </div>
 
@@ -649,7 +649,7 @@ export default function Tournament() {
                       {group.name}
                     </Pill>
                     <span className="tournament-group-card__count">
-                      {formatNumber(group.teams?.length || 0)} teams
+                      {formatNumber(group.teams?.length || 0)} {t('common.teams')}
                     </span>
                   </div>
 
@@ -696,7 +696,7 @@ export default function Tournament() {
                   </DisplayText>
                 </div>
                 <Pill compact className="text-emerald-200">
-                  {formatNumber(rounds.reduce((total, round) => total + (round.matches?.length || 0), 0))} matches
+                  {formatNumber(rounds.reduce((total, round) => total + (round.matches?.length || 0), 0))} {t('common.matches')}
                 </Pill>
               </div>
 
@@ -708,7 +708,7 @@ export default function Tournament() {
                         {getRoundLabel(round, t)}
                       </DisplayText>
                       <Pill compact className="text-cyan-200">
-                        {formatNumber(round.matches?.length || 0)} matches
+                        {formatNumber(round.matches?.length || 0)} {t('common.matches')}
                       </Pill>
                     </div>
                     <div className="tournament-knockout-grid">

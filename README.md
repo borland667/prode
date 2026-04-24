@@ -18,9 +18,11 @@ Implemented today:
 - public and private tournaments with join codes
 - tournament-scoped prediction flow for the main tournament entry
 - private leagues inside a tournament, each with its own prediction scope
+- copy an existing tournament or league prediction set into a private league scope
 - official primary-entry selection per user per tournament
 - tournament leaderboard based on the tournament scope only
 - league leaderboard based on the corresponding league scope only
+- shared leaderboard hub that can switch across accessible tournaments and private league boards
 - authenticated global rankings based on each user’s official primary entry and opt-in visibility setting
 - registration, login, logout, Google OAuth, forgot-password, reset-password, and profile management
 - browser language detection with English fallback (uses `navigator.languages` order among supported UI languages)
@@ -29,7 +31,7 @@ Implemented today:
 - World Cup 2026 support including best-third-place Round of 32 handling
 - seeded football tournament catalog beyond World Cup 2026
 - admin tournament builder, safe structure editing, tournament settings, results entry, and score recalculation
-- design-system-based UI migration in progress across the app
+- design-system-based UI is now the default across the app, while legacy alias classes remain mapped for compatibility
 
 Important current product rules:
 
@@ -287,6 +289,7 @@ Important:
 
 - tournament leaderboard for the tournament-wide official scope
 - league leaderboard for league members only
+- leaderboard hub that switches between tournament boards and accessible private league boards
 - global rankings across official entries for visible users only
 
 ### Admin
@@ -372,7 +375,7 @@ The app is not yet:
 - a generic multi-sport engine for non-football tournament formats
 - integrated with official live competition feeds
 - integrated with payment providers or automated payouts
-- fully migrated to the design system on every remaining route
+- fully stripped of every legacy alias class, even though the design system is now the default UI layer
 - covered by browser-level E2E tests
 
 For the current implementation snapshot and the prioritized next steps, see:

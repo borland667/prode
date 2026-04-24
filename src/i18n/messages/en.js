@@ -21,6 +21,15 @@ export const EN = {
     register: 'Register',
     logout: 'Logout',
     language: 'Language',
+    liveStatus: 'Matchday Live',
+    brandSubtitle: 'Prediction Club',
+    languages: {
+      en: 'English',
+      es: 'Spanish',
+      pt: 'Portuguese',
+      it: 'Italian',
+      nl: 'Dutch',
+    },
   },
 
   // Auth
@@ -65,6 +74,10 @@ export const EN = {
     globalRankingsVisibleHelp:
       'When enabled, your total score can appear in the logged-in global leaderboard across all tournaments.',
     continueToInvite: 'Sign in to continue with this invite',
+    emailPlaceholder: 'your@email.com',
+    namePlaceholder: 'Your name',
+    passwordPlaceholder: '••••••••',
+    loginFailed: 'Login failed',
   },
 
   // Home
@@ -82,6 +95,7 @@ export const EN = {
     step3Title: 'Win',
     step3Desc: 'Earn points for correct predictions and climb the leaderboard.',
     activeTournaments: 'Active Tournaments',
+    activeTournamentsHelp: 'Browse every active tournament board and jump straight into predictions or standings.',
     noTournaments: 'No tournaments available',
     scoringRules: 'Scoring Rules',
     scoringMode: 'Scoring Mode',
@@ -396,5 +410,9 @@ export const EN = {
     no: 'No',
     copy: 'Copy',
     copied: 'Copied',
+    or: 'Or',
+    teams: 'teams',
+    matches: 'matches',
+    tbd: 'TBD',
   },
 };

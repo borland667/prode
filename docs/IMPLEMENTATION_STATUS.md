@@ -1,6 +1,6 @@
 # Implementation Status
 
-Updated: 2026-04-23
+Updated: 2026-04-24
 
 This document answers two questions:
 
@@ -68,6 +68,7 @@ Working:
 - join league by code
 - join league by invite link
 - league-scope predictions
+- copy an existing tournament or league prediction set into a private league scope
 - league leaderboard
 - regenerate league join code
 - copy shareable invite link
@@ -80,6 +81,7 @@ Working:
 
 - multiple prediction scopes per tournament
 - tournament scope plus one or more league scopes
+- copied league entries persist their own rows after the copy, so they can diverge safely later
 - official primary-entry selection per user per tournament
 - global rankings based on official entry only
 - scope-aware score storage
@@ -121,6 +123,15 @@ Working:
 - dark and light themes
 - persisted theme preference
 
+### 2.9 Leaderboards And Board Switching
+
+Working:
+
+- shared `/leaderboard` hub for accessible tournament boards
+- direct `/leaderboard/:id` links for tournament-specific entry points
+- private league board switching inside the selected tournament
+- global rankings separated from tournament and league boards
+
 ## 3. Automated Verification State
 
 Working now:
@@ -154,7 +165,7 @@ The repo now has a real design-system layer:
 - semantic runtime tokens and `ds-*` classes in `src/index.css`
 - migration guide in `docs/DESIGN_SYSTEM.md`
 
-Already migrated or partially aligned:
+Already migrated or aligned to the shared primitives:
 
 - home
 - navbar
@@ -163,14 +174,12 @@ Already migrated or partially aligned:
 - global leaderboard
 - tournament page
 - auth surfaces
-
-Still worth further polish:
-
-- prediction wizard
 - tournament leaderboard page
-- admin page
+- prediction wizard
 - league invite page
-- mobile navigation consistency
+- admin page
+
+Legacy alias classes still exist in CSS for compatibility, but the design system is now the default path for UI work.
 
 ## 5. Current Boundaries
 
@@ -197,9 +206,9 @@ Still needed:
 
 Still needed:
 
-- finish migrating remaining pages to the design system
-- finish mobile navigation consistency
-- remove old legacy styling patterns where shared components now exist
+- continue removing old legacy styling aliases where shared components now exist
+- finish mobile navigation consistency and small-screen polish
+- keep sweeping for hardcoded user-facing copy where translations or API data should drive the UI
 
 ### 6.3 Imports And Operations
 
@@ -229,8 +238,8 @@ Still needed:
 
 Recommended order:
 
-1. finish design-system migration on remaining major routes
-2. add browser-level E2E smoke coverage for core user journeys
-3. introduce explicit tournament format families
-4. build import tooling for official tournament data
+1. add browser-level E2E smoke coverage for core user journeys
+2. introduce explicit tournament format families
+3. build import tooling for official tournament data
+4. continue removing remaining legacy styling aliases and edge-case UI inconsistencies
 5. add payment and payout operations if prizes become real-money workflows

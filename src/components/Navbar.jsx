@@ -7,6 +7,7 @@ import {
   Menu,
   Moon,
   Plus,
+  Settings2,
   Shield,
   Sun,
   Trophy,
@@ -20,9 +21,9 @@ import { get } from '../utils/api';
 import { getLocalizedName, getModeLabel } from '../utils/tournament';
 import { Button, DisplayText, Panel, Pill } from './ui/DesignSystem';
 
-function formatClosingDate(dateValue, formatDate) {
+function formatClosingDate(dateValue, formatDate, fallbackLabel) {
   if (!dateValue) {
-    return 'TBD';
+    return fallbackLabel;
   }
 
   return formatDate(dateValue, {
@@ -196,7 +197,14 @@ export default function Navbar() {
     loadAccountNavigation();
   }, [user]);
 
-  const featuredClosingDate = formatClosingDate(featuredTournament?.closingDate, formatDate);
+  const languageOptions = [
+    { value: 'en', label: t('nav.languages.en'), shortLabel: 'EN' },
+    { value: 'es', label: t('nav.languages.es'), shortLabel: 'ES' },
+    { value: 'pt', label: t('nav.languages.pt'), shortLabel: 'PT' },
+    { value: 'it', label: t('nav.languages.it'), shortLabel: 'IT' },
+    { value: 'nl', label: t('nav.languages.nl'), shortLabel: 'NL' },
+  ];
+  const featuredClosingDate = formatClosingDate(featuredTournament?.closingDate, formatDate, t('common.tbd'));
   const featuredModeLabel = featuredTournament?.mode
     ? getModeLabel(featuredTournament.mode, language)
     : '--';
@@ -239,7 +247,7 @@ export default function Navbar() {
         title: getLocalizedName(entry, language, entry.name),
         subtitle: isFeatured
           ? `${t('nav.featured')} • ${modeLabel}`
-          : `${accessLabel} • ${formatClosingDate(entry.closingDate, formatDate)}`,
+          : `${accessLabel} • ${formatClosingDate(entry.closingDate, formatDate, t('common.tbd'))}`,
         status: entry.status,
         accessType: entry.accessType,
       };
@@ -316,7 +324,7 @@ export default function Navbar() {
           <div className="nav-strip__inner">
             <div className="nav-strip__brand">
               <Activity size={12} className="text-emerald-400" />
-              <span className="sport-display">Matchday Live</span>
+              <span className="sport-display">{t('nav.liveStatus')}</span>
             </div>
             {topBarItems.length > 0 ? (
               <div className="nav-strip__stats">
@@ -360,7 +368,7 @@ export default function Navbar() {
               <div className="leading-none">
                 <div className="sport-display text-2xl">PRODE</div>
                 <div className="text-kicker-tight uppercase tracking-marquee-tight text-slate-400">
-                  Prediction Club
+                  {t('nav.brandSubtitle')}
                 </div>
               </div>
             </Link>
@@ -405,7 +413,13 @@ export default function Navbar() {
                   setOpenDropdown={setOpenDropdown}
                   renderMeta={(item) =>
                     item.isOwner ? (
-                      <Pill compact className="nav-dropdown-meta text-cyan-300">{t('tournament.leagueSettings')}</Pill>
+                      <span
+                        className="nav-dropdown-settings"
+                        aria-label={t('tournament.leagueSettings')}
+                        title={t('tournament.leagueSettings')}
+                      >
+                        <Settings2 size={14} />
+                      </span>
                     ) : null
                   }
                 />
@@ -470,11 +484,11 @@ export default function Navbar() {
                   onChange={(e) => setLanguage(e.target.value)}
                   className="nav-language-select"
                 >
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                  <option value="pt">Português</option>
-                  <option value="it">Italiano</option>
-                  <option value="nl">Nederlands</option>
+                  {languageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -518,15 +532,16 @@ export default function Navbar() {
             </div>
 
             <div className="md:hidden flex items-center space-x-4">
-              <button
-                type="button"
+              <Button
                 onClick={toggleTheme}
-                className="flex items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-white/5 text-gray-300"
+                variant="ghost"
+                size="sm"
+                className="!h-10 !w-10 !rounded-full !p-0"
                 aria-label={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
                 title={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
               >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
+              </Button>
 
               <div className="flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1">
                 <label htmlFor="nav-language-mobile" className="sr-only">
@@ -538,11 +553,11 @@ export default function Navbar() {
                   onChange={(e) => setLanguage(e.target.value)}
                   className="nav-language-select nav-language-select--compact max-w-[9.5rem]"
                 >
-                  <option value="en">EN</option>
-                  <option value="es">ES</option>
-                  <option value="pt">PT</option>
-                  <option value="it">IT</option>
-                  <option value="nl">NL</option>
+                  {languageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.shortLabel}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -557,7 +572,7 @@ export default function Navbar() {
 
           {isOpen ? (
             <div className="md:hidden pb-5 space-y-4">
-              <div className="sport-panel rounded-panel-sm p-4 space-y-3">
+              <Panel radius="md" className="rounded-panel-sm p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="sport-display text-lg text-white">{t('nav.tournaments')}</p>
                   <Link
@@ -583,10 +598,10 @@ export default function Navbar() {
                     </Link>
                   ))
                 )}
-              </div>
+              </Panel>
 
               {user ? (
-                <div className="sport-panel rounded-panel-sm p-4 space-y-3">
+                <Panel radius="md" className="rounded-panel-sm p-4 space-y-3">
                   <p className="sport-display text-lg text-white">{t('nav.myLeagues')}</p>
                   {leagueQuickLinks.length === 0 ? (
                     <p className="text-sm text-slate-400">{t('nav.noLeaguesYet')}</p>
@@ -603,7 +618,7 @@ export default function Navbar() {
                       </Link>
                     ))
                   )}
-                </div>
+                </Panel>
               ) : null}
 
               <div className="space-y-2">

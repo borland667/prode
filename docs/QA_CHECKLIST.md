@@ -200,14 +200,21 @@ Expected:
 
 ## 14. Tournament Leaderboard
 
-1. Open the tournament leaderboard.
-2. Confirm columns reflect tournament rounds.
-3. Confirm total score is present.
-4. If prizes are enabled, confirm prize information renders.
-5. Disable prizes from admin and reload.
+1. Open `/leaderboard`.
+2. Confirm the tournament board switcher renders when tournaments exist.
+3. Select a tournament board.
+4. Open the same tournament through `/leaderboard/:id`.
+5. Compare the selected board with the direct route.
+6. If private leagues exist inside that tournament, switch to a league board.
+7. Return to the tournament board.
+8. If prizes are enabled, confirm prize information renders.
+9. Disable prizes from admin and reload.
 
 Expected:
 
+- the leaderboard hub can switch across accessible tournament boards
+- direct tournament leaderboard routes still resolve correctly
+- private league boards are scoped to the selected tournament
 - tournament leaderboard reflects tournament-scope scores
 - round columns match the structure
 - prize UI only appears when enabled
@@ -224,7 +231,24 @@ Expected:
 - league leaderboard is filtered to that league
 - tournament leaderboard is not replaced by league-only results
 
-## 16. Global Rankings
+## 16. League Prediction Copy Flow
+
+1. As `User A`, save tournament-wide predictions.
+2. Create or join a private league in the same tournament.
+3. Open the league page.
+4. Use the copy-predictions control to copy either the tournament scope or another league scope into this league.
+5. Open the league prediction wizard.
+6. Confirm the copied picks are present.
+7. Change one copied prediction and save again.
+8. Reopen the original source scope.
+
+Expected:
+
+- the copy flow creates a league-scoped prediction set for that league
+- copied predictions are editable after the copy
+- changing the copied league scope does not overwrite the original source scope
+
+## 17. Global Rankings
 
 1. Ensure visible users have official entries and saved scores.
 2. Open `/leaderboard/global` while authenticated.
@@ -238,7 +262,7 @@ Expected:
 - hidden users disappear from shared rankings
 - ranking is based on official tournament entries, not every possible league scope
 
-## 17. Spectator Tournament View
+## 18. Spectator Tournament View
 
 1. As `Admin`, save group results.
 2. Save knockout results.
@@ -252,7 +276,7 @@ Expected:
 - top placements are clear
 - knockout winners and resolved participants are visible
 
-## 18. Prediction Deletion API
+## 19. Prediction Deletion API
 
 This is currently an API-level maintenance check.
 

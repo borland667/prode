@@ -21,6 +21,15 @@ export const ES = {
     register: 'Registrarse',
     logout: 'Cerrar Sesión',
     language: 'Idioma',
+    liveStatus: 'Actividad en vivo',
+    brandSubtitle: 'Club de Pronósticos',
+    languages: {
+      en: 'Inglés',
+      es: 'Español',
+      pt: 'Portugués',
+      it: 'Italiano',
+      nl: 'Neerlandés',
+    },
   },
 
   // Auth
@@ -65,6 +74,10 @@ export const ES = {
     globalRankingsVisibleHelp:
       'Si esta opcion esta activa, tu puntaje total puede aparecer en el ranking global para usuarios autenticados entre todos los torneos.',
     continueToInvite: 'Inicia sesion para continuar con esta invitacion',
+    emailPlaceholder: 'tu@email.com',
+    namePlaceholder: 'Tu nombre',
+    passwordPlaceholder: '••••••••',
+    loginFailed: 'No se pudo iniciar sesión',
   },
 
   // Home
@@ -82,6 +95,7 @@ export const ES = {
     step3Title: 'Gana',
     step3Desc: 'Obtén puntos por predicciones correctas y sube en la tabla de posiciones.',
     activeTournaments: 'Torneos Activos',
+    activeTournamentsHelp: 'Explora todas las tablas activas y entra directo a pronósticos o posiciones.',
     noTournaments: 'No hay torneos disponibles',
     scoringRules: 'Reglas de Puntuación',
     scoringMode: 'Modo de Puntuacion',
@@ -396,5 +410,9 @@ export const ES = {
     no: 'No',
     copy: 'Copiar',
     copied: 'Copiado',
+    or: 'O',
+    teams: 'equipos',
+    matches: 'partidos',
+    tbd: 'TBD',
   },
 };
