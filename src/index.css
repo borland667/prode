@@ -1097,6 +1097,19 @@ html.theme-light .nav-dropdown-settings,
   font-weight: 800;
   line-height: 1.2;
   text-align: right;
+  display: grid;
+  gap: 0.3rem;
+  justify-items: end;
+}
+
+.home-featured-subvalue {
+  color: var(--text-muted);
+  max-width: 18rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: right;
+  text-wrap: balance;
 }
 
 .home-step-grid {
@@ -1349,6 +1362,10 @@ html.theme-light .nav-dropdown-settings,
 
 .home-tournament-meta strong {
   color: var(--text-main);
+}
+
+.home-tournament-meta__detail {
+  color: var(--text-muted);
 }
 
 .home-tournament-cta {

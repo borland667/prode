@@ -7,6 +7,8 @@ import { get, post } from '../utils/api';
 import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
 import {
   buildTeamMap,
+  countTournamentMatches,
+  formatClosingCountdown,
   getLocalizedName,
   getKnockoutRounds,
   getModeLabel,
@@ -222,12 +224,6 @@ export default function Tournament() {
 
   const closingDate = tournament.closingDate ? new Date(tournament.closingDate) : null;
   const now = new Date();
-  const timeRemaining = closingDate ? closingDate - now : 0;
-  const daysRemaining = Math.max(0, Math.floor(timeRemaining / (1000 * 60 * 60 * 24)));
-  const hoursRemaining = Math.max(
-    0,
-    Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  );
   const groups = sortGroups(tournament.groups || []);
   const rounds = getKnockoutRounds(tournament.rounds || []);
   const teamMap = buildTeamMap(groups);
@@ -263,6 +259,15 @@ export default function Tournament() {
     : tournament.status;
   const tournamentCountLabel = isPrivate ? t('tournament.members') : t('tournament.participants');
   const participantTotal = formatNumber(isPrivate ? tournament.memberCount || 0 : tournament.participantCount || 0);
+  const tournamentEventCount = formatNumber(
+    countTournamentMatches({
+      groups,
+      rounds,
+    })
+  );
+  const closingCountdown = closingDate
+    ? formatClosingCountdown(closingDate, { formatNumber, t, now })
+    : '';
 
   return (
     <div className="ds-shell min-h-screen">
@@ -294,10 +299,15 @@ export default function Tournament() {
             <TournamentStatCard
               label={t('tournament.closingDate')}
               value={closingDate ? formatDate(closingDate) : t('common.tbd')}
+              detail={closingCountdown ? `${t('home.tournamentEndsIn')} ${closingCountdown}` : ''}
             />
             <TournamentStatCard
               label={tournamentCountLabel}
               value={participantTotal}
+            />
+            <TournamentStatCard
+              label={t('tournament.events')}
+              value={tournamentEventCount}
             />
             <TournamentStatCard
               label={t('tournament.prizes')}
@@ -316,7 +326,7 @@ export default function Tournament() {
             />
             <TournamentStatCard
               label={t('home.tournamentEndsIn')}
-              value={`${formatNumber(daysRemaining)}d ${formatNumber(hoursRemaining)}h`}
+              value={closingCountdown || t('tournament.closedNow')}
               icon={<Clock size={16} />}
             />
           </div>

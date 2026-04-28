@@ -13,7 +13,13 @@ import {
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
-import { getLocalizedName, getModeLabel, getModeRuleSections } from '../utils/tournament';
+import {
+  countTournamentMatches,
+  formatClosingCountdown,
+  getLocalizedName,
+  getModeLabel,
+  getModeRuleSections,
+} from '../utils/tournament';
 import { Button, DisplayText, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function Home() {
@@ -62,8 +68,17 @@ export default function Home() {
   const featuredClosingDate = featuredTournament?.closingDate
     ? formatDate(featuredTournament.closingDate)
     : t('home.tbd');
+  const featuredClosingCountdown = featuredTournament?.closingDate
+    ? formatClosingCountdown(featuredTournament.closingDate, { formatNumber, t })
+    : '';
   const featuredTournamentLink = featuredTournament ? `/tournament/${featuredTournament.id}` : '/';
   const featuredLeaderboardLink = featuredTournament ? `/leaderboard/${featuredTournament.id}` : '/';
+  const featuredMatchCount = featuredTournament
+    ? countTournamentMatches({
+        groups: featuredTournament.groups || [],
+        rounds: featuredTournament.rounds || [],
+      })
+    : 0;
   const modeRuleSections = getModeRuleSections({
     mode: featuredTournament?.mode,
     rules: featuredTournament?.rules,
@@ -82,6 +97,12 @@ export default function Home() {
       value: `${featuredTournament?.groups?.length || 12}G`,
       icon: Shield,
       tone: 'text-amber-300',
+    },
+    {
+      label: t('home.metricEvents'),
+      value: formatNumber(featuredMatchCount),
+      icon: CalendarDays,
+      tone: 'text-violet-300',
     },
     {
       label: t('home.metricMax'),
@@ -174,7 +195,7 @@ export default function Home() {
               )}
 
               <div className="home-hero-metrics max-w-4xl">
-                <div className="grid gap-4 sm:grid-cols-3 sm:gap-5">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 sm:gap-5">
                 {heroStats.map((stat) => {
                   const StatIcon = stat.icon;
 
@@ -233,7 +254,12 @@ export default function Home() {
                 </div>
                 <div className="home-featured-row">
                   <span className="home-featured-label">{t('tournament.closingDate')}</span>
-                  <span className="home-featured-value">{featuredClosingDate}</span>
+                  <span className="home-featured-value">
+                    {featuredClosingDate}
+                    {featuredClosingCountdown ? (
+                      <span className="home-featured-subvalue">{t('home.tournamentEndsIn')} {featuredClosingCountdown}</span>
+                    ) : null}
+                  </span>
                 </div>
                 <div className="home-featured-row">
                   <span className="home-featured-label">{t('tournament.prizes')}</span>
@@ -242,6 +268,10 @@ export default function Home() {
                       ? t('home.prizesEnabled')
                       : t('home.prizesDisabled')}
                   </span>
+                </div>
+                <div className="home-featured-row">
+                  <span className="home-featured-label">{t('tournament.events')}</span>
+                  <span className="home-featured-value">{formatNumber(featuredMatchCount)}</span>
                 </div>
               </div>
 
@@ -472,7 +502,13 @@ export default function Home() {
           </Panel>
         ) : (
           <div className="home-tournament-grid">
-            {tournaments.map((tournament) => (
+            {tournaments.map((tournament) => {
+              const tournamentMatchCount = countTournamentMatches({
+                groups: tournament.groups || [],
+                rounds: tournament.rounds || [],
+              });
+
+              return (
               <Link
                 key={tournament.id}
                 to={`/tournament/${tournament.id}`}
@@ -506,6 +542,14 @@ export default function Home() {
                     </div>
                     <div className="home-tournament-stat">
                       <p className="mb-2 text-xs uppercase tracking-overline text-slate-500">
+                        {t('tournament.events')}
+                      </p>
+                      <p className="ds-display text-3xl tabular-nums text-white">
+                        {formatNumber(tournamentMatchCount)}
+                      </p>
+                    </div>
+                    <div className="home-tournament-stat">
+                      <p className="mb-2 text-xs uppercase tracking-overline text-slate-500">
                         {t('home.maximumScore')}
                       </p>
                       <p className="ds-display text-3xl tabular-nums text-white">
@@ -530,6 +574,12 @@ export default function Home() {
                       {tournament.closingDate
                         ? formatDate(tournament.closingDate)
                         : t('home.tbd')}
+                      {tournament.closingDate ? (
+                        <span className="home-tournament-meta__detail">
+                          {' '}
+                          ({t('home.tournamentEndsIn')} {formatClosingCountdown(tournament.closingDate, { formatNumber, t })})
+                        </span>
+                      ) : null}
                     </p>
                     <p>
                       <strong>
@@ -551,7 +601,8 @@ export default function Home() {
                   </span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

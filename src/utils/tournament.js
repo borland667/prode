@@ -160,6 +160,67 @@ export function buildTeamMap(groups = []) {
   }, {});
 }
 
+export function countGroupStageMatches(groups = []) {
+  return groups.reduce((total, group) => {
+    const teamCount = group?.teams?.length || 0;
+    if (teamCount < 2) {
+      return total;
+    }
+
+    return total + ((teamCount * (teamCount - 1)) / 2);
+  }, 0);
+}
+
+export function countTournamentMatches({ groups = [], rounds = [] } = {}) {
+  const groupStageMatches = countGroupStageMatches(groups);
+  const knockoutMatches = rounds.reduce(
+    (total, round) => total + (round?.matches?.length || 0),
+    0
+  );
+
+  return groupStageMatches + knockoutMatches;
+}
+
+export function formatClosingCountdown(value, { formatNumber, t, now = new Date() } = {}) {
+  if (!value || typeof formatNumber !== 'function' || typeof t !== 'function') {
+    return '';
+  }
+
+  const closingDate = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(closingDate.getTime())) {
+    return '';
+  }
+
+  const delta = closingDate.getTime() - now.getTime();
+  if (delta <= 0) {
+    return t('tournament.closedNow');
+  }
+
+  const totalMinutes = Math.max(0, Math.floor(delta / (1000 * 60)));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  const formatPart = (amount, singularKey, pluralKey) => {
+    const unit = amount === 1 ? t(singularKey) : t(pluralKey);
+    return `${formatNumber(amount)} ${unit}`;
+  };
+
+  const parts = [];
+
+  if (days > 0) {
+    parts.push(formatPart(days, 'common.day', 'common.days'));
+  }
+
+  if (days > 0 || hours > 0) {
+    parts.push(formatPart(hours, 'common.hour', 'common.hours'));
+  }
+
+  parts.push(formatPart(minutes, 'common.minute', 'common.minutes'));
+
+  return parts.join(', ');
+}
+
 function shuffleArray(items = [], random = Math.random) {
   const next = [...items];
 
