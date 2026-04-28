@@ -61,6 +61,13 @@ export async function createApiTestEnvironment() {
   process.env.DATABASE_URL = testDatabaseUrl;
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
   process.env.SITE_URL = process.env.SITE_URL || 'http://localhost:5173';
+  process.env.EMAIL_FROM_ADDRESS = '';
+  process.env.EMAIL_FROM_NAME = '';
+  process.env.SMTP_HOST = '';
+  process.env.SMTP_PORT = '';
+  process.env.SMTP_SECURE = '';
+  process.env.SMTP_USER = '';
+  process.env.SMTP_PASSWORD = '';
 
   runPrismaMigrate(testDatabaseUrl);
 
