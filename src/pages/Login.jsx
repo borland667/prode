@@ -54,7 +54,17 @@ export default function Login() {
 
           {error && (
             <div className="app-alert app-alert-error">
-              {error}
+              <div className="space-y-3">
+                <p>{error}</p>
+                {error === t('auth.accountNotVerified') && email ? (
+                  <Link
+                    to={`/verify-email?email=${encodeURIComponent(email)}`}
+                    className="text-emerald-200 underline"
+                  >
+                    {t('auth.resendVerification')}
+                  </Link>
+                ) : null}
+              </div>
             </div>
           )}
 

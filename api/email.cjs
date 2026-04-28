@@ -56,17 +56,44 @@ function buildPasswordResetEmail({ toEmail, toName, resetUrl, expiresInMinutes =
   };
 }
 
-async function sendPasswordResetEmail({ toEmail, toName, resetUrl, expiresInMinutes = 60 }) {
-  const config = getEmailConfig(process.env);
+function buildEmailVerificationEmail({ toEmail, toName, verifyUrl, expiresInMinutes = 60 }) {
+  const displayName = String(toName || '').trim() || toEmail;
 
-  if (!hasEmailTransportConfig(process.env)) {
-    return { sent: false, reason: 'missing_transport_config' };
-  }
+  return {
+    subject: 'Verify your Prode account',
+    text: [
+      `Hello ${displayName},`,
+      '',
+      'Welcome to Prode.',
+      `Confirm your email address within the next ${expiresInMinutes} minutes to activate your account:`,
+      verifyUrl,
+      '',
+      'If you did not create this account, you can ignore this email.',
+    ].join('\n'),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <p>Hello ${displayName},</p>
+        <p>Welcome to Prode.</p>
+        <p>Confirm your email address within the next ${expiresInMinutes} minutes to activate your account:</p>
+        <p>
+          <a href="${verifyUrl}" style="color: #0f766e; font-weight: bold;">
+            Verify your account
+          </a>
+        </p>
+        <p>If you did not create this account, you can ignore this email.</p>
+      </div>
+    `.trim(),
+  };
+}
 
-  const transporter = nodemailer.createTransport({
+function createTransport(config) {
+  return nodemailer.createTransport({
     host: config.smtpHost,
     port: config.smtpPort,
     secure: config.secure,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     ...(config.smtpUser
       ? {
           auth: {
@@ -76,6 +103,16 @@ async function sendPasswordResetEmail({ toEmail, toName, resetUrl, expiresInMinu
         }
       : {}),
   });
+}
+
+async function sendPasswordResetEmail({ toEmail, toName, resetUrl, expiresInMinutes = 60 }) {
+  const config = getEmailConfig(process.env);
+
+  if (!hasEmailTransportConfig(process.env)) {
+    return { sent: false, reason: 'missing_transport_config' };
+  }
+
+  const transporter = createTransport(config);
 
   const email = buildPasswordResetEmail({
     toEmail,
@@ -95,9 +132,38 @@ async function sendPasswordResetEmail({ toEmail, toName, resetUrl, expiresInMinu
   return { sent: true, reason: 'smtp' };
 }
 
+async function sendEmailVerificationEmail({ toEmail, toName, verifyUrl, expiresInMinutes = 60 }) {
+  const config = getEmailConfig(process.env);
+
+  if (!hasEmailTransportConfig(process.env)) {
+    return { sent: false, reason: 'missing_transport_config' };
+  }
+
+  const transporter = createTransport(config);
+
+  const email = buildEmailVerificationEmail({
+    toEmail,
+    toName,
+    verifyUrl,
+    expiresInMinutes,
+  });
+
+  await transporter.sendMail({
+    from: config.fromName ? `"${config.fromName}" <${config.fromEmail}>` : config.fromEmail,
+    to: toEmail,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
+  return { sent: true, reason: 'smtp' };
+}
+
 module.exports = {
   getEmailConfig,
   hasEmailTransportConfig,
+  buildEmailVerificationEmail,
   buildPasswordResetEmail,
+  sendEmailVerificationEmail,
   sendPasswordResetEmail,
 };

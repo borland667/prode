@@ -78,6 +78,17 @@ export const PT = {
     namePlaceholder: 'Seu nome',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Falha ao entrar',
+    verifyEmail: 'Verificar e-mail',
+    verificationHelp: 'Estamos validando seu link de verificação de e-mail.',
+    verificationEmailSent: 'Enviamos um e-mail de ativação. Abra-o para verificar sua conta antes de entrar.',
+    verificationPendingTitle: 'Confira sua caixa de entrada',
+    verificationPendingHelp: 'Sua conta foi criada, mas você precisa verificar seu e-mail antes de entrar.',
+    resendVerification: 'Reenviar e-mail de verificação',
+    resendingVerification: 'Reenviando...',
+    verificationResendSuccess: 'Se a conta ainda precisar de verificação, enviamos um novo e-mail de ativação.',
+    verificationSuccess: 'Sua conta foi verificada. Agora você pode entrar.',
+    verificationLinkInvalid: 'Este link de verificação é inválido ou expirou.',
+    accountNotVerified: 'Sua conta ainda não foi verificada. Confira seu e-mail para encontrar o link de ativação.',
   },
 
   // Home

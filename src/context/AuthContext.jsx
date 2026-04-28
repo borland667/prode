@@ -110,9 +110,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
-      return data.user;
+      return data;
     } catch (err) {
       setError(err.message);
       throw err;

@@ -12,6 +12,7 @@ model User {
   name                 String?
   password             String?
   googleId             String?              @unique
+  emailVerifiedAt      DateTime?
   avatarUrl            String?
   showInGlobalRankings Boolean              @default(true)
   role                 String               @default("USER")
@@ -25,6 +26,7 @@ model User {
   createdLeagues          TournamentLeague[]   @relation("LeagueCreator")
   leagueMemberships       LeagueMember[]
   passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model Tournament {
@@ -231,6 +233,16 @@ model LeagueMember {
 }
 
 model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model EmailVerificationToken {
   id         String   @id @default(cuid())
   userId     String
   tokenHash  String   @unique

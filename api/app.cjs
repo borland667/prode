@@ -10,7 +10,11 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const prisma = require('./db.cjs');
 const { calculateTotalScore } = require('./scoring.cjs');
-const { hasEmailTransportConfig, sendPasswordResetEmail } = require('./email.cjs');
+const {
+  hasEmailTransportConfig,
+  sendEmailVerificationEmail,
+  sendPasswordResetEmail,
+} = require('./email.cjs');
 const {
   getModeNameEs,
   getRoundNameEs,
@@ -47,6 +51,7 @@ const BEST_THIRD_SLOT_PATTERN = /^3\[(.+)\]$/i;
 const WINNER_SLOT_PATTERN = /^W-([A-Za-z0-9]+)-(\d+)$/i;
 const MIN_PASSWORD_LENGTH = 8;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
+const EMAIL_VERIFICATION_TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const TOURNAMENT_SCOPE_KEY = 'tournament';
 const GOOGLE_AUTH_CONFIGURED = Boolean(
   process.env.GOOGLE_CLIENT_ID &&
@@ -93,6 +98,7 @@ if (GOOGLE_AUTH_CONFIGURED) {
                 data: {
                   googleId: profile.id,
                   name: user.name || profile.displayName,
+                  emailVerifiedAt: user.emailVerifiedAt || new Date(),
                 },
               });
             } else {
@@ -101,6 +107,7 @@ if (GOOGLE_AUTH_CONFIGURED) {
                   googleId: profile.id,
                   email: email || `google_${profile.id}@prode.local`,
                   name: profile.displayName,
+                  emailVerifiedAt: new Date(),
                   role: 'USER',
                 },
               });
@@ -134,6 +141,14 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
 
+function normalizeEmail(email = '') {
+  return String(email || '').trim().toLowerCase();
+}
+
+function isUserEmailVerified(user) {
+  return Boolean(user?.emailVerifiedAt || user?.googleId);
+}
+
 function serializeUser(user) {
   if (!user) {
     return null;
@@ -145,6 +160,7 @@ function serializeUser(user) {
     name: user.name,
     role: user.role,
     isAdmin: user.role === 'ADMIN',
+    emailVerified: isUserEmailVerified(user),
     avatarUrl: user.avatarUrl || null,
     showInGlobalRankings: user.showInGlobalRankings !== false,
   };
@@ -203,6 +219,79 @@ function checkAdmin(req, res, next) {
   }
 
   next();
+}
+
+async function createEmailVerificationToken(userId) {
+  const rawToken = crypto.randomBytes(24).toString('hex');
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_TTL_MS);
+
+  await prisma.emailVerificationToken.deleteMany({
+    where: { userId },
+  });
+
+  await prisma.emailVerificationToken.create({
+    data: {
+      userId,
+      tokenHash,
+      expiresAt,
+    },
+  });
+
+  return {
+    rawToken,
+    expiresAt,
+  };
+}
+
+function buildEmailVerificationUrl(rawToken) {
+  return `${process.env.SITE_URL || 'http://localhost:5173'}/verify-email?token=${rawToken}`;
+}
+
+async function sendVerificationEmailForUser(user) {
+  const { rawToken } = await createEmailVerificationToken(user.id);
+  const verifyUrl = buildEmailVerificationUrl(rawToken);
+  const expiresInMinutes = Math.round(EMAIL_VERIFICATION_TOKEN_TTL_MS / 60000);
+  const hasTransport = hasEmailTransportConfig(process.env);
+  const shouldAttemptEmailDelivery = process.env.NODE_ENV === 'production' || hasTransport;
+
+  if (process.env.NODE_ENV === 'production' && !hasTransport) {
+    throw new Error('SMTP transport is not configured');
+  }
+
+  if (shouldAttemptEmailDelivery) {
+    try {
+      const result = await sendEmailVerificationEmail({
+        toEmail: user.email,
+        toName: user.name,
+        verifyUrl,
+        expiresInMinutes,
+      });
+
+      if (process.env.NODE_ENV === 'production' && result?.sent !== true) {
+        throw new Error('Verification email could not be delivered');
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
+      }
+
+      console.error('Failed to send verification email:', error);
+
+      return {
+        verifyUrl,
+        expiresInMinutes,
+        sent: false,
+        deliveryError: error.message,
+      };
+    }
+  }
+
+  return {
+    verifyUrl,
+    expiresInMinutes,
+    sent: shouldAttemptEmailDelivery,
+  };
 }
 
 function titleize(value) {
@@ -2161,7 +2250,8 @@ async function buildAccountNavigation(userId) {
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const { password, name } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -2173,7 +2263,25 @@ app.post('/api/auth/register', async (req, res) => {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      if (isUserEmailVerified(existingUser)) {
+        return res.status(400).json({ error: 'User already exists' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const updatedUser = await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          password: hashedPassword,
+          name: name || existingUser.name || email.split('@')[0],
+        },
+      });
+
+      const delivery = await sendVerificationEmailForUser(updatedUser);
+      return res.json({
+        message: 'Verification email sent',
+        requiresVerification: true,
+        ...(delivery.verifyUrl && process.env.NODE_ENV !== 'production' ? { verifyUrl: delivery.verifyUrl } : {}),
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -2186,9 +2294,73 @@ app.post('/api/auth/register', async (req, res) => {
       },
     });
 
-    const token = generateToken(user.id);
-    res.cookie('token', token, getCookieOptions());
-    res.json({ user: serializeUser(user), token });
+    const delivery = await sendVerificationEmailForUser(user);
+    res.json({
+      message: 'Verification email sent',
+      requiresVerification: true,
+      ...(delivery.verifyUrl && process.env.NODE_ENV !== 'production' ? { verifyUrl: delivery.verifyUrl } : {}),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/verify-email', async (req, res) => {
+  try {
+    const token = String(req.body.token || '').trim();
+
+    if (!token) {
+      return res.status(400).json({ error: 'auth.verificationLinkInvalid' });
+    }
+
+    const tokenHash = hashToken(token);
+    const verificationToken = await prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!verificationToken || verificationToken.usedAt || verificationToken.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'auth.verificationLinkInvalid' });
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: verificationToken.userId },
+        data: { emailVerifiedAt: new Date() },
+      }),
+      prisma.emailVerificationToken.deleteMany({
+        where: { userId: verificationToken.userId },
+      }),
+    ]);
+
+    res.json({ message: 'Account verified successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    const genericResponse = {
+      message: 'If an account exists and still needs verification, a new email has been sent',
+    };
+
+    if (!email) {
+      return res.json(genericResponse);
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || isUserEmailVerified(user)) {
+      return res.json(genericResponse);
+    }
+
+    const delivery = await sendVerificationEmailForUser(user);
+
+    res.json({
+      ...genericResponse,
+      ...(delivery.verifyUrl && process.env.NODE_ENV !== 'production' ? { verifyUrl: delivery.verifyUrl } : {}),
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2196,7 +2368,8 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const { password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -2210,6 +2383,10 @@ app.post('/api/auth/login', async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!isUserEmailVerified(user)) {
+      return res.status(403).json({ error: 'auth.accountNotVerified' });
     }
 
     const token = generateToken(user.id);

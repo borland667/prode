@@ -78,6 +78,17 @@ export const IT = {
     namePlaceholder: 'Il tuo nome',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Accesso non riuscito',
+    verifyEmail: 'Verifica e-mail',
+    verificationHelp: 'Stiamo convalidando il tuo link di verifica e-mail.',
+    verificationEmailSent: "Ti abbiamo inviato un'email di attivazione. Aprila per verificare il tuo account prima di accedere.",
+    verificationPendingTitle: 'Controlla la tua casella di posta',
+    verificationPendingHelp: 'Il tuo account è stato creato, ma devi verificare la tua email prima di poter accedere.',
+    resendVerification: 'Invia di nuovo email di verifica',
+    resendingVerification: 'Invio in corso...',
+    verificationResendSuccess: "Se l'account richiede ancora la verifica, abbiamo inviato una nuova email di attivazione.",
+    verificationSuccess: 'Il tuo account è stato verificato. Ora puoi accedere.',
+    verificationLinkInvalid: 'Questo link di verifica non è valido oppure è scaduto.',
+    accountNotVerified: 'Il tuo account non è ancora stato verificato. Controlla la tua email per il link di attivazione.',
   },
 
   // Home

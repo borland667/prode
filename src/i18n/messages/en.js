@@ -78,6 +78,17 @@ export const EN = {
     namePlaceholder: 'Your name',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Login failed',
+    verifyEmail: 'Verify Email',
+    verificationHelp: 'We are validating your email verification link.',
+    verificationEmailSent: 'We sent you an activation email. Open it to verify your account before logging in.',
+    verificationPendingTitle: 'Check your inbox',
+    verificationPendingHelp: 'Your account was created, but you need to verify your email before you can sign in.',
+    resendVerification: 'Resend verification email',
+    resendingVerification: 'Resending...',
+    verificationResendSuccess: 'If the account still needs verification, we sent a new activation email.',
+    verificationSuccess: 'Your account is now verified. You can sign in.',
+    verificationLinkInvalid: 'This verification link is invalid or has expired.',
+    accountNotVerified: 'Your account has not been verified yet. Check your email for the activation link.',
   },
 
   // Home

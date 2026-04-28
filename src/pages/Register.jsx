@@ -30,8 +30,14 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(name, email, password);
-      navigate(redirectTo);
+      const response = await register(name, email, password);
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
+        state: {
+          message: response?.message || t('auth.verificationEmailSent'),
+          verifyUrl: response?.verifyUrl || '',
+          redirectTo,
+        },
+      });
     } catch (err) {
       setError(t(err.message));
     } finally {

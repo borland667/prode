@@ -78,6 +78,17 @@ export const NL = {
     namePlaceholder: 'Je naam',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Inloggen mislukt',
+    verifyEmail: 'E-mail verifiëren',
+    verificationHelp: 'We controleren je e-mailverificatielink.',
+    verificationEmailSent: 'We hebben je een activatiemail gestuurd. Open die om je account te verifiëren voordat je inlogt.',
+    verificationPendingTitle: 'Controleer je inbox',
+    verificationPendingHelp: 'Je account is aangemaakt, maar je moet eerst je e-mailadres verifiëren voordat je kunt inloggen.',
+    resendVerification: 'Verificatiemail opnieuw sturen',
+    resendingVerification: 'Opnieuw verzenden...',
+    verificationResendSuccess: 'Als het account nog verificatie nodig heeft, hebben we een nieuwe activatiemail verstuurd.',
+    verificationSuccess: 'Je account is nu geverifieerd. Je kunt nu inloggen.',
+    verificationLinkInvalid: 'Deze verificatielink is ongeldig of verlopen.',
+    accountNotVerified: 'Je account is nog niet geverifieerd. Controleer je e-mail voor de activatielink.',
   },
 
   // Home

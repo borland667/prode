@@ -78,6 +78,17 @@ export const ES = {
     namePlaceholder: 'Tu nombre',
     passwordPlaceholder: '••••••••',
     loginFailed: 'No se pudo iniciar sesión',
+    verifyEmail: 'Verificar correo',
+    verificationHelp: 'Estamos validando tu enlace de verificación.',
+    verificationEmailSent: 'Te enviamos un correo de activación. Ábrelo para verificar tu cuenta antes de iniciar sesión.',
+    verificationPendingTitle: 'Revisa tu correo',
+    verificationPendingHelp: 'Tu cuenta fue creada, pero necesitas verificar tu correo antes de poder iniciar sesión.',
+    resendVerification: 'Reenviar correo de verificación',
+    resendingVerification: 'Reenviando...',
+    verificationResendSuccess: 'Si la cuenta todavía necesita verificación, enviamos un nuevo correo de activación.',
+    verificationSuccess: 'Tu cuenta ya fue verificada. Ahora puedes iniciar sesión.',
+    verificationLinkInvalid: 'Este enlace de verificación no es válido o ya expiró.',
+    accountNotVerified: 'Tu cuenta todavía no fue verificada. Revisa tu correo para encontrar el enlace de activación.',
   },
 
   // Home
