@@ -31,6 +31,11 @@ export default function Register() {
 
     try {
       const response = await register(name, email, password);
+      if (!response?.requiresVerification) {
+        navigate(redirectTo, { replace: true });
+        return;
+      }
+
       navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
         state: {
           message: response?.message || t('auth.verificationEmailSent'),

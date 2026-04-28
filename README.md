@@ -133,7 +133,7 @@ SMTP_PASSWORD=
 Notes:
 
 - Google OAuth is optional in local development.
-- SMTP is optional in local development. Without SMTP, the forgot-password flow returns a local reset URL/token payload for testing.
+- SMTP is optional in local development. Without SMTP, email/password registration falls back to the legacy immediate-login flow, and the forgot-password flow returns a local reset URL/token payload for testing.
 
 ### Run PostgreSQL With Docker
 

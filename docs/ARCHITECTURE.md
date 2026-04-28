@@ -183,6 +183,8 @@ Auth implementation:
 - JWT signed with `JWT_SECRET`
 - token accepted from HTTP-only cookie or `Authorization: Bearer ...`
 - frontend also stores the returned token for API calls
+- email/password signup requires email verification only when SMTP/email transport config is present; otherwise registration falls back to the legacy immediate-login behavior
+- Google OAuth users are treated as verified automatically
 
 Password reset:
 
@@ -445,6 +447,8 @@ All routes are under `/api`.
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
 - `GET /auth/google`
 - `GET /auth/google/callback`
 - `GET /auth/me`

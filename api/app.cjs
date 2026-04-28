@@ -149,6 +149,10 @@ function isUserEmailVerified(user) {
   return Boolean(user?.emailVerifiedAt || user?.googleId);
 }
 
+function isEmailVerificationEnabled(env = process.env) {
+  return hasEmailTransportConfig(env);
+}
+
 function serializeUser(user) {
   if (!user) {
     return null;
@@ -2252,6 +2256,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     const { password, name } = req.body;
+    const verificationEnabled = isEmailVerificationEnabled(process.env);
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -2263,7 +2268,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      if (isUserEmailVerified(existingUser)) {
+      if (verificationEnabled && isUserEmailVerified(existingUser)) {
         return res.status(400).json({ error: 'User already exists' });
       }
 
@@ -2273,8 +2278,19 @@ app.post('/api/auth/register', async (req, res) => {
         data: {
           password: hashedPassword,
           name: name || existingUser.name || email.split('@')[0],
+          ...(verificationEnabled ? {} : { emailVerifiedAt: new Date() }),
         },
       });
+
+      if (!verificationEnabled) {
+        const token = generateToken(updatedUser.id);
+        res.cookie('token', token, getCookieOptions());
+        return res.json({
+          user: serializeUser(updatedUser),
+          token,
+          requiresVerification: false,
+        });
+      }
 
       const delivery = await sendVerificationEmailForUser(updatedUser);
       return res.json({
@@ -2291,8 +2307,19 @@ app.post('/api/auth/register', async (req, res) => {
         password: hashedPassword,
         name: name || email.split('@')[0],
         role: 'USER',
+        ...(verificationEnabled ? {} : { emailVerifiedAt: new Date() }),
       },
     });
+
+    if (!verificationEnabled) {
+      const token = generateToken(user.id);
+      res.cookie('token', token, getCookieOptions());
+      return res.json({
+        user: serializeUser(user),
+        token,
+        requiresVerification: false,
+      });
+    }
 
     const delivery = await sendVerificationEmailForUser(user);
     res.json({
@@ -2370,6 +2397,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     const { password } = req.body;
+    const verificationEnabled = isEmailVerificationEnabled(process.env);
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -2385,7 +2413,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (!isUserEmailVerified(user)) {
+    if (verificationEnabled && !isUserEmailVerified(user)) {
       return res.status(403).json({ error: 'auth.accountNotVerified' });
     }
 
