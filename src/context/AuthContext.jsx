@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 
 const AuthContext = createContext();
 
@@ -48,7 +49,12 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          await refreshUser(token);
+          const nextUser = await refreshUser(token);
+          if (tokenFromQuery && nextUser) {
+            trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_COMPLETED, {
+              method: nextUser.googleId ? 'google' : 'token',
+            });
+          }
         } catch (err) {
           console.error('Auth check failed:', err);
           localStorage.removeItem('token');
@@ -86,6 +92,9 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
       localStorage.setItem('token', data.token);
       setUser(data.user);
+      trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_COMPLETED, {
+        method: 'password',
+      });
       return data.user;
     } catch (err) {
       setError(err.message);

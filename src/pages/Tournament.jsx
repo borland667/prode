@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
 import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 import {
   buildTeamMap,
   countTournamentMatches,
@@ -92,6 +93,25 @@ export default function Tournament() {
     return () => window.clearTimeout(timeoutId);
   }, [location.hash, loading]);
 
+  useEffect(() => {
+    if (!tournament?.id || loading) {
+      return;
+    }
+
+    trackEvent(
+      ANALYTICS_EVENTS.TOURNAMENT_VIEWED,
+      {
+        tournamentId: tournament.id,
+        accessType: tournament.accessType,
+        modeKey: tournament.mode?.key,
+        sport: tournament.sport,
+      },
+      {
+        dedupeKey: `tournament_viewed:${tournament.id}`,
+      }
+    );
+  }, [loading, tournament]);
+
   const handleJoinTournament = async () => {
     if (!joinCode.trim()) {
       setFormError(t('tournament.joinHelp'));
@@ -143,6 +163,9 @@ export default function Tournament() {
         name: leagueName,
         description: leagueDescription,
       });
+      trackEvent(ANALYTICS_EVENTS.LEAGUE_CREATED, {
+        tournamentId: id,
+      });
       await refreshLeagues();
       setLeagueName('');
       setLeagueDescription('');
@@ -168,6 +191,9 @@ export default function Tournament() {
       await post(`/tournaments/${id}/leagues/join`, {
         joinCode: leagueJoinCode,
       });
+      trackEvent(ANALYTICS_EVENTS.LEAGUE_JOINED, {
+        tournamentId: id,
+      });
       await refreshLeagues();
       setLeagueJoinCode('');
       setSuccess(t('tournament.joinedLeague'));
@@ -189,6 +215,11 @@ export default function Tournament() {
 
     try {
       const response = await post(`/tournaments/${id}/primary-entry`, { scopeKey });
+      trackEvent(ANALYTICS_EVENTS.PRIMARY_ENTRY_SELECTED, {
+        tournamentId: id,
+        scopeKey,
+        scopeType: scopeKey === 'tournament' ? 'tournament' : 'league',
+      });
       setPrimaryEntry(response?.primaryEntry || primaryEntry);
       setSuccess(t('tournament.primaryEntrySaved'));
     } catch (err) {

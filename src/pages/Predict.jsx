@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
 import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 import {
   buildTeamMap,
   buildRandomPredictionSet,
@@ -93,18 +94,6 @@ export default function Predict() {
     fetchData();
   }, [id, isLeagueScope, t, user]);
 
-  if (authLoading) {
-    return (
-      <div className="ds-shell min-h-screen flex items-center justify-center">
-        <p className="text-gray-400">{t('common.loading')}</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
   const groups = sortGroups(tournament?.groups || []);
   const rounds = getKnockoutRounds(tournament?.rounds || []);
   const teamMap = buildTeamMap(groups);
@@ -178,6 +167,13 @@ export default function Predict() {
         groupPredictions,
         knockoutPredictions,
       });
+      trackEvent(ANALYTICS_EVENTS.PREDICTION_SAVED, {
+        groupCount: Object.keys(groupPredictions).length,
+        knockoutCount: Object.keys(knockoutPredictions).length,
+        leagueId: league?.id,
+        scope: isLeagueScope ? 'league' : 'tournament',
+        tournamentId: tournament?.id,
+      });
       navigate(isLeagueScope ? `/league/${id}` : `/tournament/${id}`);
     } catch (err) {
       setError(
@@ -220,6 +216,36 @@ export default function Predict() {
       })
     );
   };
+
+  useEffect(() => {
+    if (!tournament?.id || loading || !tournament?.access?.canSubmitPredictions) {
+      return;
+    }
+
+    trackEvent(
+      ANALYTICS_EVENTS.PREDICTION_STARTED,
+      {
+        leagueId: league?.id,
+        scope: isLeagueScope ? 'league' : 'tournament',
+        tournamentId: tournament.id,
+      },
+      {
+        dedupeKey: `prediction_started:${isLeagueScope ? `league:${id}` : `tournament:${id}`}`,
+      }
+    );
+  }, [id, isLeagueScope, league, loading, tournament]);
+
+  if (authLoading) {
+    return (
+      <div className="ds-shell min-h-screen flex items-center justify-center">
+        <p className="text-gray-400">{t('common.loading')}</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (loading) {
     return (

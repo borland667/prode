@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './i18n/LanguageContext';
+import AnalyticsBridge from './components/AnalyticsBridge';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -25,6 +26,7 @@ function App() {
         <AuthProvider>
           <LanguageProvider>
             <div className="min-h-screen">
+              <AnalyticsBridge />
               <Navbar />
               <Routes>
                 <Route path="/" element={<Home />} />

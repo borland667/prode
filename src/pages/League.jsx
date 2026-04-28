@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { del, get, patch, post } from '../utils/api';
 import { getLocalizedName, getRoundLabel } from '../utils/tournament';
 import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 
 export default function League() {
   const { id } = useParams();
@@ -197,6 +198,11 @@ export default function League() {
       const response = await post(`/tournaments/${league?.tournamentId}/primary-entry`, {
         scopeKey: `league:${id}`,
       });
+      trackEvent(ANALYTICS_EVENTS.PRIMARY_ENTRY_SELECTED, {
+        tournamentId: league?.tournamentId,
+        scopeKey: `league:${id}`,
+        scopeType: 'league',
+      });
       setPrimaryEntry(response?.primaryEntry || primaryEntry);
       setSuccess(t('tournament.primaryEntrySaved'));
     } catch (err) {
@@ -218,6 +224,11 @@ export default function League() {
     try {
       const response = await post(`/leagues/${id}/predictions/copy`, {
         sourceScopeKey: copySourceScopeKey,
+      });
+      trackEvent(ANALYTICS_EVENTS.LEAGUE_PREDICTION_COPIED, {
+        leagueId: id,
+        sourceScopeKey: copySourceScopeKey,
+        tournamentId: league?.tournamentId,
       });
       if (response?.primaryEntry) {
         setPrimaryEntry(response.primaryEntry);

@@ -33,6 +33,7 @@ React SPA
   ├─ ThemeProvider
   ├─ AuthProvider
   ├─ LanguageProvider
+  ├─ AnalyticsBridge
   ├─ Navbar
   └─ Route pages
          │
@@ -73,6 +74,7 @@ Provider responsibilities:
 - `ThemeProvider`: light/dark theme resolution and persistence
 - `AuthProvider`: current user, token lifecycle, refresh, login, register, logout
 - `LanguageProvider`: language selection, browser locale detection, localized dates and numbers, translations
+- `AnalyticsBridge`: env-gated client analytics initialization, pageview capture, user identification, and shared context registration
 
 ### 3.2 Route Map
 
@@ -150,6 +152,24 @@ Canonical UI primitives:
 User-facing copy should come from translations or API data, not hardcoded tournament- or route-specific strings embedded in JSX.
 
 See `docs/DESIGN_SYSTEM.md`.
+
+### 3.5 Analytics
+
+Analytics is provider-abstracted through `src/utils/analytics.js`.
+
+Current behavior:
+
+- the app can run with analytics disabled
+- PostHog is the first supported provider
+- route pageviews are captured centrally instead of per-page vendor snippets
+- product events are emitted from page/action success points through the shared adapter
+
+Current env contract:
+
+- `VITE_ANALYTICS_ENABLED=true|false`
+- `VITE_ANALYTICS_PROVIDER=posthog|none`
+- `VITE_POSTHOG_KEY`
+- `VITE_POSTHOG_HOST` (defaults to the US PostHog host if omitted)
 
 ## 4. Backend Architecture
 

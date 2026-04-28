@@ -5,6 +5,7 @@ import { get } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 
 export default function GlobalLeaderboard() {
   const { user, loading: authLoading } = useAuth();
@@ -35,6 +36,22 @@ export default function GlobalLeaderboard() {
 
     loadLeaderboard();
   }, [user]);
+
+  useEffect(() => {
+    if (!user || loading || error) {
+      return;
+    }
+
+    trackEvent(
+      ANALYTICS_EVENTS.LEADERBOARD_VIEWED,
+      {
+        scope: 'global',
+      },
+      {
+        dedupeKey: 'leaderboard_viewed:global',
+      }
+    );
+  }, [error, loading, user]);
 
   if (authLoading) {
     return (

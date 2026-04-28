@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Button } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -31,6 +32,21 @@ export default function Register() {
 
     try {
       const response = await register(name, email, password);
+      trackEvent(ANALYTICS_EVENTS.AUTH_REGISTER_COMPLETED, {
+        method: 'password',
+        requiresVerification: Boolean(response?.requiresVerification),
+      });
+
+      if (response?.requiresVerification) {
+        trackEvent(ANALYTICS_EVENTS.AUTH_VERIFICATION_SENT, {
+          source: 'register',
+        });
+      } else if (response?.token) {
+        trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_COMPLETED, {
+          method: 'password_register_fallback',
+        });
+      }
+
       if (!response?.requiresVerification) {
         navigate(redirectTo, { replace: true });
         return;

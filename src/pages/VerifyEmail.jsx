@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { post } from '../utils/api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Button } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 
 export default function VerifyEmail() {
   const { t } = useLanguage();
@@ -32,6 +33,9 @@ export default function VerifyEmail() {
       try {
         const response = await post('/auth/verify-email', { token });
         if (!cancelled) {
+          trackEvent(ANALYTICS_EVENTS.AUTH_VERIFIED, {
+            source: 'email_link',
+          });
           setSuccess(response?.message || t('auth.verificationSuccess'));
         }
       } catch (err) {
@@ -64,6 +68,9 @@ export default function VerifyEmail() {
 
     try {
       const response = await post('/auth/resend-verification', { email });
+      trackEvent(ANALYTICS_EVENTS.AUTH_VERIFICATION_SENT, {
+        source: 'resend',
+      });
       setSuccess(response?.message || t('auth.verificationResendSuccess'));
       setPreviewUrl(response?.verifyUrl || '');
     } catch (err) {

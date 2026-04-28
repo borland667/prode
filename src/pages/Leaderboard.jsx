@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
 import { getLocalizedName, getRoundLabel } from '../utils/tournament';
 import { Button, DisplayText, PageShell, Panel, Pill } from '../components/ui/DesignSystem';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 
 export default function Leaderboard() {
   const { id } = useParams();
@@ -77,6 +78,24 @@ export default function Leaderboard() {
 
     fetchData();
   }, [id, searchParams, t, user]);
+
+  useEffect(() => {
+    if (!tournament?.id || loading || error) {
+      return;
+    }
+
+    trackEvent(
+      ANALYTICS_EVENTS.LEADERBOARD_VIEWED,
+      {
+        leagueId: currentLeague?.id,
+        scope: currentLeague?.id ? 'league' : 'tournament',
+        tournamentId: tournament.id,
+      },
+      {
+        dedupeKey: `leaderboard_viewed:${tournament.id}:${currentLeague?.id || 'tournament'}`,
+      }
+    );
+  }, [currentLeague, error, loading, tournament]);
 
   const tournamentName = getLocalizedName(tournament, language, tournament?.name || '');
   const selectedTournamentId = tournament?.id || id || tournaments[0]?.id || null;

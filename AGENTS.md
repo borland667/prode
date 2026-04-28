@@ -157,7 +157,27 @@ Current documentation map:
 - `docs/ROADMAP.md`
 - `docs/DESIGN_SYSTEM.md`
 
-## 10. Preferred Engineering Approach
+## 10. Analytics Standards
+
+Analytics must go through the shared frontend adapter, not direct vendor calls in pages.
+
+Rules:
+
+- use `src/utils/analytics.js` as the only provider integration point
+- gate analytics with env vars
+- keep provider choice separate from enabled/disabled state
+- prefer explicit product events over broad vendor autocapture
+- do not scatter vendor-specific APIs like `posthog.capture(...)` through route components
+- if event taxonomy changes, update docs and QA notes
+
+Current frontend analytics env contract:
+
+- `VITE_ANALYTICS_ENABLED`
+- `VITE_ANALYTICS_PROVIDER`
+- `VITE_POSTHOG_KEY`
+- `VITE_POSTHOG_HOST`
+
+## 11. Preferred Engineering Approach
 
 Prefer:
 

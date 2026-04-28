@@ -123,7 +123,16 @@ Working:
 - dark and light themes
 - persisted theme preference
 
-### 2.9 Leaderboards And Board Switching
+### 2.9 Analytics Foundation
+
+Working:
+
+- env-gated analytics adapter
+- PostHog as the first supported provider
+- centralized pageview tracking through the router bridge
+- first-pass product events for auth, tournament views, leaderboard views, prediction saves, league creation/join, league prediction copy, and official-entry selection
+
+### 2.10 Leaderboards And Board Switching
 
 Working:
 
@@ -190,6 +199,7 @@ The app is still limited by these product boundaries:
 - seeded tournaments beyond World Cup 2026 are curated templates, not official imports
 - payments and prize settlement are manual
 - notifications and invites are not fully operationalized beyond copyable links and password-reset email support
+- PostHog is the only analytics provider implemented today, although the app now uses a shared adapter so another provider can replace it later
 
 ## 6. Main Open Work
 

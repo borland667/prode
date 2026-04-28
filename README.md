@@ -128,12 +128,18 @@ SMTP_PORT=1025
 SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASSWORD=
+
+VITE_ANALYTICS_ENABLED=false
+VITE_ANALYTICS_PROVIDER=none
+VITE_POSTHOG_KEY=
+VITE_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 Notes:
 
 - Google OAuth is optional in local development.
 - SMTP is optional in local development. Without SMTP, email/password registration falls back to the legacy immediate-login flow, and the forgot-password flow returns a local reset URL/token payload for testing.
+- Frontend analytics is optional. Set `VITE_ANALYTICS_ENABLED=true`, `VITE_ANALYTICS_PROVIDER=posthog`, and `VITE_POSTHOG_KEY` to enable PostHog; otherwise the shared analytics adapter stays disabled.
 
 ### Run PostgreSQL With Docker
 

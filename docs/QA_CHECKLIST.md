@@ -68,6 +68,21 @@ Expected:
 - login restores the session
 - logout removes authenticated navigation
 
+## 5.1 Analytics Smoke Test
+
+Use this only when analytics env vars are configured.
+
+1. Open the app.
+2. Visit `/`, a tournament page, `/leaderboard`, and `/leaderboard/global`.
+3. Register or log in.
+4. Save a prediction set.
+5. Create or join a league if available.
+
+Expected:
+
+- pageviews are recorded without adding vendor-specific code to individual pages
+- login, registration, verification, leaderboard view, tournament view, prediction save, and league events appear in the configured analytics provider
+
 ## 6. Forgot Password And Reset Password
 
 1. Open `/forgot-password`.
