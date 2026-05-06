@@ -343,6 +343,8 @@ Run only if local Google OAuth is configured.
 2. Use Google sign-in.
 3. Confirm the app returns authenticated.
 4. Confirm matching-email users are linked instead of duplicated.
+5. Confirm the configured callback URI exactly matches the public deploy domain.
+6. Confirm a forced denial or failure returns to `/login` with a readable translated error.
 
 ## 22. Minimum Release Smoke Test
 

@@ -78,6 +78,7 @@ export const PT = {
     namePlaceholder: 'Seu nome',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Falha ao entrar',
+    googleLoginFailed: 'Não foi possível concluir o login com o Google. Tente novamente.',
     verifyEmail: 'Verificar e-mail',
     verificationHelp: 'Estamos validando seu link de verificação de e-mail.',
     verificationEmailSent: 'Enviamos um e-mail de ativação. Abra-o para verificar sua conta antes de entrar.',

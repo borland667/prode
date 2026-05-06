@@ -78,6 +78,7 @@ export const ES = {
     namePlaceholder: 'Tu nombre',
     passwordPlaceholder: '••••••••',
     loginFailed: 'No se pudo iniciar sesión',
+    googleLoginFailed: 'No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.',
     verifyEmail: 'Verificar correo',
     verificationHelp: 'Estamos validando tu enlace de verificación.',
     verificationEmailSent: 'Te enviamos un correo de activación. Ábrelo para verificar tu cuenta antes de iniciar sesión.',

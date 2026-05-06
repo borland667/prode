@@ -53,17 +53,37 @@ const MIN_PASSWORD_LENGTH = 8;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const TOURNAMENT_SCOPE_KEY = 'tournament';
+const PUBLIC_SITE_URL = (process.env.SITE_URL || 'http://localhost:5173').replace(/\/+$/, '');
+const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback';
+const EXPECTED_GOOGLE_CALLBACK_URL = `${PUBLIC_SITE_URL}${GOOGLE_CALLBACK_PATH}`;
 const GOOGLE_AUTH_CONFIGURED = Boolean(
   process.env.GOOGLE_CLIENT_ID &&
   process.env.GOOGLE_CLIENT_SECRET &&
   process.env.GOOGLE_CALLBACK_URL
 );
+const GOOGLE_AUTH_PARTIALLY_CONFIGURED =
+  Boolean(process.env.GOOGLE_CLIENT_ID) ||
+  Boolean(process.env.GOOGLE_CLIENT_SECRET) ||
+  Boolean(process.env.GOOGLE_CALLBACK_URL);
+const GOOGLE_FAILURE_REDIRECT = `${PUBLIC_SITE_URL}/login?error=google_auth_failed`;
+
+if (GOOGLE_AUTH_PARTIALLY_CONFIGURED && !GOOGLE_AUTH_CONFIGURED) {
+  console.warn(
+    '[auth] Google OAuth is disabled because GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL must all be set together.'
+  );
+}
+
+if (GOOGLE_AUTH_CONFIGURED && process.env.GOOGLE_CALLBACK_URL !== EXPECTED_GOOGLE_CALLBACK_URL) {
+  console.warn(
+    `[auth] GOOGLE_CALLBACK_URL is set to ${process.env.GOOGLE_CALLBACK_URL}, but SITE_URL implies ${EXPECTED_GOOGLE_CALLBACK_URL}. Make sure Netlify, Google OAuth, and SITE_URL all use the same public domain.`
+  );
+}
 
 const app = express();
 
 app.use(
   cors({
-    origin: process.env.SITE_URL || 'http://localhost:5173',
+    origin: PUBLIC_SITE_URL,
     credentials: true,
   })
 );
@@ -249,7 +269,7 @@ async function createEmailVerificationToken(userId) {
 }
 
 function buildEmailVerificationUrl(rawToken) {
-  return `${process.env.SITE_URL || 'http://localhost:5173'}/verify-email?token=${rawToken}`;
+  return `${PUBLIC_SITE_URL}/verify-email?token=${rawToken}`;
 }
 
 async function sendVerificationEmailForUser(user) {
@@ -2442,14 +2462,17 @@ app.get('/api/auth/google/callback', (req, res, next) => {
     return res.status(503).json({ error: 'Google OAuth is not configured' });
   }
 
-  return passport.authenticate('google', { session: false, failureRedirect: '/login' })(
+      return passport.authenticate('google', {
+        session: false,
+        failureRedirect: GOOGLE_FAILURE_REDIRECT,
+      })(
     req,
     res,
     () => {
       try {
         const token = generateToken(req.user.id);
         res.cookie('token', token, getCookieOptions());
-        res.redirect(`${process.env.SITE_URL || 'http://localhost:5173'}/?token=${token}`);
+        res.redirect(`${PUBLIC_SITE_URL}/?token=${token}`);
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
@@ -2496,7 +2519,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       },
     });
 
-    const resetUrl = `${process.env.SITE_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${PUBLIC_SITE_URL}/reset-password?token=${resetToken}`;
     const shouldAttemptEmailDelivery =
       process.env.NODE_ENV === 'production' || hasEmailTransportConfig(process.env);
 

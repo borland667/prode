@@ -138,6 +138,8 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
 Notes:
 
 - Google OAuth is optional in local development.
+- Google OAuth is only enabled when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` are all set together.
+- In production, `GOOGLE_CALLBACK_URL` should normally be `${SITE_URL}/api/auth/google/callback`, and that exact URI must be registered in Google Cloud OAuth settings.
 - SMTP is optional in local development. Without SMTP, email/password registration falls back to the legacy immediate-login flow, and the forgot-password flow returns a local reset URL/token payload for testing.
 - Frontend analytics is optional. Set `VITE_ANALYTICS_ENABLED=true`, `VITE_ANALYTICS_PROVIDER=posthog`, and `VITE_POSTHOG_KEY` to enable PostHog; otherwise the shared analytics adapter stays disabled.
 

@@ -205,6 +205,9 @@ Auth implementation:
 - frontend also stores the returned token for API calls
 - email/password signup requires email verification only when SMTP/email transport config is present; otherwise registration falls back to the legacy immediate-login behavior
 - Google OAuth users are treated as verified automatically
+- Google OAuth is enabled only when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` are all configured
+- the public callback should align with `SITE_URL`, typically `${SITE_URL}/api/auth/google/callback` on Netlify because `/api/*` is rewritten to the Express function wrapper
+- OAuth failures redirect back to `${SITE_URL}/login?error=google_auth_failed` so the SPA can show a translated error state
 
 Password reset:
 

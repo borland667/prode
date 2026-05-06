@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -14,7 +14,15 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
-  const redirectTo = new URLSearchParams(location.search).get('redirect') || '/';
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get('redirect') || '/';
+  const oauthError = searchParams.get('error');
+
+  useEffect(() => {
+    if (oauthError === 'google_auth_failed') {
+      setError(t('auth.googleLoginFailed'));
+    }
+  }, [oauthError, t]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -78,6 +78,7 @@ export const IT = {
     namePlaceholder: 'Il tuo nome',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Accesso non riuscito',
+    googleLoginFailed: 'Non è stato possibile completare l\'accesso con Google. Riprova.',
     verifyEmail: 'Verifica e-mail',
     verificationHelp: 'Stiamo convalidando il tuo link di verifica e-mail.',
     verificationEmailSent: "Ti abbiamo inviato un'email di attivazione. Aprila per verificare il tuo account prima di accedere.",

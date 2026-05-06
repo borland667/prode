@@ -78,6 +78,7 @@ export const EN = {
     namePlaceholder: 'Your name',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Login failed',
+    googleLoginFailed: 'Google sign-in could not be completed. Please try again.',
     verifyEmail: 'Verify Email',
     verificationHelp: 'We are validating your email verification link.',
     verificationEmailSent: 'We sent you an activation email. Open it to verify your account before logging in.',

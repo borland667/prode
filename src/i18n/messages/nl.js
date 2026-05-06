@@ -78,6 +78,7 @@ export const NL = {
     namePlaceholder: 'Je naam',
     passwordPlaceholder: '••••••••',
     loginFailed: 'Inloggen mislukt',
+    googleLoginFailed: 'Aanmelden met Google kon niet worden voltooid. Probeer het opnieuw.',
     verifyEmail: 'E-mail verifiëren',
     verificationHelp: 'We controleren je e-mailverificatielink.',
     verificationEmailSent: 'We hebben je een activatiemail gestuurd. Open die om je account te verifiëren voordat je inlogt.',
