@@ -2,6 +2,35 @@
 
 This file captures the repository standards and implementation approach for Prode.
 
+## 0. Agent Tools Reference
+
+### Built-in Tools
+
+The following tools are available in this agent:
+
+- **read** - Read file contents
+- **bash** - Execute bash commands
+- **edit** - Make precise file edits with exact text matching
+- **write** - Create or overwrite files
+- **grep** - Search for patterns in files
+- **find** - Find files and directories
+- **ls** - List directory contents
+
+### Commands
+
+- `pi install <source>` - Install an extension
+- `pi remove <source>` - Remove an extension
+- `pi update` - Update pi and installed extensions
+- `pi list` - List installed extensions
+- `pi config` - Open TUI to enable/disable package resources
+- `pi --help` - Show help for pi
+
+### ❌ There is NO "submit" tool
+
+**Important:** The agent does NOT have a `submit` tool. Any attempt to use `submit` will fail with the error "Tool submit not found".
+
+**Alternative:** Use the `write` tool to save files, or the `bash` tool to execute shell commands.
+
 ## 1. Product Orientation
 
 Prode currently supports one prediction engine:
@@ -54,6 +83,17 @@ When changing API behavior:
 - preserve primary-entry behavior
 - preserve closed-tournament prediction locking
 - keep admin structure edits blocked once a tournament has meaningful activity
+
+### Authentication Security
+
+When adding or modifying authentication flows:
+
+- Google OAuth is disabled by default - it requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` to be configured together
+- The frontend Google login button only appears when `VITE_GOOGLE_CLIENT_ID` is set
+- Never expose `GOOGLE_CLIENT_SECRET` to the frontend (it's only used in the backend)
+- The backend checks for complete OAuth configuration before enabling Google Passport strategy
+- Frontend environment variables must not contain secrets - use `VITE_` prefix for non-secret values
+- If any Google OAuth environment variables are missing or empty, Google OAuth is automatically disabled
 
 If an API change affects frontend flows or operational behavior, update:
 

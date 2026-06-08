@@ -119,6 +119,12 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
 
+# Frontend Google OAuth (optional)
+# Set to your Google Client ID to enable the Google login button on the frontend.
+# This is separate from GOOGLE_CLIENT_SECRET to prevent exposing secrets in the browser.
+# If not set, the Google login button will not appear.
+VITE_GOOGLE_CLIENT_ID=
+
 SITE_URL=http://localhost:5173
 
 EMAIL_FROM_ADDRESS=noreply@example.com
@@ -138,10 +144,33 @@ VITE_POSTHOG_HOST=https://us.i.posthog.com
 Notes:
 
 - Google OAuth is optional in local development.
-- Google OAuth is only enabled when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` are all set together.
+- Google OAuth is only enabled when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` are all set together (backend).
+- The frontend Google login button only appears when `VITE_GOOGLE_CLIENT_ID` is set.
 - In production, `GOOGLE_CALLBACK_URL` should normally be `${SITE_URL}/api/auth/google/callback`, and that exact URI must be registered in Google Cloud OAuth settings.
 - SMTP is optional in local development. Without SMTP, email/password registration falls back to the legacy immediate-login flow, and the forgot-password flow returns a local reset URL/token payload for testing.
 - Frontend analytics is optional. Set `VITE_ANALYTICS_ENABLED=true`, `VITE_ANALYTICS_PROVIDER=posthog`, and `VITE_POSTHOG_KEY` to enable PostHog; otherwise the shared analytics adapter stays disabled.
+
+### Google OAuth Configuration
+
+To enable Google OAuth login:
+
+1. **Backend Configuration** (required for all Google OAuth flows):
+   - Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/)
+   - Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL`
+   - All three must be set for Google OAuth to work
+   - The callback URL must match exactly what's configured in Google Cloud
+
+2. **Frontend Configuration** (optional, only needed to show the login button):
+   - Set `VITE_GOOGLE_CLIENT_ID` to your Google Client ID
+   - This exposes only the Client ID (not secret) to the browser
+   - If not set, the Google login button will be hidden
+
+3. **Production Deployment**:
+   - In production, `GOOGLE_CALLBACK_URL` should be `${SITE_URL}/api/auth/google/callback`
+   - Register this exact URL in your Google Cloud OAuth credentials
+   - Ensure `VITE_GOOGLE_CLIENT_ID` matches the production Client ID
+
+For development, you can omit Google OAuth configuration entirely - the app will still work with email/password authentication.
 
 ### Run PostgreSQL With Docker
 
@@ -352,6 +381,18 @@ CI:
 - CI provisions PostgreSQL for the test suite
 - on pushes to `main`, GitHub Actions also runs `npm run db:migrate:deploy` for production when the `PRODUCTION_DATABASE_URL` GitHub secret is configured
 - if `PRODUCTION_DATABASE_URL` is not set, the `migrate-production` job is skipped (a prior gate job reads it from `env` and exposes a boolean output) without failing CI
+
+## Google OAuth Testing
+
+To test Google OAuth locally:
+
+1. Set up Google Cloud OAuth credentials
+2. Configure all three backend variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`
+3. Set `VITE_GOOGLE_CLIENT_ID` to enable the frontend login button
+4. Run `npm run dev` and test the Google login flow
+5. Test both successful login and failure scenarios
+
+Note: The Google login button will not appear unless `VITE_GOOGLE_CLIENT_ID` is set, even if backend OAuth is configured.
 
 ## Deployment And Production Migrations
 

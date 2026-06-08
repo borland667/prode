@@ -258,6 +258,7 @@ export const EN = {
     stepQuarterfinals: 'Quarterfinals',
     stepSemifinals: 'Semifinals',
     stepFinal: 'Final',
+    stepThirdPlace: 'Third Place Match',
     selectWinners: 'Select the winners',
     selectFirst: 'Select 1st place',
     selectSecond: 'Select 2nd place',

@@ -406,7 +406,7 @@ const WORLD_CUP_2026_DEF = {
   },
   groups: WORLD_CUP_2026_GROUPS,
   rounds: buildTournamentRounds(
-    ['round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'final'],
+    ['round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'final', 'third_place_match'],
     2,
     2
   ),
@@ -451,6 +451,9 @@ const WORLD_CUP_2026_DEF = {
     ],
     final: [
       { matchNumber: 1, homeLabel: 'W-SF-1', awayLabel: 'W-SF-2' },
+    ],
+    third_place_match: [
+      { matchNumber: 1, homeLabel: 'W-QF-1', awayLabel: 'W-QF-2' },
     ],
   },
 };

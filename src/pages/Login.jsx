@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Button } from '../components/ui/DesignSystem';
+import { googleAuthEnabled } from '../utils/analytics';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -118,20 +119,24 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="app-divider">
-            <span>{t('common.or')}</span>
-          </div>
+          {googleAuthEnabled() && (
+            <>
+              <div className="app-divider">
+                <span>{t('common.or')}</span>
+              </div>
 
-          <Button
-            onClick={() => {
-              sessionStorage.setItem('postAuthRedirect', redirectTo);
-              loginWithGoogle();
-            }}
-            variant="secondary"
-            block
-          >
-            {t('auth.loginGoogle')}
-          </Button>
+              <Button
+                onClick={() => {
+                  sessionStorage.setItem('postAuthRedirect', redirectTo);
+                  loginWithGoogle();
+                }}
+                variant="secondary"
+                block
+              >
+                {t('auth.loginGoogle')}
+              </Button>
+            </>
+          )}
 
           <div className="text-center text-sm text-gray-400">
             <Link

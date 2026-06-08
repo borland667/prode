@@ -34,7 +34,7 @@ const DEFAULT_ROUNDS_TEMPLATE = JSON.stringify(
   [
     {
       name: 'round_of_16',
-      nameEs: 'Octavos de Final',
+      nameEs: 'Dieciséisavos',
       order: 1,
       pointsPerCorrect: 2,
       matches: [

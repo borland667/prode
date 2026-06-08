@@ -1,0 +1,21 @@
+{
+  "builtin_tools": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "grep",
+    "find",
+    "ls"
+  ],
+  "available_commands": [
+    "pi install",
+    "pi remove",
+    "pi uninstall",
+    "pi update",
+    "pi list",
+    "pi config",
+    "pi --help"
+  ],
+  "note": "There is NO 'submit' tool in this agent. Use write to save files instead."
+}

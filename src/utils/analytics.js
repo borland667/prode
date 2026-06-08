@@ -164,3 +164,9 @@ export function trackPageView(location, properties = {}) {
     })
   );
 }
+
+export function googleAuthEnabled() {
+  // Google OAuth is enabled on the frontend if the backend has proper configuration
+  // We check for the presence of a non-empty environment variable
+  return Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+}

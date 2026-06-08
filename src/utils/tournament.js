@@ -5,6 +5,7 @@ const ROUND_LABEL_KEYS = {
   quarter_finals: 'predict.stepQuarterfinals',
   semi_finals: 'predict.stepSemifinals',
   final: 'predict.stepFinal',
+  third_place_match: 'predict.stepThirdPlace',
 };
 
 const ROUND_CODE_MAP = {
@@ -14,6 +15,7 @@ const ROUND_CODE_MAP = {
   quarter_finals: 'QF',
   semi_finals: 'SF',
   final: 'FINAL',
+  third_place_match: '3RD',
 };
 
 const GROUP_SLOT_PATTERN = /^([123])\s*([A-Za-z0-9]+)$/;

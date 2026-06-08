@@ -1,10 +1,11 @@
 const ROUND_NAME_ES = {
   group_stage: 'fase_de_grupos',
   round_of_32: 'dieciseisavos_de_final',
-  round_of_16: 'octavos_de_final',
+  round_of_16: 'dieciseisavos_de_final',
   quarter_finals: 'cuartos_de_final',
   semi_finals: 'semifinales',
   final: 'final',
+  third_place_match: 'partido_por_el_tercer_puesto',
 };
 
 const TOURNAMENT_NAME_ES_BY_NAME = {
