@@ -175,8 +175,9 @@ export function countGroupStageMatches(groups = []) {
 
 export function countTournamentMatches({ groups = [], rounds = [] } = {}) {
   const groupStageMatches = countGroupStageMatches(groups);
+  // Count matches from rounds, excluding group_stage (already counted above)
   const knockoutMatches = rounds.reduce(
-    (total, round) => total + (round?.matches?.length || 0),
+    (total, round) => total + (round.name === 'group_stage' ? 0 : round?.matches?.length || 0),
     0
   );
 
