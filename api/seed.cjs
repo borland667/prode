@@ -20,6 +20,33 @@ function getFlagUrl(flagCode, fallbackCode) {
   return `https://flagcdn.com/w40/${(flagCode || fallbackCode || '').toLowerCase()}.png`;
 }
 
+function buildGroupStageMatches(groups, matchesByRound = {}) {
+  // Generate all group stage matches for 4-team groups
+  const groupMatches = [];
+  let matchNumber = 1;
+  
+  for (const groupName of Object.keys(groups).sort()) {
+    const teams = groups[groupName];
+    if (teams.length < 2) {
+      continue;
+    }
+    
+    // Generate all pairs of teams in the group
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        groupMatches.push({
+          matchNumber,
+          homeLabel: teams[i].code || teams[i].code?.toUpperCase(),
+          awayLabel: teams[j].code || teams[j].code?.toUpperCase(),
+        });
+        matchNumber++;
+      }
+    }
+  }
+  
+  return groupMatches;
+}
+
 async function deleteExistingTournamentByName(name) {
   const existingTournament = await prisma.tournament.findFirst({
     where: { name },
@@ -411,6 +438,7 @@ const WORLD_CUP_2026_DEF = {
     2
   ),
   matchesByRound: {
+    group_stage: buildGroupStageMatches(WORLD_CUP_2026_GROUPS),
     round_of_32: [
       { matchNumber: 1, homeLabel: '2A', awayLabel: '2B' },
       { matchNumber: 2, homeLabel: '1E', awayLabel: '3[A/B/C/D/F]' },
