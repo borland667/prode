@@ -96,3 +96,12 @@ jobs:
 
       - name: Apply production migrations
         run: npm run db:migrate:deploy
+
+      - name: Seed production tournaments
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.check-production-migrate.outputs.run_migrate == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: npm run db:seed
