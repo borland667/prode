@@ -47,85 +47,22 @@ function buildGroupStageMatches(groups, matchesByRound = {}) {
   return groupMatches;
 }
 
-async function deleteExistingTournamentByName(name) {
-  const existingTournament = await prisma.tournament.findFirst({
-    where: { name },
-    select: { id: true },
+async function createTournamentSeed(definition) {
+  const tournamentName = definition.tournament.name;
+  console.log(`Seeding ${tournamentName}...`);
+
+  // Check if tournament already exists
+  let tournament = await prisma.tournament.findFirst({
+    where: { name: tournamentName },
   });
 
-  if (!existingTournament) {
+  if (tournament) {
+    console.log(`  Tournament already exists: ${tournament.id}`);
+    console.log(`  Skipping seed to preserve user data.`);
     return;
   }
 
-  const roundIds = (
-    await prisma.round.findMany({
-      where: { tournamentId: existingTournament.id },
-      select: { id: true },
-    })
-  ).map((round) => round.id);
-
-  const leagueIds = (
-    await prisma.tournamentLeague.findMany({
-      where: { tournamentId: existingTournament.id },
-      select: { id: true },
-    })
-  ).map((league) => league.id);
-
-  if (leagueIds.length > 0) {
-    await prisma.leagueMember.deleteMany({
-      where: {
-        leagueId: { in: leagueIds },
-      },
-    });
-  }
-
-  await prisma.knockoutPrediction.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.groupPrediction.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.groupResult.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.score.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.tournamentMember.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.tournamentLeague.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-
-  if (roundIds.length > 0) {
-    await prisma.match.deleteMany({
-      where: {
-        roundId: { in: roundIds },
-      },
-    });
-  }
-
-  await prisma.round.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.team.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.group.deleteMany({
-    where: { tournamentId: existingTournament.id },
-  });
-  await prisma.tournament.delete({
-    where: { id: existingTournament.id },
-  });
-}
-
-async function createTournamentSeed(definition) {
-  console.log(`Seeding ${definition.tournament.name}...\n`);
-
-  await deleteExistingTournamentByName(definition.tournament.name);
-
-  const tournament = await prisma.tournament.create({
+  tournament = await prisma.tournament.create({
     data: definition.tournament,
   });
   console.log(`Tournament: ${tournament.name} (${tournament.id})`);
