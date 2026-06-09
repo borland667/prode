@@ -95,11 +95,7 @@ export default function Predict() {
   }, [id, isLeagueScope, t, user]);
 
   const groups = sortGroups(tournament?.groups || []);
-  console.log('DEBUG Predict tournament.rounds length:', tournament?.rounds?.length);
-  console.log('DEBUG Predict tournament.rounds:', tournament?.rounds?.map(r => ({ name: r.name, matchesLength: r.matches?.length || 0 })));
   const rounds = getKnockoutRounds(tournament?.rounds || []);
-  console.log('DEBUG Predict rounds after getKnockoutRounds:', rounds.length);
-  console.log('DEBUG Predict rounds:', rounds.map(r => ({ name: r.name, matchesLength: r.matches?.length || 0 })));
   const teamMap = buildTeamMap(groups);
   const requiresThirdPlaceSelections = hasBestThirdPlaceSlots(rounds);
   const knockoutWinnerSelections = Object.fromEntries(
