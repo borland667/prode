@@ -256,7 +256,10 @@ export default function Tournament() {
   const closingDate = tournament.closingDate ? new Date(tournament.closingDate) : null;
   const now = new Date();
   const groups = sortGroups(tournament.groups || []);
+  console.log('DEBUG tournament.rounds:', JSON.stringify(tournament.rounds, null, 2));
   const rounds = getKnockoutRounds(tournament.rounds || []);
+  console.log('DEBUG rounds length:', rounds.length);
+  console.log('DEBUG rounds:', rounds.map(r => ({ name: r.name, matchesLength: r.matches?.length || 0, matchesType: typeof r.matches })));
   const teamMap = buildTeamMap(groups);
   const canSubmitPredictions = Boolean(user && tournament.access?.canSubmitPredictions);
   const canManageLeagues = Boolean(user && tournament.access?.canViewPredictions);
