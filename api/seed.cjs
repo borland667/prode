@@ -377,15 +377,19 @@ const WORLD_CUP_2026_GROUPS = {
   ],
 };
 
-// Official FIFA schedule published April 10, 2026. Kickoff times use Eastern
-// Daylight Time so Date parsing preserves the instant for locale-aware display.
+// Curated World Cup 2026 group-stage schedule. Most entries reflect the
+// publicly announced kickoff slot in Eastern Daylight Time so Date parsing
+// preserves the instant for locale-aware display, but some matches still
+// have a kickoff time of null where the published slot was not available
+// at the time of seeding. Several team labels are placeholders that will
+// not match the official line-up once qualification finishes.
 const WORLD_CUP_2026_GROUP_MATCHES = [
   { matchNumber: 1, homeLabel: 'MEX', awayLabel: 'RSA', matchDate: '2026-06-11T15:00:00-04:00' },
   { matchNumber: 2, homeLabel: 'KOR', awayLabel: 'CZE', matchDate: '2026-06-11T22:00:00-04:00' },
   { matchNumber: 3, homeLabel: 'CAN', awayLabel: 'BIH', matchDate: '2026-06-12T15:00:00-04:00' },
   { matchNumber: 4, homeLabel: 'USA', awayLabel: 'PAR', matchDate: '2026-06-12T21:00:00-04:00' },
   { matchNumber: 5, homeLabel: 'HAI', awayLabel: 'SCO', matchDate: '2026-06-13T21:00:00-04:00' },
-  { matchNumber: 6, homeLabel: 'AUS', awayLabel: 'TUR', matchDate: '2026-06-13T00:00:00-04:00' },
+  { matchNumber: 6, homeLabel: 'AUS', awayLabel: 'TUR', matchDate: null },
   { matchNumber: 7, homeLabel: 'BRA', awayLabel: 'MAR', matchDate: '2026-06-13T18:00:00-04:00' },
   { matchNumber: 8, homeLabel: 'QAT', awayLabel: 'SUI', matchDate: '2026-06-13T15:00:00-04:00' },
   { matchNumber: 9, homeLabel: 'CIV', awayLabel: 'ECU', matchDate: '2026-06-14T19:00:00-04:00' },
@@ -399,7 +403,7 @@ const WORLD_CUP_2026_GROUP_MATCHES = [
   { matchNumber: 17, homeLabel: 'FRA', awayLabel: 'SEN', matchDate: '2026-06-16T15:00:00-04:00' },
   { matchNumber: 18, homeLabel: 'IRQ', awayLabel: 'NOR', matchDate: '2026-06-16T18:00:00-04:00' },
   { matchNumber: 19, homeLabel: 'ARG', awayLabel: 'ALG', matchDate: '2026-06-16T21:00:00-04:00' },
-  { matchNumber: 20, homeLabel: 'AUT', awayLabel: 'JOR', matchDate: '2026-06-16T00:00:00-04:00' },
+  { matchNumber: 20, homeLabel: 'AUT', awayLabel: 'JOR', matchDate: null },
   { matchNumber: 21, homeLabel: 'GHA', awayLabel: 'PAN', matchDate: '2026-06-17T19:00:00-04:00' },
   { matchNumber: 22, homeLabel: 'ENG', awayLabel: 'CRO', matchDate: '2026-06-17T16:00:00-04:00' },
   { matchNumber: 23, homeLabel: 'POR', awayLabel: 'COD', matchDate: '2026-06-17T13:00:00-04:00' },
@@ -415,7 +419,7 @@ const WORLD_CUP_2026_GROUP_MATCHES = [
   { matchNumber: 33, homeLabel: 'GER', awayLabel: 'CIV', matchDate: '2026-06-20T16:00:00-04:00' },
   { matchNumber: 34, homeLabel: 'ECU', awayLabel: 'CUW', matchDate: '2026-06-20T20:00:00-04:00' },
   { matchNumber: 35, homeLabel: 'NED', awayLabel: 'SWE', matchDate: '2026-06-20T13:00:00-04:00' },
-  { matchNumber: 36, homeLabel: 'TUN', awayLabel: 'JPN', matchDate: '2026-06-20T00:00:00-04:00' },
+  { matchNumber: 36, homeLabel: 'TUN', awayLabel: 'JPN', matchDate: null },
   { matchNumber: 37, homeLabel: 'URU', awayLabel: 'CPV', matchDate: '2026-06-21T18:00:00-04:00' },
   { matchNumber: 38, homeLabel: 'ESP', awayLabel: 'KSA', matchDate: '2026-06-21T12:00:00-04:00' },
   { matchNumber: 39, homeLabel: 'BEL', awayLabel: 'IRN', matchDate: '2026-06-21T15:00:00-04:00' },

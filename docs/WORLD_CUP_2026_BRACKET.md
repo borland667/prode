@@ -112,15 +112,14 @@ Added translations for "Third Place Match" in all 5 languages:
 - Loser of Semi Final 1 vs loser of Semi Final 2
 - This ensures all teams have a complete bracket path
 
-## Official Match Schedule
+## Curated Match Schedule
 
-- All 104 World Cup matches include their official FIFA kickoff date and time.
-- Seed timestamps use the Eastern Time instants published by FIFA and are stored as UTC by PostgreSQL.
+- The seed targets 104 World Cup matches with kickoff metadata where it is available.
+- Where a kickoff slot is known, it is stored as an Eastern Time instant and persisted as UTC by PostgreSQL. A small number of group-stage rows still have a null kickoff time and are sorted after the timed matches in the UI.
+- Several team labels reflect placeholder line-ups and may not match the official tournament once qualification finishes.
 - The UI formats kickoff dates and times using the viewer's browser locale and timezone.
 - Re-running the seed updates schedule metadata in place for a structurally complete tournament, preserving match IDs, predictions, scores, memberships, and leagues.
-- Group-stage metadata is matched by team pairing before official chronological match numbers are applied.
-
-Source: FIFA World Cup 2026 match schedule published April 10, 2026.
+- Group-stage metadata is matched by team pairing before chronological match numbers are applied.
 
 ## Match Numbering
 

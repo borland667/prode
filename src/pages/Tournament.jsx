@@ -693,10 +693,11 @@ export default function Tournament() {
                     (match) =>
                       groupCodes.has(match.homeLabel) && groupCodes.has(match.awayLabel)
                   )
-                  .sort(
-                    (first, second) =>
-                      new Date(first.matchDate || 0) - new Date(second.matchDate || 0)
-                  );
+                  .sort((first, second) => {
+                    const firstTime = first.matchDate ? new Date(first.matchDate).getTime() : Infinity;
+                    const secondTime = second.matchDate ? new Date(second.matchDate).getTime() : Infinity;
+                    return firstTime - secondTime;
+                  });
 
                 return (
                   <Panel
