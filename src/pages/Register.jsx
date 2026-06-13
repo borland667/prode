@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Button } from '../components/ui/DesignSystem';
-import { ANALYTICS_EVENTS, trackEvent, googleAuthEnabled } from '../utils/analytics';
+import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -13,7 +14,8 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { register, loginWithGoogle } = useAuth();
+  const { register } = useAuth();
+  const { isEnabled: googleEnabled, loginWithGoogle } = useGoogleAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
@@ -155,7 +157,7 @@ export default function Register() {
             </Button>
           </form>
 
-          {googleAuthEnabled() && (
+          {googleEnabled && (
             <>
               <div className="app-divider">
                 <span>{t('common.or')}</span>

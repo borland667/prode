@@ -217,7 +217,7 @@ async function optionalAuth(req, res, next) {
   try {
     const user = await loadAuthenticatedUser(token);
     req.user = serializeUser(user);
-  } catch (error) {
+  } catch {
     req.user = null;
   }
 
@@ -2468,7 +2468,7 @@ app.get('/api/auth/google', (req, res, next) => {
   );
 });
 
-app.get('/api/auth/google/callback', (req, res, next) => {
+app.get('/api/auth/google/callback', (req, res, _next) => {
   if (!GOOGLE_AUTH_CONFIGURED) {
     return res.status(503).json({ error: 'Google OAuth is not configured' });
   }

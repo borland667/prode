@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Button } from '../components/ui/DesignSystem';
-import { googleAuthEnabled } from '../utils/analytics';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,7 +11,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
+  const { isEnabled: googleEnabled, loginWithGoogle } = useGoogleAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
@@ -119,7 +120,7 @@ export default function Login() {
             </Button>
           </form>
 
-          {googleAuthEnabled() && (
+          {googleEnabled && (
             <>
               <div className="app-divider">
                 <span>{t('common.or')}</span>

@@ -20,7 +20,7 @@ function getFlagUrl(flagCode, fallbackCode) {
   return `https://flagcdn.com/w40/${(flagCode || fallbackCode || '').toLowerCase()}.png`;
 }
 
-function buildGroupStageMatches(groups, matchesByRound = {}) {
+function buildGroupStageMatches(groups, _matchesByRound = {}) {
   // Generate all group stage matches for 4-team groups
   const groupMatches = [];
   let matchNumber = 1;
