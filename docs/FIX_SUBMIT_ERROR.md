@@ -72,7 +72,6 @@ write({ path: "/path/to/file.txt", content: "..." })
 ## Documentation
 
 - `docs/TOOLS_REFERENCE.md` - Complete tools reference
-- `docs/RESUMEN_FINAL.md` - Summary of changes
 - `AGENTS.md` - Repository standards and tool reference
 
 ## Why There's No Submit

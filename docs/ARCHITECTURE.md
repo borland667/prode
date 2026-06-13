@@ -1,6 +1,6 @@
 # Prode Architecture
 
-Version: 2026-04-24  
+Version: 2026-06-13  
 Status: implementation-aligned snapshot
 
 ## 1. Product Scope
@@ -83,6 +83,7 @@ Current routes in `src/App.jsx`:
 - `/`
 - `/login`
 - `/register`
+- `/verify-email`
 - `/forgot-password`
 - `/reset-password`
 - `/tournament/:id`
@@ -215,6 +216,13 @@ Password reset:
 - TTL currently one hour
 - can send email through SMTP or return a local reset URL for non-production testing
 
+Email verification:
+
+- one-time hashed verification tokens stored in `EmailVerificationToken`
+- TTL currently 24 hours
+- `POST /api/auth/verify-email` consumes the token and sets `User.emailVerifiedAt`
+- `POST /api/auth/resend-verification` issues a fresh token from the `/verify-email` page when delivery failed or expired
+
 ## 6. Access Control Model
 
 ### 6.1 Tournament Access
@@ -328,6 +336,7 @@ The Prisma schema currently contains:
 - `TournamentLeague`
 - `LeagueMember`
 - `PasswordResetToken`
+- `EmailVerificationToken`
 
 ### 8.1 Key Model Responsibilities
 

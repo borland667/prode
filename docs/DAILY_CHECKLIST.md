@@ -5,7 +5,6 @@
 - [ ] Check `docs/TOOLS_REFERENCE.md` for available tools
 - [ ] Remember: NO `submit` tool - use `write` instead
 - [ ] Run `pi --help` to see available commands
-- [ ] Review `docs/WORK_SUMMARY.md` for project context
 
 ## When Making Changes
 
@@ -30,9 +29,8 @@
 ## After Making Changes
 
 - [ ] Run `npm run verify` (lint + test + build)
-- [ ] Check that all tests pass (16/16)
+- [ ] Check that all tests pass
 - [ ] Verify build succeeds
-- [ ] Update `docs/RESUMEN_FINAL.md` if needed
 
 ## Common Mistakes to Avoid
 
