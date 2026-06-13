@@ -1,5 +1,6 @@
 const prisma = require('./db.cjs');
 const { getRoundNameEs, getTeamNameEs } = require('./translations.cjs');
+const { syncTournamentMatchMetadata } = require('./seed-sync.cjs');
 
 function buildLinearKnockoutRounds(roundNames, start = 2, step = 2) {
   return roundNames.map((name, index) => ({
@@ -18,53 +19,6 @@ function buildTournamentRounds(knockoutRoundNames, start = 2, step = 2) {
 
 function getFlagUrl(flagCode, fallbackCode) {
   return `https://flagcdn.com/w40/${(flagCode || fallbackCode || '').toLowerCase()}.png`;
-}
-
-async function syncTournamentMatchMetadata(client, tournament, definition) {
-  let updatedMatches = 0;
-
-  for (const round of tournament.rounds || []) {
-    const expectedMatches = definition.matchesByRound?.[round.name] || [];
-
-    for (const expectedMatch of expectedMatches) {
-      const existingMatch = (round.matches || []).find((match) => {
-        if (round.name !== 'group_stage') {
-          return Number(match.matchNumber) === Number(expectedMatch.matchNumber);
-        }
-
-        const existingPair = [match.homeLabel, match.awayLabel]
-          .filter(Boolean)
-          .sort()
-          .join(':');
-        const expectedPair = [expectedMatch.homeLabel, expectedMatch.awayLabel]
-          .filter(Boolean)
-          .sort()
-          .join(':');
-        return existingPair === expectedPair;
-      });
-
-      if (!existingMatch || !expectedMatch.matchDate) {
-        continue;
-      }
-
-      await client.match.update({
-        where: { id: existingMatch.id },
-        data: {
-          matchDate: new Date(expectedMatch.matchDate),
-          ...(round.name === 'group_stage'
-            ? {
-                matchNumber: expectedMatch.matchNumber,
-                homeLabel: expectedMatch.homeLabel,
-                awayLabel: expectedMatch.awayLabel,
-              }
-            : {}),
-        },
-      });
-      updatedMatches += 1;
-    }
-  }
-
-  return updatedMatches;
 }
 
 async function createTournamentSeed(definition) {
@@ -95,25 +49,6 @@ async function createTournamentSeed(definition) {
   });
 
   if (tournament) {
-    const actualMatchCount = (tournament.rounds || []).reduce(
-      (total, round) => total + (round.matches?.length || 0),
-      0
-    );
-    const expectedMatchCount = Object.values(definition.matchesByRound || {}).reduce(
-      (total, matches) => total + (matches?.length || 0),
-      0
-    );
-    const expectedGroupCount = Object.keys(definition.groups || {}).length;
-    const expectedTeamCount = Object.values(definition.groups || {}).reduce(
-      (total, teams) => total + (teams?.length || 0),
-      0
-    );
-    const expectedRoundCount = definition.rounds?.length || 0;
-    const structureIsComplete =
-      tournament._count.groups === expectedGroupCount &&
-      tournament._count.teams === expectedTeamCount &&
-      tournament.rounds.length === expectedRoundCount &&
-      actualMatchCount === expectedMatchCount;
     const hasActivity =
       tournament._count.groupResults > 0 ||
       tournament._count.groupPredictions > 0 ||
@@ -124,76 +59,61 @@ async function createTournamentSeed(definition) {
 
     console.log(`  Tournament already exists: ${tournament.id}`);
 
-    if (structureIsComplete) {
-      const updatedMatches = await syncTournamentMatchMetadata(prisma, tournament, definition);
-      if (updatedMatches > 0) {
-        console.log(`  Updated schedule metadata for ${updatedMatches} matches.`);
-      }
-      console.log(`  Skipping seed to preserve user data.`);
-      return;
-    }
-
-    if (hasActivity) {
-      const updatedMatches = await syncTournamentMatchMetadata(prisma, tournament, definition);
-      if (updatedMatches > 0) {
-        console.log(`  Updated schedule metadata for ${updatedMatches} existing matches.`);
-      }
-      console.log(
-        `  Tournament structure is incomplete, but it already has activity. Skipping automatic repair to avoid data loss.`
-      );
-      console.log(
-        `  Current structure counts -> groups: ${tournament._count.groups}/${expectedGroupCount}, teams: ${tournament._count.teams}/${expectedTeamCount}, rounds: ${tournament.rounds.length}/${expectedRoundCount}, matches: ${actualMatchCount}/${expectedMatchCount}`
-      );
-      return;
-    }
-
-    // The rebuild path drops Team, Group, Match, and Round rows for the
-    // existing tournament so the new structure can be reseeded with the
-    // current definition. That is fine for fresh local databases but is
-    // never desired against production data: even with no user activity,
-    // the deletion changes record IDs that other systems may have cached
-    // and surfaces as schema drift. Require an explicit opt-in env var so
-    // the production seed step skips this branch by default.
-    if (process.env.SEED_ALLOW_REBUILD !== 'true') {
-      console.log(
-        `  Tournament structure is incomplete and has no activity, but SEED_ALLOW_REBUILD is not set. Skipping destructive rebuild.`
-      );
-      console.log(
-        `  Current structure counts -> groups: ${tournament._count.groups}/${expectedGroupCount}, teams: ${tournament._count.teams}/${expectedTeamCount}, rounds: ${tournament.rounds.length}/${expectedRoundCount}, matches: ${actualMatchCount}/${expectedMatchCount}`
-      );
-      console.log(
-        `  Re-run with SEED_ALLOW_REBUILD=true on a non-production database if you want to drop and recreate the structure.`
-      );
-      return;
-    }
-
-    console.log(`  Tournament structure is incomplete and has no activity. Rebuilding seed structure.`);
-    await prisma.$transaction(
-      async (tx) => {
-        await tx.team.deleteMany({ where: { tournamentId: tournament.id } });
-        await tx.group.deleteMany({ where: { tournamentId: tournament.id } });
-        const roundIds = (tournament.rounds || []).map((round) => round.id);
-        if (roundIds.length) {
-          await tx.match.deleteMany({
-            where: {
-              roundId: { in: roundIds },
-            },
+    // SEED_ALLOW_REBUILD is reserved for non-production databases. Even with the
+    // flag set we refuse to drop a tournament once it has user activity. The
+    // additive sync below is enough to bring the structure up to date.
+    if (process.env.SEED_ALLOW_REBUILD === 'true' && !hasActivity) {
+      console.log(`  SEED_ALLOW_REBUILD=true and no user activity. Rebuilding seed structure.`);
+      await prisma.$transaction(
+        async (tx) => {
+          await tx.team.deleteMany({ where: { tournamentId: tournament.id } });
+          await tx.group.deleteMany({ where: { tournamentId: tournament.id } });
+          const roundIds = (tournament.rounds || []).map((round) => round.id);
+          if (roundIds.length) {
+            await tx.match.deleteMany({
+              where: {
+                roundId: { in: roundIds },
+              },
+            });
+          }
+          await tx.round.deleteMany({ where: { tournamentId: tournament.id } });
+          await tx.tournamentPrimaryEntry.updateMany({
+            where: { tournamentId: tournament.id },
+            data: { scopeKey: 'tournament' },
           });
-        }
-        await tx.round.deleteMany({ where: { tournamentId: tournament.id } });
-        await tx.tournamentPrimaryEntry.updateMany({
-          where: { tournamentId: tournament.id },
-          data: { scopeKey: 'tournament' },
-        });
-        await tx.tournament.update({
-          where: { id: tournament.id },
-          data: definition.tournament,
-        });
-        await populateTournamentStructure(tx, tournament.id, definition);
-      },
-      { timeout: 60_000 }
-    );
-    console.log(`  Rebuilt ${tournamentName}.`);
+          await tx.tournament.update({
+            where: { id: tournament.id },
+            data: definition.tournament,
+          });
+          await populateTournamentStructure(tx, tournament.id, definition);
+        },
+        { timeout: 60_000 }
+      );
+      console.log(`  Rebuilt ${tournamentName}.`);
+      return;
+    }
+
+    if (process.env.SEED_ALLOW_REBUILD === 'true' && hasActivity) {
+      console.log(
+        `  SEED_ALLOW_REBUILD=true but tournament has user activity. Refusing to rebuild; running additive sync instead.`
+      );
+    }
+
+    // Default path: non-destructive sync that creates any rounds/matches missing
+    // from the current definition and refreshes match dates on existing rows.
+    // Existing predictions, results, scores, leagues, and members are untouched.
+    const syncResult = await syncTournamentMatchMetadata(prisma, tournament, definition);
+    if (
+      syncResult.createdRounds > 0 ||
+      syncResult.createdMatches > 0 ||
+      syncResult.updatedMatches > 0
+    ) {
+      console.log(
+        `  Synced structure: added ${syncResult.createdRounds} rounds and ${syncResult.createdMatches} matches; updated schedule for ${syncResult.updatedMatches} existing matches.`
+      );
+    } else {
+      console.log(`  Tournament already in sync with the current seed definition.`);
+    }
     return;
   }
 

@@ -555,6 +555,20 @@ Current seed responsibilities:
 - create rounds with persisted point values
 - define bracket slot labels explicitly
 
+Re-running the seed against a database that already has the tournament is
+**non-destructive by default**. `api/seed-sync.cjs` performs an additive sync
+that creates any rounds and matches missing from the current definition and
+refreshes match dates on existing rows; it never deletes or overwrites
+predictions, results, scores, leagues, or memberships. Group-stage rows are
+matched by team pair (not by `matchNumber`) so labels and ordering can be
+corrected without churning IDs.
+
+`SEED_ALLOW_REBUILD=true` is an opt-in escape hatch for non-production
+databases that triggers a destructive rebuild (drops groups, teams, rounds,
+and matches before reseeding). The rebuild is still refused when the
+tournament has user activity; in that case the seed falls back to the
+additive sync.
+
 ### 13.2 Translation Backfill
 
 `api/backfill-translations.cjs` fills missing Spanish values for:
