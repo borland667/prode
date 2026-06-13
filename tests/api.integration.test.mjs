@@ -113,6 +113,36 @@ test('core API flows work end to end', async () => {
     });
     const userAToken = userA.token;
 
+    const userARegisterCollision = await apiRequest(baseUrl, '/api/auth/register', {
+      method: 'POST',
+      body: {
+        name: 'Imposter',
+        email: 'usera@example.com',
+        password: 'attackerpw1',
+      },
+    });
+    assert.equal(
+      userARegisterCollision.response.status,
+      400,
+      'Re-registering an existing email must not overwrite the account'
+    );
+    assert.equal(userARegisterCollision.payload.token, undefined);
+
+    const userARowAfterCollision = await prisma.user.findUnique({
+      where: { email: 'usera@example.com' },
+    });
+    assert.equal(userARowAfterCollision.name, 'User A');
+
+    const userALoginAfterCollision = await apiRequest(baseUrl, '/api/auth/login', {
+      method: 'POST',
+      body: { email: 'usera@example.com', password: 'supersecret1' },
+    });
+    assert.equal(
+      userALoginAfterCollision.response.status,
+      200,
+      'Original password must still work after a re-register attempt'
+    );
+
     const userB = await registerUser(baseUrl, {
       name: 'User B',
       email: 'userb@example.com',

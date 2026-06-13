@@ -2325,36 +2325,10 @@ app.post('/api/auth/register', async (req, res) => {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      if (verificationEnabled && isUserEmailVerified(existingUser)) {
-        return res.status(400).json({ error: 'User already exists' });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const updatedUser = await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          password: hashedPassword,
-          name: name || existingUser.name || email.split('@')[0],
-          ...(verificationEnabled ? {} : { emailVerifiedAt: new Date() }),
-        },
-      });
-
-      if (!verificationEnabled) {
-        const token = generateToken(updatedUser.id);
-        res.cookie('token', token, getCookieOptions());
-        return res.json({
-          user: serializeUser(updatedUser),
-          token,
-          requiresVerification: false,
-        });
-      }
-
-      const delivery = await sendVerificationEmailForUser(updatedUser);
-      return res.json({
-        message: 'Verification email sent',
-        requiresVerification: true,
-        ...(delivery.verifyUrl && process.env.NODE_ENV !== 'production' ? { verifyUrl: delivery.verifyUrl } : {}),
-      });
+      // Never overwrite an existing account from the public registration
+      // endpoint. Unverified users should use /api/auth/resend-verification
+      // and users who forgot their password should use the password reset flow.
+      return res.status(400).json({ error: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
