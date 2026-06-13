@@ -47,43 +47,195 @@ function buildGroupStageMatches(groups, matchesByRound = {}) {
   return groupMatches;
 }
 
+async function syncTournamentMatchMetadata(client, tournament, definition) {
+  let updatedMatches = 0;
+
+  for (const round of tournament.rounds || []) {
+    const expectedMatches = definition.matchesByRound?.[round.name] || [];
+
+    for (const expectedMatch of expectedMatches) {
+      const existingMatch = (round.matches || []).find((match) => {
+        if (round.name !== 'group_stage') {
+          return Number(match.matchNumber) === Number(expectedMatch.matchNumber);
+        }
+
+        const existingPair = [match.homeLabel, match.awayLabel]
+          .filter(Boolean)
+          .sort()
+          .join(':');
+        const expectedPair = [expectedMatch.homeLabel, expectedMatch.awayLabel]
+          .filter(Boolean)
+          .sort()
+          .join(':');
+        return existingPair === expectedPair;
+      });
+
+      if (!existingMatch || !expectedMatch.matchDate) {
+        continue;
+      }
+
+      await client.match.update({
+        where: { id: existingMatch.id },
+        data: {
+          matchDate: new Date(expectedMatch.matchDate),
+          ...(round.name === 'group_stage'
+            ? {
+                matchNumber: expectedMatch.matchNumber,
+                homeLabel: expectedMatch.homeLabel,
+                awayLabel: expectedMatch.awayLabel,
+              }
+            : {}),
+        },
+      });
+      updatedMatches += 1;
+    }
+  }
+
+  return updatedMatches;
+}
+
 async function createTournamentSeed(definition) {
   const tournamentName = definition.tournament.name;
   console.log(`Seeding ${tournamentName}...`);
 
-  // Check if tournament already exists
   let tournament = await prisma.tournament.findFirst({
     where: { name: tournamentName },
+    include: {
+      rounds: {
+        include: {
+          matches: true,
+        },
+      },
+      _count: {
+        select: {
+          teams: true,
+          groups: true,
+          groupResults: true,
+          groupPredictions: true,
+          knockoutPredictions: true,
+          scores: true,
+          members: true,
+          leagues: true,
+        },
+      },
+    },
   });
 
   if (tournament) {
+    const actualMatchCount = (tournament.rounds || []).reduce(
+      (total, round) => total + (round.matches?.length || 0),
+      0
+    );
+    const expectedMatchCount = Object.values(definition.matchesByRound || {}).reduce(
+      (total, matches) => total + (matches?.length || 0),
+      0
+    );
+    const expectedGroupCount = Object.keys(definition.groups || {}).length;
+    const expectedTeamCount = Object.values(definition.groups || {}).reduce(
+      (total, teams) => total + (teams?.length || 0),
+      0
+    );
+    const expectedRoundCount = definition.rounds?.length || 0;
+    const structureIsComplete =
+      tournament._count.groups === expectedGroupCount &&
+      tournament._count.teams === expectedTeamCount &&
+      tournament.rounds.length === expectedRoundCount &&
+      actualMatchCount === expectedMatchCount;
+    const hasActivity =
+      tournament._count.groupResults > 0 ||
+      tournament._count.groupPredictions > 0 ||
+      tournament._count.knockoutPredictions > 0 ||
+      tournament._count.scores > 0 ||
+      tournament._count.members > 0 ||
+      tournament._count.leagues > 0;
+
     console.log(`  Tournament already exists: ${tournament.id}`);
-    console.log(`  Skipping seed to preserve user data.`);
+
+    if (structureIsComplete) {
+      const updatedMatches = await syncTournamentMatchMetadata(prisma, tournament, definition);
+      if (updatedMatches > 0) {
+        console.log(`  Updated schedule metadata for ${updatedMatches} matches.`);
+      }
+      console.log(`  Skipping seed to preserve user data.`);
+      return;
+    }
+
+    if (hasActivity) {
+      const updatedMatches = await syncTournamentMatchMetadata(prisma, tournament, definition);
+      if (updatedMatches > 0) {
+        console.log(`  Updated schedule metadata for ${updatedMatches} existing matches.`);
+      }
+      console.log(
+        `  Tournament structure is incomplete, but it already has activity. Skipping automatic repair to avoid data loss.`
+      );
+      console.log(
+        `  Current structure counts -> groups: ${tournament._count.groups}/${expectedGroupCount}, teams: ${tournament._count.teams}/${expectedTeamCount}, rounds: ${tournament.rounds.length}/${expectedRoundCount}, matches: ${actualMatchCount}/${expectedMatchCount}`
+      );
+      return;
+    }
+
+    console.log(`  Tournament structure is incomplete and has no activity. Rebuilding seed structure.`);
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.team.deleteMany({ where: { tournamentId: tournament.id } });
+        await tx.group.deleteMany({ where: { tournamentId: tournament.id } });
+        const roundIds = (tournament.rounds || []).map((round) => round.id);
+        if (roundIds.length) {
+          await tx.match.deleteMany({
+            where: {
+              roundId: { in: roundIds },
+            },
+          });
+        }
+        await tx.round.deleteMany({ where: { tournamentId: tournament.id } });
+        await tx.tournamentPrimaryEntry.updateMany({
+          where: { tournamentId: tournament.id },
+          data: { scopeKey: 'tournament' },
+        });
+        await tx.tournament.update({
+          where: { id: tournament.id },
+          data: definition.tournament,
+        });
+        await populateTournamentStructure(tx, tournament.id, definition);
+      },
+      { timeout: 60_000 }
+    );
+    console.log(`  Rebuilt ${tournamentName}.`);
     return;
   }
 
-  tournament = await prisma.tournament.create({
-    data: definition.tournament,
-  });
+  tournament = await prisma.$transaction(
+    async (tx) => {
+      const createdTournament = await tx.tournament.create({
+        data: definition.tournament,
+      });
+      await populateTournamentStructure(tx, createdTournament.id, definition);
+      return createdTournament;
+    },
+    { timeout: 60_000 }
+  );
   console.log(`Tournament: ${tournament.name} (${tournament.id})`);
+  console.log(`\nSeed completed! Tournament ID: ${tournament.id}\n`);
+}
 
+async function populateTournamentStructure(tx, tournamentId, definition) {
   for (const [groupName, teams] of Object.entries(definition.groups)) {
-    const group = await prisma.group.create({
+    const group = await tx.group.create({
       data: {
         name: groupName,
-        tournamentId: tournament.id,
+        tournamentId,
       },
     });
 
     for (const team of teams) {
-      await prisma.team.create({
+      await tx.team.create({
         data: {
           name: team.name,
           nameEs: getTeamNameEs(team),
           code: team.code,
           flagUrl: getFlagUrl(team.flagCode, team.code?.slice(0, 2)),
           groupId: group.id,
-          tournamentId: tournament.id,
+          tournamentId,
         },
       });
     }
@@ -93,13 +245,13 @@ async function createTournamentSeed(definition) {
 
   const roundMap = {};
   for (const round of definition.rounds) {
-    const createdRound = await prisma.round.create({
+    const createdRound = await tx.round.create({
       data: {
         name: round.name,
         nameEs: getRoundNameEs(round) || round.name,
         order: round.order,
         pointsPerCorrect: round.pointsPerCorrect,
-        tournamentId: tournament.id,
+        tournamentId,
       },
     });
 
@@ -113,7 +265,7 @@ async function createTournamentSeed(definition) {
 
     for (const match of matches) {
       createdMatches += 1;
-      await prisma.match.create({
+      await tx.match.create({
         data: {
           roundId: roundMap[round.name],
           matchNumber: match.matchNumber,
@@ -128,8 +280,6 @@ async function createTournamentSeed(definition) {
       console.log(`  Created ${createdMatches} ${round.name} matches`);
     }
   }
-
-  console.log(`\nSeed completed! Tournament ID: ${tournament.id}\n`);
 }
 
 const WORLD_CUP_2026_GROUPS = {
@@ -206,6 +356,129 @@ const WORLD_CUP_2026_GROUPS = {
     { name: 'Panama', code: 'PAN', flagCode: 'pa' },
   ],
 };
+
+// Official FIFA schedule published April 10, 2026. Kickoff times use Eastern
+// Daylight Time so Date parsing preserves the instant for locale-aware display.
+const WORLD_CUP_2026_GROUP_MATCHES = [
+  { matchNumber: 1, homeLabel: 'MEX', awayLabel: 'RSA', matchDate: '2026-06-11T15:00:00-04:00' },
+  { matchNumber: 2, homeLabel: 'KOR', awayLabel: 'CZE', matchDate: '2026-06-11T22:00:00-04:00' },
+  { matchNumber: 3, homeLabel: 'CAN', awayLabel: 'BIH', matchDate: '2026-06-12T15:00:00-04:00' },
+  { matchNumber: 4, homeLabel: 'USA', awayLabel: 'PAR', matchDate: '2026-06-12T21:00:00-04:00' },
+  { matchNumber: 5, homeLabel: 'HAI', awayLabel: 'SCO', matchDate: '2026-06-13T21:00:00-04:00' },
+  { matchNumber: 6, homeLabel: 'AUS', awayLabel: 'TUR', matchDate: '2026-06-13T00:00:00-04:00' },
+  { matchNumber: 7, homeLabel: 'BRA', awayLabel: 'MAR', matchDate: '2026-06-13T18:00:00-04:00' },
+  { matchNumber: 8, homeLabel: 'QAT', awayLabel: 'SUI', matchDate: '2026-06-13T15:00:00-04:00' },
+  { matchNumber: 9, homeLabel: 'CIV', awayLabel: 'ECU', matchDate: '2026-06-14T19:00:00-04:00' },
+  { matchNumber: 10, homeLabel: 'GER', awayLabel: 'CUW', matchDate: '2026-06-14T13:00:00-04:00' },
+  { matchNumber: 11, homeLabel: 'NED', awayLabel: 'JPN', matchDate: '2026-06-14T16:00:00-04:00' },
+  { matchNumber: 12, homeLabel: 'SWE', awayLabel: 'TUN', matchDate: '2026-06-14T22:00:00-04:00' },
+  { matchNumber: 13, homeLabel: 'KSA', awayLabel: 'URU', matchDate: '2026-06-15T18:00:00-04:00' },
+  { matchNumber: 14, homeLabel: 'ESP', awayLabel: 'CPV', matchDate: '2026-06-15T12:00:00-04:00' },
+  { matchNumber: 15, homeLabel: 'IRN', awayLabel: 'NZL', matchDate: '2026-06-15T21:00:00-04:00' },
+  { matchNumber: 16, homeLabel: 'BEL', awayLabel: 'EGY', matchDate: '2026-06-15T15:00:00-04:00' },
+  { matchNumber: 17, homeLabel: 'FRA', awayLabel: 'SEN', matchDate: '2026-06-16T15:00:00-04:00' },
+  { matchNumber: 18, homeLabel: 'IRQ', awayLabel: 'NOR', matchDate: '2026-06-16T18:00:00-04:00' },
+  { matchNumber: 19, homeLabel: 'ARG', awayLabel: 'ALG', matchDate: '2026-06-16T21:00:00-04:00' },
+  { matchNumber: 20, homeLabel: 'AUT', awayLabel: 'JOR', matchDate: '2026-06-16T00:00:00-04:00' },
+  { matchNumber: 21, homeLabel: 'GHA', awayLabel: 'PAN', matchDate: '2026-06-17T19:00:00-04:00' },
+  { matchNumber: 22, homeLabel: 'ENG', awayLabel: 'CRO', matchDate: '2026-06-17T16:00:00-04:00' },
+  { matchNumber: 23, homeLabel: 'POR', awayLabel: 'COD', matchDate: '2026-06-17T13:00:00-04:00' },
+  { matchNumber: 24, homeLabel: 'UZB', awayLabel: 'COL', matchDate: '2026-06-17T22:00:00-04:00' },
+  { matchNumber: 25, homeLabel: 'CZE', awayLabel: 'RSA', matchDate: '2026-06-18T12:00:00-04:00' },
+  { matchNumber: 26, homeLabel: 'SUI', awayLabel: 'BIH', matchDate: '2026-06-18T15:00:00-04:00' },
+  { matchNumber: 27, homeLabel: 'CAN', awayLabel: 'QAT', matchDate: '2026-06-18T18:00:00-04:00' },
+  { matchNumber: 28, homeLabel: 'MEX', awayLabel: 'KOR', matchDate: '2026-06-18T21:00:00-04:00' },
+  { matchNumber: 29, homeLabel: 'BRA', awayLabel: 'HAI', matchDate: '2026-06-19T20:30:00-04:00' },
+  { matchNumber: 30, homeLabel: 'SCO', awayLabel: 'MAR', matchDate: '2026-06-19T18:00:00-04:00' },
+  { matchNumber: 31, homeLabel: 'TUR', awayLabel: 'PAR', matchDate: '2026-06-19T23:00:00-04:00' },
+  { matchNumber: 32, homeLabel: 'USA', awayLabel: 'AUS', matchDate: '2026-06-19T15:00:00-04:00' },
+  { matchNumber: 33, homeLabel: 'GER', awayLabel: 'CIV', matchDate: '2026-06-20T16:00:00-04:00' },
+  { matchNumber: 34, homeLabel: 'ECU', awayLabel: 'CUW', matchDate: '2026-06-20T20:00:00-04:00' },
+  { matchNumber: 35, homeLabel: 'NED', awayLabel: 'SWE', matchDate: '2026-06-20T13:00:00-04:00' },
+  { matchNumber: 36, homeLabel: 'TUN', awayLabel: 'JPN', matchDate: '2026-06-20T00:00:00-04:00' },
+  { matchNumber: 37, homeLabel: 'URU', awayLabel: 'CPV', matchDate: '2026-06-21T18:00:00-04:00' },
+  { matchNumber: 38, homeLabel: 'ESP', awayLabel: 'KSA', matchDate: '2026-06-21T12:00:00-04:00' },
+  { matchNumber: 39, homeLabel: 'BEL', awayLabel: 'IRN', matchDate: '2026-06-21T15:00:00-04:00' },
+  { matchNumber: 40, homeLabel: 'NZL', awayLabel: 'EGY', matchDate: '2026-06-21T21:00:00-04:00' },
+  { matchNumber: 41, homeLabel: 'NOR', awayLabel: 'SEN', matchDate: '2026-06-22T20:00:00-04:00' },
+  { matchNumber: 42, homeLabel: 'FRA', awayLabel: 'IRQ', matchDate: '2026-06-22T17:00:00-04:00' },
+  { matchNumber: 43, homeLabel: 'ARG', awayLabel: 'AUT', matchDate: '2026-06-22T13:00:00-04:00' },
+  { matchNumber: 44, homeLabel: 'JOR', awayLabel: 'ALG', matchDate: '2026-06-22T23:00:00-04:00' },
+  { matchNumber: 45, homeLabel: 'ENG', awayLabel: 'GHA', matchDate: '2026-06-23T16:00:00-04:00' },
+  { matchNumber: 46, homeLabel: 'PAN', awayLabel: 'CRO', matchDate: '2026-06-23T19:00:00-04:00' },
+  { matchNumber: 47, homeLabel: 'POR', awayLabel: 'UZB', matchDate: '2026-06-23T13:00:00-04:00' },
+  { matchNumber: 48, homeLabel: 'COL', awayLabel: 'COD', matchDate: '2026-06-23T22:00:00-04:00' },
+  { matchNumber: 49, homeLabel: 'SCO', awayLabel: 'BRA', matchDate: '2026-06-24T18:00:00-04:00' },
+  { matchNumber: 50, homeLabel: 'MAR', awayLabel: 'HAI', matchDate: '2026-06-24T18:00:00-04:00' },
+  { matchNumber: 51, homeLabel: 'SUI', awayLabel: 'CAN', matchDate: '2026-06-24T15:00:00-04:00' },
+  { matchNumber: 52, homeLabel: 'BIH', awayLabel: 'QAT', matchDate: '2026-06-24T15:00:00-04:00' },
+  { matchNumber: 53, homeLabel: 'CZE', awayLabel: 'MEX', matchDate: '2026-06-24T21:00:00-04:00' },
+  { matchNumber: 54, homeLabel: 'RSA', awayLabel: 'KOR', matchDate: '2026-06-24T21:00:00-04:00' },
+  { matchNumber: 55, homeLabel: 'CUW', awayLabel: 'CIV', matchDate: '2026-06-25T16:00:00-04:00' },
+  { matchNumber: 56, homeLabel: 'ECU', awayLabel: 'GER', matchDate: '2026-06-25T16:00:00-04:00' },
+  { matchNumber: 57, homeLabel: 'JPN', awayLabel: 'SWE', matchDate: '2026-06-25T19:00:00-04:00' },
+  { matchNumber: 58, homeLabel: 'TUN', awayLabel: 'NED', matchDate: '2026-06-25T19:00:00-04:00' },
+  { matchNumber: 59, homeLabel: 'TUR', awayLabel: 'USA', matchDate: '2026-06-25T22:00:00-04:00' },
+  { matchNumber: 60, homeLabel: 'PAR', awayLabel: 'AUS', matchDate: '2026-06-25T22:00:00-04:00' },
+  { matchNumber: 61, homeLabel: 'NOR', awayLabel: 'FRA', matchDate: '2026-06-26T15:00:00-04:00' },
+  { matchNumber: 62, homeLabel: 'SEN', awayLabel: 'IRQ', matchDate: '2026-06-26T15:00:00-04:00' },
+  { matchNumber: 63, homeLabel: 'EGY', awayLabel: 'IRN', matchDate: '2026-06-26T23:00:00-04:00' },
+  { matchNumber: 64, homeLabel: 'NZL', awayLabel: 'BEL', matchDate: '2026-06-26T23:00:00-04:00' },
+  { matchNumber: 65, homeLabel: 'CPV', awayLabel: 'KSA', matchDate: '2026-06-26T20:00:00-04:00' },
+  { matchNumber: 66, homeLabel: 'URU', awayLabel: 'ESP', matchDate: '2026-06-26T20:00:00-04:00' },
+  { matchNumber: 67, homeLabel: 'PAN', awayLabel: 'ENG', matchDate: '2026-06-27T17:00:00-04:00' },
+  { matchNumber: 68, homeLabel: 'CRO', awayLabel: 'GHA', matchDate: '2026-06-27T17:00:00-04:00' },
+  { matchNumber: 69, homeLabel: 'ALG', awayLabel: 'AUT', matchDate: '2026-06-27T22:00:00-04:00' },
+  { matchNumber: 70, homeLabel: 'JOR', awayLabel: 'ARG', matchDate: '2026-06-27T22:00:00-04:00' },
+  { matchNumber: 71, homeLabel: 'COL', awayLabel: 'POR', matchDate: '2026-06-27T19:30:00-04:00' },
+  { matchNumber: 72, homeLabel: 'COD', awayLabel: 'UZB', matchDate: '2026-06-27T19:30:00-04:00' },
+];
+
+const WORLD_CUP_2026_KNOCKOUT_MATCH_DATES = {
+  73: '2026-06-28T15:00:00-04:00',
+  74: '2026-06-29T16:30:00-04:00',
+  75: '2026-06-29T21:00:00-04:00',
+  76: '2026-06-29T13:00:00-04:00',
+  77: '2026-06-30T17:00:00-04:00',
+  78: '2026-06-30T13:00:00-04:00',
+  79: '2026-06-30T21:00:00-04:00',
+  80: '2026-07-01T12:00:00-04:00',
+  81: '2026-07-01T20:00:00-04:00',
+  82: '2026-07-01T16:00:00-04:00',
+  83: '2026-07-02T19:00:00-04:00',
+  84: '2026-07-02T15:00:00-04:00',
+  85: '2026-07-02T23:00:00-04:00',
+  86: '2026-07-03T18:00:00-04:00',
+  87: '2026-07-03T21:30:00-04:00',
+  88: '2026-07-03T14:00:00-04:00',
+  89: '2026-07-04T17:00:00-04:00',
+  90: '2026-07-04T13:00:00-04:00',
+  91: '2026-07-05T16:00:00-04:00',
+  92: '2026-07-05T20:00:00-04:00',
+  93: '2026-07-06T15:00:00-04:00',
+  94: '2026-07-06T20:00:00-04:00',
+  95: '2026-07-07T12:00:00-04:00',
+  96: '2026-07-07T16:00:00-04:00',
+  97: '2026-07-09T16:00:00-04:00',
+  98: '2026-07-10T15:00:00-04:00',
+  99: '2026-07-11T17:00:00-04:00',
+  100: '2026-07-11T21:00:00-04:00',
+  101: '2026-07-14T15:00:00-04:00',
+  102: '2026-07-15T15:00:00-04:00',
+  103: '2026-07-18T17:00:00-04:00',
+  104: '2026-07-19T15:00:00-04:00',
+};
+
+function getWorldCupKnockoutMatchDate(officialMatchNumber) {
+  return WORLD_CUP_2026_KNOCKOUT_MATCH_DATES[officialMatchNumber];
+}
+
+function withWorldCupMatchDates(firstOfficialMatchNumber, matches) {
+  return matches.map((match, index) => ({
+    ...match,
+    matchDate: getWorldCupKnockoutMatchDate(firstOfficialMatchNumber + index),
+  }));
+}
 
 const EURO_GROUPS = {
   A: [
@@ -370,13 +643,20 @@ const WORLD_CUP_2026_DEF = {
   },
   groups: WORLD_CUP_2026_GROUPS,
   rounds: buildTournamentRounds(
-    ['round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'final', 'third_place_match'],
+    [
+      'round_of_32',
+      'round_of_16',
+      'quarter_finals',
+      'semi_finals',
+      'third_place_match',
+      'final',
+    ],
     2,
     2
   ),
   matchesByRound: {
-    group_stage: buildGroupStageMatches(WORLD_CUP_2026_GROUPS),
-    round_of_32: [
+    group_stage: WORLD_CUP_2026_GROUP_MATCHES,
+    round_of_32: withWorldCupMatchDates(73, [
       { matchNumber: 1, homeLabel: '2A', awayLabel: '2B' },
       { matchNumber: 2, homeLabel: '1E', awayLabel: '3[A/B/C/D/F]' },
       { matchNumber: 3, homeLabel: '1F', awayLabel: '2C' },
@@ -393,8 +673,8 @@ const WORLD_CUP_2026_DEF = {
       { matchNumber: 14, homeLabel: '1J', awayLabel: '2H' },
       { matchNumber: 15, homeLabel: '1K', awayLabel: '3[D/E/I/J/L]' },
       { matchNumber: 16, homeLabel: '2D', awayLabel: '2G' },
-    ],
-    round_of_16: [
+    ]),
+    round_of_16: withWorldCupMatchDates(89, [
       { matchNumber: 1, homeLabel: 'W-R32-2', awayLabel: 'W-R32-5' },
       { matchNumber: 2, homeLabel: 'W-R32-1', awayLabel: 'W-R32-3' },
       { matchNumber: 3, homeLabel: 'W-R32-4', awayLabel: 'W-R32-6' },
@@ -403,23 +683,23 @@ const WORLD_CUP_2026_DEF = {
       { matchNumber: 6, homeLabel: 'W-R32-9', awayLabel: 'W-R32-10' },
       { matchNumber: 7, homeLabel: 'W-R32-14', awayLabel: 'W-R32-16' },
       { matchNumber: 8, homeLabel: 'W-R32-13', awayLabel: 'W-R32-15' },
-    ],
-    quarter_finals: [
+    ]),
+    quarter_finals: withWorldCupMatchDates(97, [
       { matchNumber: 1, homeLabel: 'W-R16-1', awayLabel: 'W-R16-2' },
       { matchNumber: 2, homeLabel: 'W-R16-3', awayLabel: 'W-R16-4' },
       { matchNumber: 3, homeLabel: 'W-R16-5', awayLabel: 'W-R16-6' },
       { matchNumber: 4, homeLabel: 'W-R16-7', awayLabel: 'W-R16-8' },
-    ],
-    semi_finals: [
+    ]),
+    semi_finals: withWorldCupMatchDates(101, [
       { matchNumber: 1, homeLabel: 'W-QF-1', awayLabel: 'W-QF-2' },
       { matchNumber: 2, homeLabel: 'W-QF-3', awayLabel: 'W-QF-4' },
-    ],
-    final: [
+    ]),
+    third_place_match: withWorldCupMatchDates(103, [
+      { matchNumber: 1, homeLabel: 'L-SF-1', awayLabel: 'L-SF-2' },
+    ]),
+    final: withWorldCupMatchDates(104, [
       { matchNumber: 1, homeLabel: 'W-SF-1', awayLabel: 'W-SF-2' },
-    ],
-    third_place_match: [
-      { matchNumber: 1, homeLabel: 'W-QF-1', awayLabel: 'W-QF-2' },
-    ],
+    ]),
   },
 };
 

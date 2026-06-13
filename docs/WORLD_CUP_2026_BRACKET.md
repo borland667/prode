@@ -56,9 +56,13 @@ World Cup 2026 uses a 48-team format:
 ### Backend (api/seed.cjs)
 1. Added `third_place_match` to the rounds array
 2. Added third place match configuration:
-   - Home: Winner of Quarter Final 1
-   - Away: Winner of Quarter Final 2
-   - 12 points for correct prediction
+   - Home: Loser of Semi Final 1 (`L-SF-1`)
+   - Away: Loser of Semi Final 2 (`L-SF-2`)
+   - 10 points for a correct prediction
+3. Kept the final as the highest-value match:
+   - Home: Winner of Semi Final 1 (`W-SF-1`)
+   - Away: Winner of Semi Final 2 (`W-SF-2`)
+   - 12 points for a correct prediction
 
 ### Backend (api/translations.cjs)
 1. Added Spanish translation: `third_place_match: 'partido_por_el_tercer_puesto'`
@@ -66,6 +70,11 @@ World Cup 2026 uses a 48-team format:
 ### Frontend (src/utils/tournament.js)
 1. Added `ROUND_LABEL_KEYS`: `third_place_match: 'predict.stepThirdPlace'`
 2. Added `ROUND_CODE_MAP`: `third_place_match: '3RD'`
+3. Added loser-derived slot resolution for labels such as `L-SF-1`
+
+### Backend (api/app.cjs)
+1. Added `third_place_match` round labels and codes
+2. Added loser-derived slot validation so saved predictions and admin results must use a semifinal loser
 
 ### Frontend (i18n messages)
 Added translations for "Third Place Match" in all 5 languages:
@@ -100,8 +109,18 @@ Added translations for "Third Place Match" in all 5 languages:
 
 ### Third Place Match (1 match)
 - Losers from Semi Finals compete for 3rd place
-- Losers from Quarter Final 1 vs losers from Quarter Final 2
+- Loser of Semi Final 1 vs loser of Semi Final 2
 - This ensures all teams have a complete bracket path
+
+## Official Match Schedule
+
+- All 104 World Cup matches include their official FIFA kickoff date and time.
+- Seed timestamps use the Eastern Time instants published by FIFA and are stored as UTC by PostgreSQL.
+- The UI formats kickoff dates and times using the viewer's browser locale and timezone.
+- Re-running the seed updates schedule metadata in place for a structurally complete tournament, preserving match IDs, predictions, scores, memberships, and leagues.
+- Group-stage metadata is matched by team pairing before official chronological match numbers are applied.
+
+Source: FIFA World Cup 2026 match schedule published April 10, 2026.
 
 ## Match Numbering
 
@@ -124,8 +143,7 @@ Added translations for "Third Place Match" in all 5 languages:
 - Winners from SF-1 and SF-2
 
 ### Third Place Match (Match 1)
-- Winners from QF-1 and QF-2 (losers of semifinals)
-- *Note: Uses QF labels, not SF, to match the correct teams*
+- Loser of SF-1 vs loser of SF-2
 
 ## Point Allocation (World Cup 2026)
 
@@ -134,10 +152,12 @@ Added translations for "Third Place Match" in all 5 languages:
 - Round of 16: 4 points per correct prediction
 - Quarter Finals: 6 points per correct prediction
 - Semi Finals: 8 points per correct prediction
-- Final: 10 points per correct prediction
-- **Third Place Match: 12 points per correct prediction** (new)
+- Third Place Match: 10 points per correct prediction
+- Final: 12 points per correct prediction
 
-Maximum possible score: 48 points (group stage) + 2+4+6+8+10+12 = 90 points total
+Maximum possible score: 48 group points + 32 Round-of-32 points + 32 Round-of-16
+points + 24 quarter-final points + 16 semi-final points + 10 third-place points +
+12 final points = **174 points**.
 
 ## Testing
 
@@ -146,7 +166,8 @@ To verify the third place match is working:
 1. Run seed: `npm run db:seed`
 2. Check World Cup 2026 rounds: should include `third_place_match`
 3. Check match count: should be 1 match in third_place_match
-4. Check point value: should be 12 points per correct
+4. Check point value: should be 10 points per correct
+5. Confirm all 104 matches have a kickoff date
 
 ## Future Improvements
 

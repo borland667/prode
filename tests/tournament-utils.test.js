@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildRandomPredictionSet,
   getEligibleBestThirdGroups,
+  getKnockoutRounds,
   hasBestThirdPlaceSlots,
   resolveMatchParticipants,
   resolveSlot,
@@ -14,6 +15,40 @@ test('getEligibleBestThirdGroups parses knockout labels correctly', () => {
   assert.deepEqual(getEligibleBestThirdGroups('3[A/B/C/D]'), ['A', 'B', 'C', 'D']);
   assert.deepEqual(getEligibleBestThirdGroups('3[c/e/f]'), ['C', 'E', 'F']);
   assert.deepEqual(getEligibleBestThirdGroups('1A'), []);
+});
+
+test('getKnockoutRounds excludes the group_stage round even when it has seeded matches', () => {
+  const rounds = [
+    {
+      id: 'group',
+      name: 'group_stage',
+      order: 0,
+      matches: [
+        { id: 'gs-1', matchNumber: 1, homeLabel: 'ARG', awayLabel: 'AUS' },
+      ],
+    },
+    {
+      id: 'semi',
+      name: 'semi_finals',
+      order: 1,
+      matches: [
+        { id: 'sf-1', matchNumber: 1, homeLabel: '1A', awayLabel: '2B' },
+      ],
+    },
+    {
+      id: 'empty',
+      name: 'final',
+      order: 2,
+      matches: [],
+    },
+  ];
+
+  const result = getKnockoutRounds(rounds);
+
+  assert.deepEqual(
+    result.map((round) => round.name),
+    ['semi_finals']
+  );
 });
 
 test('hasBestThirdPlaceSlots detects tournament modes that use third-place slots', () => {
@@ -36,7 +71,7 @@ test('hasBestThirdPlaceSlots detects tournament modes that use third-place slots
   );
 });
 
-test('resolveSlot resolves group, best-third, and winner-derived slots', () => {
+test('resolveSlot resolves group, best-third, winner-derived, and loser-derived slots', () => {
   const groups = [
     {
       id: 'group-a',
@@ -58,6 +93,8 @@ test('resolveSlot resolves group, best-third, and winner-derived slots', () => {
           id: 'r16-1',
           matchNumber: 1,
           code: 'R16-1',
+          homeLabel: '1A',
+          awayLabel: '1B',
         },
       ],
     },
@@ -118,6 +155,26 @@ test('resolveSlot resolves group, best-third, and winner-derived slots', () => {
       teamId: 'arg',
       teamName: 'Argentina',
       slotLabel: 'Winner of R16-1',
+    }
+  );
+
+  assert.deepEqual(
+    resolveSlot({
+      label: 'L-R16-1',
+      groups,
+      rounds,
+      groupSelections: {
+        'group-a': { first: 'arg' },
+        'group-b': { first: 'bra' },
+      },
+      knockoutSelections: { 'r16-1': 'arg' },
+      slotSelections: {},
+      teamMap,
+    }),
+    {
+      teamId: 'bra',
+      teamName: 'Brazil',
+      slotLabel: 'Loser of R16-1',
     }
   );
 });
@@ -189,9 +246,17 @@ test('buildRandomPredictionSet creates valid random picks for a basic knockout b
       ],
     },
     {
+      id: 'third-place',
+      name: 'third_place_match',
+      order: 2,
+      matches: [
+        { id: 'third-1', matchNumber: 1, code: '3RD-1', homeLabel: 'L-SF-1', awayLabel: 'L-SF-2' },
+      ],
+    },
+    {
       id: 'final',
       name: 'final',
-      order: 2,
+      order: 3,
       matches: [
         { id: 'final-1', matchNumber: 1, code: 'FINAL-1', homeLabel: 'W-SF-1', awayLabel: 'W-SF-2' },
       ],
@@ -215,6 +280,7 @@ test('buildRandomPredictionSet creates valid random picks for a basic knockout b
 
   assert.equal(knockoutPredictions['sf-1'].predictedWinner, 'aus');
   assert.equal(knockoutPredictions['sf-2'].predictedWinner, 'bel');
+  assert.equal(knockoutPredictions['third-1'].predictedWinner, 'bra');
   assert.equal(knockoutPredictions['final-1'].predictedWinner, 'aus');
 
   const knockoutSelections = {};

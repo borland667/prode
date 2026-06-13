@@ -290,6 +290,9 @@ Expected:
 - groups reorder to reflect results
 - top placements are clear
 - knockout winners and resolved participants are visible
+- the third-place match resolves the two semifinal losers
+- the final resolves the two semifinal winners
+- World Cup 2026 reports 104 total matches
 
 ## 19. Prediction Deletion API
 
@@ -360,3 +363,20 @@ Before shipping, at minimum repeat:
 - tournament leaderboard
 - global rankings
 - admin results and score recalculation
+
+## 23. World Cup 2026 Official Schedule
+
+1. Run `npm run db:seed`.
+2. Open FIFA World Cup 2026.
+3. Review group-stage and knockout match cards.
+4. Check the first match, third-place match, and final.
+
+Expected:
+
+- the tournament contains 104 matches
+- every match has a kickoff date and time
+- dates and times follow the browser locale and timezone
+- match 1 is Mexico vs South Africa
+- match 103 is the third-place match on July 18, 2026
+- match 104 is the final on July 19, 2026
+- re-running the seed preserves existing match IDs and user data

@@ -1924,6 +1924,38 @@ html.theme-light .nav-dropdown-settings,
   text-transform: uppercase;
 }
 
+.tournament-group-fixtures {
+  display: grid;
+  gap: 0.55rem;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 0.9rem;
+}
+
+.tournament-group-fixtures__title {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tournament-group-fixture {
+  display: grid;
+  gap: 0.2rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  padding: 0.65rem 0.75rem;
+}
+
+.tournament-group-fixture__teams {
+  color: var(--text-main);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
 .tournament-round-header {
   display: flex;
   flex-wrap: wrap;
@@ -1955,6 +1987,18 @@ html.theme-light .nav-dropdown-settings,
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.tournament-match-card__meta {
+  align-items: flex-end;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 0.2rem;
+  line-height: 1.3;
+  text-align: right;
 }
 
 .tournament-match-card__status {
@@ -2032,7 +2076,17 @@ html.theme-light .nav-dropdown-settings,
   color: #55718a;
 }
 
+:root[data-theme='light'] .tournament-group-fixture {
+  background: rgba(16, 32, 51, 0.035);
+  color: #55718a;
+}
+
+:root[data-theme='light'] .tournament-group-fixture__teams {
+  color: #102033;
+}
+
 :root[data-theme='light'] .tournament-group-card__count,
+:root[data-theme='light'] .tournament-match-card__meta,
 :root[data-theme='light'] .tournament-match-card__status {
   color: #4f6b83;
 }

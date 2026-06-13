@@ -21,6 +21,7 @@ const ROUND_CODE_MAP = {
 const GROUP_SLOT_PATTERN = /^([123])\s*([A-Za-z0-9]+)$/;
 const BEST_THIRD_SLOT_PATTERN = /^3\[(.+)\]$/i;
 const WINNER_SLOT_PATTERN = /^W-([A-Za-z0-9]+)-(\d+)$/i;
+const LOSER_SLOT_PATTERN = /^L-([A-Za-z0-9]+)-(\d+)$/i;
 
 function titleize(value = '') {
   return value
@@ -150,7 +151,9 @@ export function sortRounds(rounds = []) {
 }
 
 export function getKnockoutRounds(rounds = []) {
-  return sortRounds(rounds).filter((round) => round.matches?.length);
+  return sortRounds(rounds).filter(
+    (round) => round.name !== 'group_stage' && round.matches?.length
+  );
 }
 
 export function buildTeamMap(groups = []) {
@@ -357,6 +360,36 @@ export function resolveSlot({
     };
   }
 
+  const loserSlot = trimmedLabel.match(LOSER_SLOT_PATTERN);
+  if (loserSlot) {
+    const sourceMatch = findMatchByRoundCode(rounds, loserSlot[1], loserSlot[2]);
+    const selectedWinnerId = sourceMatch ? knockoutSelections[sourceMatch.id] : null;
+    const sourceMatchup = sourceMatch
+      ? resolveMatchParticipants({
+          match: sourceMatch,
+          groups,
+          rounds,
+          groupSelections,
+          knockoutSelections,
+          slotSelections,
+          teamMap,
+        })
+      : null;
+    const selectedTeamId = sourceMatchup
+      ? [sourceMatchup.home.teamId, sourceMatchup.away.teamId].find(
+          (teamId) => teamId && teamId !== selectedWinnerId
+        )
+      : null;
+    const selectedTeam = selectedTeamId ? teamMap[selectedTeamId] : null;
+    const sourceCode = sourceMatch?.code || `${loserSlot[1].toUpperCase()}-${loserSlot[2]}`;
+
+    return {
+      teamId: selectedTeamId || null,
+      teamName: selectedTeam?.name || '',
+      slotLabel: `Loser of ${sourceCode}`,
+    };
+  }
+
   return {
     teamId: null,
     teamName: '',
@@ -373,13 +406,22 @@ export function resolveMatchParticipants({
   slotSelections = {},
   teamMap = {},
 }) {
+  const matchSlotSelections = {
+    ...slotSelections,
+    ...(match.homeLabel && match.selectedHomeTeamId
+      ? { [match.homeLabel]: match.selectedHomeTeamId }
+      : {}),
+    ...(match.awayLabel && match.selectedAwayTeamId
+      ? { [match.awayLabel]: match.selectedAwayTeamId }
+      : {}),
+  };
   const home = resolveSlot({
     label: match.homeLabel,
     groups,
     rounds,
     groupSelections,
     knockoutSelections,
-    slotSelections,
+    slotSelections: matchSlotSelections,
     teamMap,
   });
 
@@ -389,7 +431,7 @@ export function resolveMatchParticipants({
     rounds,
     groupSelections,
     knockoutSelections,
-    slotSelections,
+    slotSelections: matchSlotSelections,
     teamMap,
   });
 

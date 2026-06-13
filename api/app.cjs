@@ -35,6 +35,7 @@ const ROUND_LABELS = {
   round_of_16: 'Round of 16',
   quarter_finals: 'Quarter Finals',
   semi_finals: 'Semi Finals',
+  third_place_match: 'Third Place Match',
   final: 'Final',
 };
 
@@ -44,11 +45,13 @@ const ROUND_CODES = {
   round_of_16: 'R16',
   quarter_finals: 'QF',
   semi_finals: 'SF',
+  third_place_match: '3RD',
   final: 'FINAL',
 };
 const GROUP_SLOT_PATTERN = /^([123])\s*([A-Za-z0-9]+)$/;
 const BEST_THIRD_SLOT_PATTERN = /^3\[(.+)\]$/i;
 const WINNER_SLOT_PATTERN = /^W-([A-Za-z0-9]+)-(\d+)$/i;
+const LOSER_SLOT_PATTERN = /^L-([A-Za-z0-9]+)-(\d+)$/i;
 const MIN_PASSWORD_LENGTH = 8;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
@@ -487,7 +490,7 @@ function serializeRounds(rounds) {
 function buildRules(tournament, rounds) {
   const groupCount = tournament.groups?.length || 0;
   const knockoutRounds = sortRounds(rounds)
-    .filter((round) => round.matches?.length)
+    .filter((round) => round.name !== 'group_stage' && round.matches?.length)
     .map((round) => {
       const maxMatches = round.matches?.length || 0;
       const maxPoints = maxMatches * round.pointsPerCorrect;
@@ -1262,6 +1265,40 @@ function resolvePredictedSlotTeamId({
   if (winnerSlot) {
     const sourceMatch = findMatchByRoundCode(rounds, winnerSlot[1], winnerSlot[2]);
     return sourceMatch ? knockoutSelections[sourceMatch.id] || null : null;
+  }
+
+  const loserSlot = trimmedLabel.match(LOSER_SLOT_PATTERN);
+  if (loserSlot) {
+    const sourceMatch = findMatchByRoundCode(rounds, loserSlot[1], loserSlot[2]);
+    if (!sourceMatch) {
+      return null;
+    }
+
+    const selectedWinnerId = knockoutSelections[sourceMatch.id] || null;
+    const sourceSlotSelections = {
+      [sourceMatch.homeLabel]: sourceMatch.selectedHomeTeamId || '',
+      [sourceMatch.awayLabel]: sourceMatch.selectedAwayTeamId || '',
+    };
+    const homeTeamId = resolvePredictedSlotTeamId({
+      label: sourceMatch.homeLabel,
+      groups,
+      rounds,
+      groupSelections,
+      knockoutSelections,
+      slotSelections: sourceSlotSelections,
+    });
+    const awayTeamId = resolvePredictedSlotTeamId({
+      label: sourceMatch.awayLabel,
+      groups,
+      rounds,
+      groupSelections,
+      knockoutSelections,
+      slotSelections: sourceSlotSelections,
+    });
+
+    return [homeTeamId, awayTeamId].find(
+      (teamId) => teamId && teamId !== selectedWinnerId
+    ) || null;
   }
 
   return null;
