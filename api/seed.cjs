@@ -174,6 +174,26 @@ async function createTournamentSeed(definition) {
       return;
     }
 
+    // The rebuild path drops Team, Group, Match, and Round rows for the
+    // existing tournament so the new structure can be reseeded with the
+    // current definition. That is fine for fresh local databases but is
+    // never desired against production data: even with no user activity,
+    // the deletion changes record IDs that other systems may have cached
+    // and surfaces as schema drift. Require an explicit opt-in env var so
+    // the production seed step skips this branch by default.
+    if (process.env.SEED_ALLOW_REBUILD !== 'true') {
+      console.log(
+        `  Tournament structure is incomplete and has no activity, but SEED_ALLOW_REBUILD is not set. Skipping destructive rebuild.`
+      );
+      console.log(
+        `  Current structure counts -> groups: ${tournament._count.groups}/${expectedGroupCount}, teams: ${tournament._count.teams}/${expectedTeamCount}, rounds: ${tournament.rounds.length}/${expectedRoundCount}, matches: ${actualMatchCount}/${expectedMatchCount}`
+      );
+      console.log(
+        `  Re-run with SEED_ALLOW_REBUILD=true on a non-production database if you want to drop and recreate the structure.`
+      );
+      return;
+    }
+
     console.log(`  Tournament structure is incomplete and has no activity. Rebuilding seed structure.`);
     await prisma.$transaction(
       async (tx) => {
