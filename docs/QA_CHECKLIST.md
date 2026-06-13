@@ -338,6 +338,23 @@ Expected:
 - manual recalculation still works
 - stored scores and displayed rankings stay aligned
 
+## 20a. Optional Results Importer Check
+
+Run only when the server has `RESULTS_IMPORT_API_KEY` configured.
+
+1. As `Admin`, manually enter a group result for Group A.
+2. Call `POST /api/tournaments/:id/import-results` with an admin token.
+3. Confirm the response reports `groupResults.written` includes the other groups but not Group A.
+4. Confirm `groupResults.skipped` is at least 1 (Group A).
+5. Re-run the same request immediately.
+6. Confirm the second call reports `totalWrites: 0` and `scoreSummary: null`.
+
+Expected:
+
+- admin-entered group results are never overwritten
+- knockout matches only update when their participants are already resolved
+- score recompute fires only when the importer wrote at least one row
+
 ## 21. Optional Google OAuth Check
 
 Run only if local Google OAuth is configured.

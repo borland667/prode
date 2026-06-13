@@ -453,6 +453,7 @@ Scores are recalculated:
 
 - automatically after admin result saves
 - manually through `POST /api/tournaments/:id/calculate-scores`
+- automatically by the importer at `POST /api/tournaments/:id/import-results` when at least one row was written
 
 ## 11. Best-Third-Place Handling
 
@@ -537,10 +538,49 @@ All routes are under `/api`.
 - `POST /tournaments/:id/results/groups`
 - `POST /tournaments/:id/results/knockout`
 - `POST /tournaments/:id/calculate-scores`
+- `POST /tournaments/:id/import-results`
 
 ### 12.7 Ops
 
 - `GET /health`
+
+## 12a. Results Importer
+
+The admin endpoint `POST /tournaments/:id/import-results` pulls results
+from football-data.org and applies them through the same data shapes as
+the existing admin results endpoints. The HTTP route is the integration
+point so the importer always runs through prisma + the existing
+`persistTournamentScores` helper rather than touching the database from
+a standalone process.
+
+Module layout:
+
+- `api/results-importer.cjs` — pure helper that accepts a prisma client
+  and a fetcher, calls football-data.org `/competitions/<code>/standings`
+  and `/competitions/<code>/matches?status=FINISHED`, and returns the
+  set of writes plus a `details` field describing skipped/unresolved
+  rows. Defaults to competition code `WC` (FIFA World Cup).
+- `scripts/import-results.cjs` — CLI used both for local runs and the
+  GitHub Actions cron. Logs in as the admin given by
+  `RESULTS_IMPORT_ADMIN_EMAIL` / `RESULTS_IMPORT_ADMIN_PASSWORD` and
+  POSTs the import endpoint at `RESULTS_IMPORT_API_BASE_URL`.
+- `.github/workflows/import-results.yml` — schedules the CLI every six
+  hours and exposes a manual `workflow_dispatch` trigger.
+
+Safety properties:
+
+- the football-data.org API key (`RESULTS_IMPORT_API_KEY`) only ever
+  lives on the server; the CLI does not see it
+- the endpoint returns 503 when the server-side key is missing, and the
+  CLI logs missing client-side env vars and exits 0 instead of failing
+- group standings are upserted only when no `GroupResult` exists for
+  that group, so admin-entered standings are never overwritten
+- knockout match updates fire only when the DB row has both
+  `selectedHomeTeamId` and `selectedAwayTeamId` populated and the match
+  status is not already `finished`, so admin-entered winners and
+  unresolved bracket slots are left alone
+- recompute via `persistTournamentScores` runs only when the importer
+  reports at least one write
 
 ## 13. Seeding, Translation, And Naming
 

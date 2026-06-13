@@ -24,7 +24,8 @@
     "db:push": "npx prisma db push",
     "db:seed": "node api/seed.cjs",
     "db:backfill:translations": "node api/backfill-translations.cjs",
-    "db:studio": "npx prisma studio"
+    "db:studio": "npx prisma studio",
+    "import:results": "node scripts/import-results.cjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

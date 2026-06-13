@@ -279,6 +279,7 @@ Important:
 | `npm run db:seed` | Seed the football tournament catalog |
 | `npm run db:backfill:translations` | Fill missing translated names in existing rows |
 | `npm run db:studio` | Open Prisma Studio |
+| `npm run import:results` | Pull results from football-data.org via the admin API (requires `RESULTS_IMPORT_*` env, see below) |
 
 ## Implemented User Flows
 
@@ -342,6 +343,16 @@ Important:
 - enter group results
 - enter knockout results
 - recalculate scores manually
+- pull results from football-data.org when the server has `RESULTS_IMPORT_API_KEY` configured (see "Results Importer" below)
+
+## Results Importer
+
+`POST /api/tournaments/:id/import-results` (admin) calls football-data.org and applies new results without overwriting existing ones.
+
+- Server-side: set `RESULTS_IMPORT_API_KEY` (free API key from football-data.org). When unset the endpoint returns 503.
+- Client-side: `npm run import:results` runs `scripts/import-results.cjs`, which logs in as the admin user given by `RESULTS_IMPORT_ADMIN_EMAIL` / `RESULTS_IMPORT_ADMIN_PASSWORD` and POSTs the import endpoint against `RESULTS_IMPORT_API_BASE_URL`.
+- GitHub Actions: `.github/workflows/import-results.yml` runs the same CLI on a 6-hour schedule and also via `workflow_dispatch`. The workflow is env-gated; without the secrets the script logs the missing variables and exits 0.
+- Semantics: group standings upsert only when no `GroupResult` exists for that group, and knockout matches update only when the DB row has both selected team IDs populated and `status != 'finished'`. Admin-entered data is never overwritten.
 
 ## Current Scoring And Prediction Model
 

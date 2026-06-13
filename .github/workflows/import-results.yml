@@ -1,0 +1,46 @@
+name: Import results
+
+on:
+  # Manual trigger from the GitHub UI for ad-hoc runs.
+  workflow_dispatch:
+  # Scheduled run every six hours at :17 past the hour. The cron is
+  # mostly idle between tournament rounds; the importer is a no-op when
+  # the feed has nothing new (results are skip-existing).
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    name: Import football-data.org results
+    runs-on: ubuntu-latest
+    # The env-gating happens inside the script: when the admin
+    # credentials are missing, scripts/import-results.cjs logs the
+    # missing variables and exits 0. That keeps the workflow scheduled
+    # in environments (forks, secret-less clones) where the credentials
+    # are absent without false-alarming on every cron tick.
+    env:
+      RESULTS_IMPORT_API_BASE_URL: ${{ secrets.RESULTS_IMPORT_API_BASE_URL }}
+      RESULTS_IMPORT_ADMIN_EMAIL: ${{ secrets.RESULTS_IMPORT_ADMIN_EMAIL }}
+      RESULTS_IMPORT_ADMIN_PASSWORD: ${{ secrets.RESULTS_IMPORT_ADMIN_PASSWORD }}
+      RESULTS_IMPORT_TOURNAMENT_ID: ${{ secrets.RESULTS_IMPORT_TOURNAMENT_ID }}
+      RESULTS_IMPORT_TOURNAMENT_NAME: ${{ vars.RESULTS_IMPORT_TOURNAMENT_NAME }}
+      RESULTS_IMPORT_COMPETITION_CODE: ${{ vars.RESULTS_IMPORT_COMPETITION_CODE }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run results import
+        run: npm run import:results

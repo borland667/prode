@@ -15,6 +15,7 @@ const {
   sendEmailVerificationEmail,
   sendPasswordResetEmail,
 } = require('./email.cjs');
+const { importFootballDataResults } = require('./results-importer.cjs');
 const {
   getModeNameEs,
   getRoundNameEs,
@@ -3711,6 +3712,43 @@ app.post('/api/tournaments/:id/calculate-scores', verifyToken, checkAdmin, async
     res.json({ message: 'Scores calculated and stored', ...result });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/tournaments/:id/import-results', verifyToken, checkAdmin, async (req, res) => {
+  try {
+    const apiKey = process.env.RESULTS_IMPORT_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({
+        error: 'Results importer is not configured. Set RESULTS_IMPORT_API_KEY on the server.',
+      });
+    }
+
+    const competitionCode =
+      typeof req.body?.competitionCode === 'string' && req.body.competitionCode.trim()
+        ? req.body.competitionCode.trim()
+        : process.env.RESULTS_IMPORT_COMPETITION_CODE || 'WC';
+
+    const summary = await importFootballDataResults({
+      tournamentId: req.params.id,
+      prisma,
+      apiKey,
+      competitionCode,
+    });
+
+    let scoreSummary = null;
+    if (summary.totalWrites > 0) {
+      scoreSummary = await persistTournamentScores(req.params.id);
+    }
+
+    res.json({
+      message: 'Results import complete',
+      summary,
+      scoreSummary,
+    });
+  } catch (error) {
+    const status = error.status && Number(error.status) >= 400 ? Number(error.status) : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
