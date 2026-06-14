@@ -281,6 +281,8 @@ export const EN = {
     incompleteRounds: 'Please select winners for all matches',
     kickoffStarted: 'Kickoff started — picks locked',
     groupLocked: 'Group locked — first match kicked off',
+    actualWinner: 'Actual winner',
+    actualStandings: 'Actual standings',
     duplicateGroupTeams: 'Each group placement must use different teams',
     groupA: 'Group A',
     groupB: 'Group B',

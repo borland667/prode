@@ -283,6 +283,8 @@ export const NL = {
     incompleteRounds: 'Selecteer winnaars voor alle wedstrijden',
     kickoffStarted: 'Wedstrijd begonnen — voorspelling vergrendeld',
     groupLocked: 'Groep vergrendeld — eerste wedstrijd is begonnen',
+    actualWinner: 'Werkelijke winnaar',
+    actualStandings: 'Werkelijke stand',
     duplicateGroupTeams: 'Elke groepsplaatsing moet verschillende teams gebruiken',
     groupA: 'Groep A',
     groupB: 'Groep B',

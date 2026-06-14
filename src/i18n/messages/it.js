@@ -283,6 +283,8 @@ export const IT = {
     incompleteRounds: 'Seleziona i vincitori per tutti gli incontri',
     kickoffStarted: 'Partita iniziata — pronostico bloccato',
     groupLocked: 'Girone bloccato — la prima partita è iniziata',
+    actualWinner: 'Vincitore reale',
+    actualStandings: 'Classifica reale',
     duplicateGroupTeams: 'Ogni posizione nel girone deve usare squadre diverse',
     groupA: 'Gruppo A',
     groupB: 'Gruppo B',

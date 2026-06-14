@@ -502,6 +502,16 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, lan
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {groups.map((group) => {
           const locked = Boolean(group.predictionLocked);
+          const teamsById = Object.fromEntries((group.teams || []).map((team) => [team.id, team]));
+          const actualPositions = group.result
+            ? [
+                { key: 'first', teamId: group.result.first },
+                { key: 'second', teamId: group.result.second },
+                requiresThirdPlaceSelections
+                  ? { key: 'third', teamId: group.result.third || '' }
+                  : null,
+              ].filter((entry) => entry && entry.teamId)
+            : [];
           return (
             <Panel key={group.id} padding="compact" radius="xl" className="app-card">
               <div className="flex items-center justify-between mb-4">
@@ -514,6 +524,25 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, lan
                   </Pill>
                 ) : null}
               </div>
+
+              {actualPositions.length ? (
+                <div className="mb-4 text-sm text-gray-300">
+                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                    {t('predict.actualStandings')}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {actualPositions.map(({ key, teamId }, index) => {
+                      const team = teamsById[teamId];
+                      return (
+                        <li key={key} className="text-white">
+                          {index + 1}°{' '}
+                          {team ? getLocalizedName(team, language, team.name) : teamId}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
 
               <div className="space-y-4">
                 <div>
@@ -634,6 +663,7 @@ function RoundStep({
           const isDisabled = locked || !matchup.home.teamId || !matchup.away.teamId;
           const homeBestThirdOptions = getBestThirdOptions(match.homeLabel, groups, groupPredictions, teamMap);
           const awayBestThirdOptions = getBestThirdOptions(match.awayLabel, groups, groupPredictions, teamMap);
+          const actualWinnerTeam = match.winner ? teamMap[match.winner] : null;
 
           return (
             <Panel key={match.id} padding="compact" radius="xl" className="app-card">
@@ -647,6 +677,19 @@ function RoundStep({
                   </Pill>
                 ) : null}
               </div>
+
+              {match.winner ? (
+                <p className="text-sm text-gray-300 mb-4">
+                  <span className="text-xs uppercase tracking-wide text-gray-500 mr-2">
+                    {t('predict.actualWinner')}
+                  </span>
+                  <span className="text-white font-semibold">
+                    {actualWinnerTeam
+                      ? getLocalizedName(actualWinnerTeam, language, actualWinnerTeam.name)
+                      : match.winner}
+                  </span>
+                </p>
+              ) : null}
 
               <div className="space-y-3">
                 <button
