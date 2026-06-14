@@ -47,6 +47,30 @@ jobs:
       - name: Verify project
         run: npm run verify
 
+  # Pre-merge guard: simulate the Netlify Build pipeline so we catch
+  # Netlify-Build-specific failures (image incompatibilities, functions
+  # bundling, plugin issues) on PRs instead of in production. This is
+  # independent of where the actual deploy runs.
+  netlify-build-check:
+    name: Netlify build (pre-merge guard)
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run netlify build (offline)
+        run: npx -y netlify-cli@latest build --offline
+
   # secrets cannot appear in job-level `if`. Expose a boolean via env + step output.
   check-production-migrate:
     name: Check production database secret
