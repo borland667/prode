@@ -365,6 +365,12 @@ export const PT = {
     calculating: 'Calculando...',
     scoresCalculated: 'Pontuações calculadas com sucesso!',
     scoreError: 'Falha ao calcular pontuações',
+    matchClosure: 'Fechamento de palpites por jogo',
+    matchClosureHelp: 'Feche os palpites de um jogo específico antes do início. O bloqueio automático no horário continua valendo.',
+    matchStatusOpen: 'Aberto',
+    matchStatusClosed: 'Fechado',
+    closePredictions: 'Fechar palpites',
+    reopenPredictions: 'Reabrir palpites',
     tournamentBuilder: 'Construtor de torneios',
     tournamentBuilderHelp:
       'Crie um torneio novo ou edite com segurança a estrutura de um que ainda não tenha membros, palpites, ligas ou resultados.',

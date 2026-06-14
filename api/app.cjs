@@ -468,6 +468,7 @@ function serializeRounds(rounds, lockedMatchIds = new Set()) {
       winner: match.winner,
       status: match.status,
       matchDate: match.matchDate,
+      predictionsClosed: Boolean(match.predictionsClosed),
       predictionLocked: lockedMatchIds.has(match.id),
     })),
   }));
@@ -3793,6 +3794,43 @@ app.post('/api/tournaments/:id/import-results', verifyToken, checkAdmin, async (
     res.status(status).json({ error: error.message });
   }
 });
+
+app.patch(
+  '/api/tournaments/:id/matches/:matchId',
+  verifyToken,
+  checkAdmin,
+  async (req, res) => {
+    try {
+      if (typeof req.body?.predictionsClosed !== 'boolean') {
+        return res
+          .status(400)
+          .json({ error: 'predictionsClosed must be a boolean' });
+      }
+
+      const match = await prisma.match.findUnique({
+        where: { id: req.params.matchId },
+        select: { id: true, round: { select: { tournamentId: true } } },
+      });
+
+      if (!match || match.round.tournamentId !== req.params.id) {
+        return res.status(404).json({ error: 'Match not found in tournament' });
+      }
+
+      const updated = await prisma.match.update({
+        where: { id: req.params.matchId },
+        data: { predictionsClosed: req.body.predictionsClosed },
+        select: { id: true, predictionsClosed: true },
+      });
+
+      res.json({
+        message: 'Match updated',
+        match: updated,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
 
 app.get('/api/tournaments/:id/leaderboard', optionalAuth, async (req, res) => {
   try {

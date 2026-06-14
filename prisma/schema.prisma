@@ -107,6 +107,7 @@ model Match {
   winner               String?
   status               String               @default("scheduled")
   matchDate            DateTime?
+  predictionsClosed    Boolean              @default(false)
   round                Round                @relation(fields: [roundId], references: [id])
   knockoutPredictions  KnockoutPrediction[]
 }

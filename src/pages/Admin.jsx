@@ -355,6 +355,38 @@ export default function Admin() {
     }
   };
 
+  const handleToggleMatchClosure = async (matchId, nextValue) => {
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await patch(
+        `/tournaments/${selectedTournament}/matches/${matchId}`,
+        { predictionsClosed: nextValue }
+      );
+      const updatedValue = Boolean(response?.match?.predictionsClosed);
+      setTournament((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        return {
+          ...prev,
+          rounds: (prev.rounds || []).map((round) => ({
+            ...round,
+            matches: (round.matches || []).map((match) =>
+              match.id === matchId
+                ? { ...match, predictionsClosed: updatedValue }
+                : match
+            ),
+          })),
+        };
+      });
+      setSuccess(t('admin.saved'));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleBuilderFieldChange = (field, value) => {
     setBuilderForm((prev) => ({
       ...prev,
@@ -1178,6 +1210,58 @@ export default function Admin() {
                 >
                   {saving ? t('admin.calculating') : t('admin.calculateScores')}
                 </Button>
+              </div>
+            </Panel>
+
+            <Panel variant="strong" padding="normal" radius="2xl" className="app-card-strong admin-panel mb-8">
+              <div className="admin-section-copy-block mb-6">
+                <Pill className="text-amber-200">{t('admin.matchClosure')}</Pill>
+                <DisplayText as="h2" className="admin-section-title admin-section-title--compact">
+                  {t('admin.matchClosure')}
+                </DisplayText>
+                <p className="text-gray-400 text-sm">
+                  {t('admin.matchClosureHelp')}
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {(tournament?.rounds || []).map((round) => (
+                  <section key={round.id} className="admin-round-section">
+                    <div className="admin-round-header">
+                      <Pill className="text-emerald-200">{getRoundLabel(round, t)}</Pill>
+                      <p className="admin-round-meta">
+                        {round.matches?.length || 0} {t('common.matches')}
+                      </p>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {(round.matches || []).map((match) => {
+                        const closed = Boolean(match.predictionsClosed);
+                        return (
+                          <div
+                            key={match.id}
+                            className="admin-subpanel flex items-center justify-between gap-3 p-3 rounded-lg"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-white truncate">
+                                {match.code || `#${match.matchNumber}`}: {match.homeLabel} vs {match.awayLabel}
+                              </p>
+                              <Pill className={closed ? 'text-amber-200' : 'text-emerald-200'}>
+                                {closed ? t('admin.matchStatusClosed') : t('admin.matchStatusOpen')}
+                              </Pill>
+                            </div>
+                            <Button
+                              type="button"
+                              variant={closed ? 'secondary' : 'primary'}
+                              onClick={() => handleToggleMatchClosure(match.id, !closed)}
+                            >
+                              {closed ? t('admin.reopenPredictions') : t('admin.closePredictions')}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             </Panel>
           </>

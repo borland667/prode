@@ -202,3 +202,55 @@ test('buildLockState tolerates empty inputs', () => {
   assert.equal(empty.lockedMatchIds.size, 0);
   assert.equal(empty.lockedGroupIds.size, 0);
 });
+
+test('isMatchPredictionLocked treats predictionsClosed=true as locked regardless of kickoff', () => {
+  assert.equal(
+    isMatchPredictionLocked(
+      { matchDate: '2026-12-31T23:59:59Z', predictionsClosed: true },
+      REFERENCE_NOW
+    ),
+    true,
+    'a future match flagged closed is locked even when kickoff has not happened'
+  );
+  assert.equal(
+    isMatchPredictionLocked(
+      { matchDate: null, predictionsClosed: true },
+      REFERENCE_NOW
+    ),
+    true,
+    'a match with no kickoff but flagged closed is still locked'
+  );
+});
+
+test('isGroupPredictionLocked locks a group when a group-stage match is manually closed', () => {
+  const groups = [
+    {
+      id: 'group-c',
+      teams: [
+        { id: 't-arg', code: 'ARG' },
+        { id: 't-aus', code: 'AUS' },
+      ],
+    },
+  ];
+  const groupStageMatches = [
+    {
+      id: 'm-future-closed',
+      homeLabel: 'ARG',
+      awayLabel: 'AUS',
+      matchDate: '2027-01-01T00:00:00Z',
+      predictionsClosed: true,
+    },
+  ];
+  const codeToGroupId = buildGroupCodeIndex(groups);
+
+  assert.equal(
+    isGroupPredictionLocked({
+      groupId: 'group-c',
+      groupStageMatches,
+      codeToGroupId,
+      now: REFERENCE_NOW,
+    }),
+    true,
+    'closing a single group-stage match locks the whole group'
+  );
+});

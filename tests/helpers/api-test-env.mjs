@@ -10,6 +10,11 @@ const DEFAULT_LOCAL_TEST_DATABASE_URL = 'postgresql://prode:prode123@127.0.0.1:5
 
 dotenv.config({ path: new URL('../../.env', import.meta.url) });
 
+// Snapshot the admin DATABASE_URL once so multiple tests in the same
+// process still see the original Postgres connection after earlier tests
+// have rewritten DATABASE_URL to their throwaway test database.
+const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+
 function isLocalDatabaseUrl(databaseUrl) {
   if (!databaseUrl) {
     return false;
@@ -44,7 +49,7 @@ function sleep(ms) {
 
 export async function createApiTestEnvironment() {
   const adminDatabaseUrl = process.env.TEST_DATABASE_URL
-    || (isLocalDatabaseUrl(process.env.DATABASE_URL) ? process.env.DATABASE_URL : null)
+    || (isLocalDatabaseUrl(ORIGINAL_DATABASE_URL) ? ORIGINAL_DATABASE_URL : null)
     || DEFAULT_LOCAL_TEST_DATABASE_URL;
 
   if (!adminDatabaseUrl) {
@@ -70,6 +75,15 @@ export async function createApiTestEnvironment() {
   process.env.SMTP_PASSWORD = '';
 
   runPrismaMigrate(testDatabaseUrl);
+
+  // Drop any cached app/db modules so the next test gets a fresh Prisma
+  // client wired to the new per-test DATABASE_URL.
+  for (const moduleId of [
+    require.resolve('../../api/app.cjs'),
+    require.resolve('../../api/db.cjs'),
+  ]) {
+    delete require.cache[moduleId];
+  }
 
   const app = require('../../api/app.cjs');
   const prisma = require('../../api/db.cjs');

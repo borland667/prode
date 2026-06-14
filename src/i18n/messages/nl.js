@@ -365,6 +365,12 @@ export const NL = {
     calculating: 'Bezig met berekenen...',
     scoresCalculated: 'Scores succesvol berekend!',
     scoreError: 'Berekenen van scores mislukt',
+    matchClosure: 'Sluiten van voorspellingen per wedstrijd',
+    matchClosureHelp: 'Sluit voorspellingen voor een specifieke wedstrijd voor het beginsignaal. De automatische blokkade op het tijdstip blijft actief.',
+    matchStatusOpen: 'Open',
+    matchStatusClosed: 'Gesloten',
+    closePredictions: 'Voorspellingen sluiten',
+    reopenPredictions: 'Voorspellingen heropenen',
     tournamentBuilder: 'Toernooibouwer',
     tournamentBuilderHelp:
       'Maak een nieuw toernooi of bewerk veilig de structuur van een toernooi zonder leden, voorspellingen, competities of resultaten.',

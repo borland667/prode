@@ -166,6 +166,8 @@ Expected:
 
 Locking is strictly per match. There is no tournament-wide kill switch.
 
+### 11.1 Time-Based Locking
+
 1. Set the `matchDate` on one knockout match to a timestamp in the past
    (database edit or via the importer).
 2. Set the `matchDate` on one group-stage match to a timestamp in the past.
@@ -185,6 +187,25 @@ Expected:
   upstream + new downstream picks)
 - the tournament header has no countdown banner or "predictions closed"
   notice anywhere; only the per-match/per-group pills convey lock state
+
+### 11.2 Admin Per-Match Closure
+
+1. As `Admin`, open the tournament admin page and find the
+   "Per-match Prediction Closure" panel.
+2. Pick a match whose `matchDate` is still in the future and click
+   "Close predictions".
+3. As a normal user, reload the prediction wizard and try to change the
+   pick on that match.
+
+Expected:
+
+- the match renders read-only with a "kickoff started" pill even though
+  the kickoff time has not passed
+- if the closed match is a group-stage match, the corresponding group's
+  1°/2°/3° selectors also lock
+- submitting the wizard does not change the closed match's stored pick
+- the admin "Reopen predictions" button restores the editable state and
+  subsequent saves work normally
 
 ## 12. Scoped Predictions And Primary Entry
 

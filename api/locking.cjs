@@ -3,8 +3,9 @@
 // payload of a prediction save) and in serializers (so the API can tell the
 // frontend which matches and groups should render as read-only).
 //
-// Locking is strictly per-match. A match locks once its kickoff has passed;
-// a group locks once any of its group-stage matches has locked.
+// Locking is strictly per-match. A match locks once its kickoff has passed
+// or an admin has flipped `predictionsClosed` on it; a group locks once any
+// of its group-stage matches has locked.
 
 function toDate(value) {
   if (!value) {
@@ -18,6 +19,9 @@ function toDate(value) {
 }
 
 function isMatchPredictionLocked(match, now) {
+  if (match?.predictionsClosed === true) {
+    return true;
+  }
   const kickoff = toDate(match?.matchDate);
   if (!kickoff) {
     return false;
@@ -48,8 +52,9 @@ function buildGroupCodeIndex(groups) {
 }
 
 // A group's prediction (1st/2nd/3rd) is locked as soon as any group-stage
-// match between two of its teams has kicked off. Once any match has been
-// played you have new information, so re-ranking would let you cheat.
+// match between two of its teams has kicked off or been manually closed.
+// Once any match has been played you have new information, so re-ranking
+// would let you cheat.
 function isGroupPredictionLocked({ groupId, groupStageMatches, codeToGroupId, now }) {
   const moment = toDate(now) || new Date();
   for (const match of groupStageMatches || []) {
@@ -58,8 +63,7 @@ function isGroupPredictionLocked({ groupId, groupStageMatches, codeToGroupId, no
     if (homeGroupId !== groupId && awayGroupId !== groupId) {
       continue;
     }
-    const kickoff = toDate(match?.matchDate);
-    if (kickoff && kickoff.getTime() <= moment.getTime()) {
+    if (isMatchPredictionLocked(match, moment)) {
       return true;
     }
   }

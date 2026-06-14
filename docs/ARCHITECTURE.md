@@ -329,11 +329,13 @@ but do not block prediction submissions.
 The rules in `api/locking.cjs`:
 
 - a knockout match locks the moment `match.matchDate <= now`
-- a group's 1°/2°/3° prediction locks as soon as any group-stage match
-  between two of its teams has kicked off (you can't re-rank a group once
-  any of its games has been played)
-- a match with `matchDate = null` stays open until the importer or admin
-  assigns one
+- a match also locks if an admin has flipped `Match.predictionsClosed`
+  to `true` via `PATCH /api/tournaments/:id/matches/:matchId` (admin-only)
+- a group's 1°/2°/3° prediction locks as soon as any of its group-stage
+  matches between two of its teams has locked — by kickoff time or by an
+  admin closing one of them
+- a match with `matchDate = null` and `predictionsClosed = false` stays
+  open until the importer or admin acts on it
 
 `serializeRounds` and `serializeGroups` attach `predictionLocked: boolean`
 to every match and group in the API response so clients can render those
@@ -575,6 +577,8 @@ All routes are under `/api`.
 - `POST /tournaments/:id/results/knockout`
 - `POST /tournaments/:id/calculate-scores`
 - `POST /tournaments/:id/import-results`
+- `PATCH /tournaments/:id/matches/:matchId` — toggle `predictionsClosed` for
+  a single match (see §7.5)
 
 ### 12.7 Ops
 

@@ -365,6 +365,12 @@ export const IT = {
     calculating: 'Calcolo...',
     scoresCalculated: 'Punteggi calcolati con successo!',
     scoreError: 'Calcolo punteggi non riuscito',
+    matchClosure: 'Chiusura pronostici per partita',
+    matchClosureHelp: 'Chiudi i pronostici di una singola partita prima del calcio d\u2019inizio. Il blocco automatico al calcio d\u2019inizio resta attivo.',
+    matchStatusOpen: 'Aperto',
+    matchStatusClosed: 'Chiuso',
+    closePredictions: 'Chiudi pronostici',
+    reopenPredictions: 'Riapri pronostici',
     tournamentBuilder: 'Costruttore tornei',
     tournamentBuilderHelp:
       'Crea un nuovo torneo o modifica in sicurezza la struttura di uno che non abbia ancora membri, pronostici, leghe o risultati.',
