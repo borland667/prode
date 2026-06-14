@@ -59,6 +59,9 @@ Working:
 - per-match prediction locking based on each match's kickoff time
 - tournament leaderboard
 - spectator standings and knockout progress
+- live group standings table derived from finished match scores
+  (P / W / D / L / GF / GA / GD / Pts), with an optional toggle to view
+  the same table populated by the current user's predicted ordering
 
 ### 2.4 League Participation
 

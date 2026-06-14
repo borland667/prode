@@ -125,12 +125,22 @@ Expected:
 5. Continue through knockout rounds.
 6. Save.
 7. Return to the tournament page.
+8. Switch between the `Groups`, `Standings`, and `Knockout` tabs.
+9. In the `Standings` tab, toggle between `Live results` and `My picks`.
 
 Expected:
 
 - the tournament page recognizes saved predictions
 - user can return to the prediction wizard before lock
 - predictions persist on reload
+- before any matches are played, the live standings show all zeros
+  (matching the FIFA standings page baseline)
+- once group-stage scores are imported, each group's standings reflect
+  the running P / W / D / L / GF / GA / GD / Pts derived from finished
+  matches, sorted by points then goal difference then goals-for
+- the `My picks` view shows the user's predicted 1st / 2nd / 3rd / 4th
+  ordering with stats columns dashed out (predictions store ordering
+  only, not score predictions)
 
 ## 9. Random Fill
 
