@@ -190,24 +190,28 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        # `npm ci` triggers the `postinstall` hook (`npx prisma generate`),
+        # so the Prisma client is already regenerated against the current
+        # schema before the build step runs.
         run: npm ci
 
-      - name: Generate Prisma client
-        run: npm run db:generate
-
-      - name: Build site
-        run: npm run build
-
       - name: Deploy to Netlify (prod)
-        # --skip-functions-cache forces a fresh function bundle so the
+        # `--build` runs `netlify build` first, which pulls the Netlify
+        # project env vars (VITE_ANALYTICS_*, VITE_POSTHOG_*, VITE_GOOGLE_*,
+        # SITE_URL, etc.) into the Vite build process. Without this flag we
+        # would run `npm run build` here with no VITE_* values in scope and
+        # silently ship a bundle where analytics, OAuth visibility, and any
+        # other frontend env-driven feature is empty. Source of truth for
+        # those values stays in Netlify's project env.
+        #
+        # `--skip-functions-cache` forces a fresh function bundle so the
         # deployed Prisma client always matches the current schema. The
         # earlier deploy-race incident happened because Netlify reused a
         # cached function bundle generated under a stale schema.
         run: |
           npx -y netlify-cli@latest deploy \
             --prod \
-            --dir dist \
-            --functions netlify/functions \
+            --build \
             --skip-functions-cache \
             --message "ci: ${GITHUB_SHA::7} (${GITHUB_REF_NAME})"
 
