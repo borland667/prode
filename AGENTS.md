@@ -96,6 +96,36 @@ migration first (column added as nullable or with a default), wait
 for the migrate job to finish, and only then ship the code that
 treats the column as required.
 
+### Production Deploy Pipeline
+
+Production deploys are owned by GitHub Actions (`deploy-production`
+job in `.github/workflows/ci.yml`), not Netlify's git auto-deploy.
+
+Rules:
+
+- never deploy by pushing a release branch through Netlify's UI
+- the only supported deploy path on `main` is the GitHub Actions
+  workflow; if it is skipped (missing secrets, gated false), do not
+  shadow it with a manual `netlify deploy` from a workstation
+- the deploy step uses `--skip-functions-cache` so the bundled
+  Prisma client always matches the current schema; do not remove
+  that flag
+- the deploy step ends with a live-API smoke check; if it fails,
+  the workflow fails red — investigate before re-running
+- if you need to roll back, prefer `netlify api restoreSiteDeploy`
+  via the Netlify CLI against a known-good deploy id rather than
+  pushing a revert commit, which would re-run the migrate job too
+
+Required GitHub secrets:
+
+- `PRODUCTION_DATABASE_URL` (existing, gates migrate)
+- `NETLIFY_AUTH_TOKEN` (gates deploy)
+- `NETLIFY_SITE_ID` (gates deploy)
+
+If `NETLIFY_AUTH_TOKEN` or `NETLIFY_SITE_ID` is missing, the deploy
+job is skipped cleanly; the workflow stays green, and Netlify's own
+git auto-deploy (still enabled as a fallback) takes over.
+
 ## 4. API And Data Safety
 
 When changing API behavior:

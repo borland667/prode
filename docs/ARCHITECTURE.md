@@ -741,19 +741,51 @@ Current automation contract:
 
 This keeps the migration path explicit and checked-in while allowing repositories without configured production secrets to keep using the same CI workflow safely.
 
+### 15.4 Production Deploy Pipeline
+
+Production code is shipped to Netlify from GitHub Actions, not via Netlify's git auto-deploy.
+
+Why: Netlify's `noble` build image rollout (June 2026) broke our
+auto-deploy for ~7 weeks. We had no logs and no signal, so the live
+Lambda silently stayed on the April 28 build while migrations kept
+running on `main`. Owning the deploy from GitHub Actions gives us
+pinned Node, full build logs, and a smoke check.
+
+Pipeline contract (`.github/workflows/ci.yml`):
+
+| Job | Trigger | Purpose |
+|---|---|---|
+| `verify` | every push + PR | lint, validate, tests, build |
+| `netlify-build-check` | every push + PR (after `verify`) | runs `netlify build --offline` to catch Netlify-Build-specific failures on the PR, not in prod |
+| `check-production-migrate` | push to `main` | gates the migrate job on `PRODUCTION_DATABASE_URL` |
+| `migrate-production` | push to `main` (when gated true) | `npm run db:migrate:deploy` + `npm run db:seed` |
+| `check-production-deploy` | push to `main` | gates the deploy job on `NETLIFY_AUTH_TOKEN` + `NETLIFY_SITE_ID` |
+| `deploy-production` | push to `main` (when gated true) | builds, generates Prisma client, `netlify deploy --prod --skip-functions-cache`, then smoke-checks the live API |
+
+Required GitHub secrets:
+
+- `PRODUCTION_DATABASE_URL` — gates the migrate path
+- `NETLIFY_AUTH_TOKEN` — personal access token with deploy scope
+- `NETLIFY_SITE_ID` — Netlify project id
+
+Notes:
+
+- `--skip-functions-cache` is mandatory: the older "Deploying functions from cache" path can publish a function bundle whose Prisma client predates the current schema.
+- The deploy job runs a 5-attempt curl smoke check against `/api/tournaments?status=active,upcoming` and fails the CI run if the live API does not 200.
+- Netlify's git auto-deploy remains enabled as a fallback. With `[build.environment] NODE_VERSION = "24.1.0"` pinned in `netlify.toml`, future image rollouts have one fewer variable; but the GitHub Actions path is the source of truth.
+
 ### Destructive Migrations And The Deploy Race
 
-CI's `migrate-production` job and Netlify's build are independent
-triggers on the same `main` push event. There is no ordering
-guarantee between "schema is migrated" and "new Lambda bundle is
-serving traffic." For backward-compatible changes (`ADD COLUMN`
-nullable, new tables) the race is harmless. For destructive
-changes it is not: an incompatible drop can land in the DB while
-the live Lambda still selects the column, returning 500s until
-Netlify catches up.
+CI's `migrate-production` job and the deploy step are sequenced in the
+same workflow (`deploy-production` `needs:` `migrate-production`), so
+the deploy waits for the migration to finish before publishing the new
+Lambda. That removes the historical race between Netlify's
+out-of-band build and the migrate job.
 
-Use a two-step pattern for destructive changes (see §3 of
-`AGENTS.md`):
+A residual race still exists when Netlify's git auto-deploy is left
+on as a fallback (it runs in parallel with our pipeline). Until we
+fully disable it, keep using the two-step pattern for destructive
+changes (see §3 of `AGENTS.md`):
 
 1. ship code that no longer references the column, merge, and
    confirm the new Lambda is live
