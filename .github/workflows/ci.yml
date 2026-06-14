@@ -129,3 +129,102 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
         run: npm run db:seed
+
+  # Mirror of `check-production-migrate`: secrets cannot be referenced in
+  # job-level `if`, so we gate `deploy-production` on a boolean derived
+  # here from the presence of NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID.
+  check-production-deploy:
+    name: Check production deploy secrets
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      run_deploy: ${{ steps.gate.outputs.run_deploy }}
+    steps:
+      - id: gate
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -n "${NETLIFY_AUTH_TOKEN}" ] && [ -n "${NETLIFY_SITE_ID}" ]; then
+            echo "run_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Production deploy: build with pinned Node, ship to Netlify directly,
+  # then verify the live endpoint. Replaces Netlify's git auto-deploy as
+  # the source of truth so noble-image / Prisma-binary regressions in
+  # Netlify Build no longer block production releases.
+  deploy-production:
+    name: Deploy to Netlify production
+    needs: [verify, netlify-build-check, migrate-production, check-production-deploy]
+    # `migrate-production` is conditional. `always()` + status checks let
+    # the deploy run when migrate was skipped (no production DB secret)
+    # but block it when migrate failed.
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.verify.result == 'success' &&
+      needs.netlify-build-check.result == 'success' &&
+      needs.check-production-deploy.outputs.run_deploy == 'true' &&
+      (needs.migrate-production.result == 'success' || needs.migrate-production.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: production-deploy-main
+      cancel-in-progress: false
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Build site
+        run: npm run build
+
+      - name: Deploy to Netlify (prod)
+        # --skip-functions-cache forces a fresh function bundle so the
+        # deployed Prisma client always matches the current schema. The
+        # earlier deploy-race incident happened because Netlify reused a
+        # cached function bundle generated under a stale schema.
+        run: |
+          npx -y netlify-cli@latest deploy \
+            --prod \
+            --dir dist \
+            --functions netlify/functions \
+            --skip-functions-cache \
+            --message "ci: ${GITHUB_SHA::7} (${GITHUB_REF_NAME})"
+
+      - name: Verify live API
+        # Smoke-check: hit a public endpoint to make sure the new Lambda
+        # bundle actually serves traffic. Catches the class of failure
+        # where deploy reports success but the function 500s on cold
+        # start (e.g. Prisma client + DB column mismatch).
+        run: |
+          set -e
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /tmp/body.json -w '%{http_code}' \
+              "https://prode.grupoeglu.net/api/tournaments?status=active,upcoming")
+            echo "attempt $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 5
+          done
+          echo 'Live verification failed. Last body:'
+          head -c 500 /tmp/body.json
+          exit 1
