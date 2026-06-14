@@ -3,9 +3,8 @@
 // payload of a prediction save) and in serializers (so the API can tell the
 // frontend which matches and groups should render as read-only).
 //
-// Tournament-wide hard caps (closingDate / status === 'closed' / 'finished')
-// are handled separately by getTournamentLifecycle in api/app.cjs. This module
-// only deals with per-match and per-group kickoff-based locking.
+// Locking is strictly per-match. A match locks once its kickoff has passed;
+// a group locks once any of its group-stage matches has locked.
 
 function toDate(value) {
   if (!value) {

@@ -164,28 +164,13 @@ Expected:
 
 ## 11. Prediction Locking
 
-### 11.1 Tournament-Wide Hard Cap
+Locking is strictly per match. There is no tournament-wide kill switch.
 
-1. As `Admin`, set the tournament closing date to the past.
-2. Reload as a normal user.
-3. Try to enter or save predictions.
-4. If the tournament is private, try to join after lock.
-
-Expected:
-
-- prediction window shows locked/closed state
-- saves are rejected
-- new joins are blocked once the tournament is closed
-
-### 11.2 Per-Match And Per-Group Locking
-
-1. As `Admin`, leave the closing date in the future so the tournament is not
-   hard-closed.
-2. Set the `matchDate` on one knockout match to a timestamp in the past
+1. Set the `matchDate` on one knockout match to a timestamp in the past
    (database edit or via the importer).
-3. Set the `matchDate` on one group-stage match to a timestamp in the past.
-4. Reload the prediction wizard as a normal user.
-5. Submit the wizard with deliberately changed picks for the locked match
+2. Set the `matchDate` on one group-stage match to a timestamp in the past.
+3. Reload the prediction wizard as a normal user.
+4. Submit the wizard with deliberately changed picks for the locked match
    and the locked group, plus changes to still-open matches and groups.
 
 Expected:
@@ -198,6 +183,8 @@ Expected:
 - unlocked matches and groups reflect the new picks
 - progression validation still runs against the merged set (locked
   upstream + new downstream picks)
+- the tournament header has no countdown banner or "predictions closed"
+  notice anywhere; only the per-match/per-group pills convey lock state
 
 ## 12. Scoped Predictions And Primary Entry
 

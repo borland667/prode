@@ -347,7 +347,7 @@ export default function League() {
               >
                 {tournament?.access?.canSubmitPredictions
                   ? t('tournament.openLeaguePredictions')
-                  : t('tournament.predictionsClosed')}
+                  : t('tournament.privateLocked')}
               </Button>
               <Button
                 type="button"

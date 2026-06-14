@@ -240,14 +240,12 @@ Tournament access flags returned by the API include:
 - `canViewLeaderboard`
 - `canViewPredictions`
 - `canSubmitPredictions`
-- `predictionWindowOpen`
-- `predictionsLocked`
-- `lockedReason`
 
-`predictionsLocked` is the tournament-wide hard cap (admin-closed,
-finished, or past `closingDate`). Per-match and per-group locking is
-exposed separately on serialized matches and groups via
-`match.predictionLocked` and `group.predictionLocked`; see §7.5.
+There is no tournament-wide prediction lock. Predictions lock granularly
+per match (once kickoff passes) and per group (once any group-stage
+match has kicked off). Locking flags are exposed on serialized matches
+and groups via `match.predictionLocked` and `group.predictionLocked`;
+see §7.5.
 
 ### 6.2 League Access
 
@@ -324,16 +322,11 @@ If the removed scope was the official primary entry, the backend falls back to a
 
 ### 7.5 Prediction Locking
 
-Locking happens at two layers.
+Locking is strictly per match. There is no tournament-wide hard cap:
+`Tournament.status` and the lifecycle metadata describe the tournament
+but do not block prediction submissions.
 
-**Tournament-wide hard cap.** When `Tournament.status` is `closed` or
-`finished`, or `closingDate` is in the past, `predictionsLocked` is true and
-`POST /api/tournaments/:id/predictions` (and the league equivalent) is
-rejected with 403. This is the same admin-driven kill switch the product
-always had.
-
-**Per-match and per-group locking** (`api/locking.cjs`). When the hard cap
-hasn't fired, individual items still lock based on their own kickoff:
+The rules in `api/locking.cjs`:
 
 - a knockout match locks the moment `match.matchDate <= now`
 - a group's 1°/2°/3° prediction locks as soon as any group-stage match
@@ -448,12 +441,9 @@ The Prisma schema currently contains:
 
 ### 9.1 Lifecycle
 
-Tournament lifecycle combines:
-
-- stored status
-- closing date
-
-When closing date has passed, predictions lock even if stored status still says `upcoming` or `active`.
+`Tournament.status` (`upcoming`, `active`, `closed`, `finished`) is purely
+informational metadata for the UI. Prediction submissions are gated only
+by per-match locks (see §7.5), not by the tournament-level status.
 
 ### 9.2 Safe Structure Editing
 

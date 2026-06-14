@@ -15,7 +15,6 @@ import { useAuth } from '../context/AuthContext';
 import { get } from '../utils/api';
 import {
   countTournamentMatches,
-  formatClosingCountdown,
   getLocalizedName,
   getModeLabel,
   getModeRuleSections,
@@ -23,7 +22,7 @@ import {
 import { Button, DisplayText, Panel, Pill } from '../components/ui/DesignSystem';
 
 export default function Home() {
-  const { language, t, formatDate, formatNumber } = useLanguage();
+  const { language, t, formatNumber } = useLanguage();
   const { user } = useAuth();
   const location = useLocation();
   const [tournaments, setTournaments] = useState([]);
@@ -65,12 +64,6 @@ export default function Home() {
   const featuredTournamentName = featuredTournament
     ? getLocalizedName(featuredTournament, language, featuredTournament.name)
     : t('home.featuredTournamentFallback');
-  const featuredClosingDate = featuredTournament?.closingDate
-    ? formatDate(featuredTournament.closingDate)
-    : t('home.tbd');
-  const featuredClosingCountdown = featuredTournament?.closingDate
-    ? formatClosingCountdown(featuredTournament.closingDate, { formatNumber, t })
-    : '';
   const featuredTournamentLink = featuredTournament ? `/tournament/${featuredTournament.id}` : '/';
   const featuredLeaderboardLink = featuredTournament ? `/leaderboard/${featuredTournament.id}` : '/';
   const featuredMatchCount = featuredTournament
@@ -253,15 +246,6 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="home-featured-row">
-                  <span className="home-featured-label">{t('tournament.closingDate')}</span>
-                  <span className="home-featured-value">
-                    {featuredClosingDate}
-                    {featuredClosingCountdown ? (
-                      <span className="home-featured-subvalue">{t('home.tournamentEndsIn')} {featuredClosingCountdown}</span>
-                    ) : null}
-                  </span>
-                </div>
-                <div className="home-featured-row">
                   <span className="home-featured-label">{t('tournament.prizes')}</span>
                   <span className="home-featured-value">
                     {featuredTournament?.prizesEnabled
@@ -295,10 +279,10 @@ export default function Home() {
               <div className="ds-panel home-metric-tile rounded-panel-lg">
                 <div className="home-metric-tile__kicker text-emerald-300">
                   <CalendarDays size={18} className="shrink-0" />
-                  <span className="ds-pill">{t('tournament.closingDate')}</span>
+                  <span className="ds-pill">{t('tournament.events')}</span>
                 </div>
                 <p className="ds-display text-3xl leading-none tabular-nums text-white">
-                  {featuredClosingDate}
+                  {formatNumber(featuredMatchCount)}
                 </p>
               </div>
               <div className="ds-panel home-metric-tile rounded-panel-lg">
@@ -566,20 +550,6 @@ export default function Home() {
                         {t('home.currentMode')}:
                       </strong>{' '}
                       {getModeLabel(tournament.mode, language)}
-                    </p>
-                    <p>
-                      <strong>
-                        {t('tournament.closingDate')}:
-                      </strong>{' '}
-                      {tournament.closingDate
-                        ? formatDate(tournament.closingDate)
-                        : t('home.tbd')}
-                      {tournament.closingDate ? (
-                        <span className="home-tournament-meta__detail">
-                          {' '}
-                          ({t('home.tournamentEndsIn')} {formatClosingCountdown(tournament.closingDate, { formatNumber, t })})
-                        </span>
-                      ) : null}
                     </p>
                     <p>
                       <strong>

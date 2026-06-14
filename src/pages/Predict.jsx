@@ -58,11 +58,7 @@ export default function Predict() {
         setTournament(tournamentData);
 
         if (!tournamentData?.access?.canSubmitPredictions) {
-          setError(
-            tournamentData?.access?.predictionsLocked
-              ? t('tournament.predictionsClosed')
-              : t('tournament.privateLocked')
-          );
+          setError(t('tournament.privateLocked'));
           return;
         }
 
@@ -182,11 +178,7 @@ export default function Predict() {
       });
       navigate(isLeagueScope ? `/league/${id}` : `/tournament/${id}`);
     } catch (err) {
-      setError(
-        err.status === 403 && tournament?.access?.predictionsLocked
-          ? t('tournament.predictionsClosed')
-          : err.message
-      );
+      setError(err.message);
     } finally {
       setSaving(false);
     }

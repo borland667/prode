@@ -45,7 +45,6 @@ model Tournament {
   joinCode             String?              @unique
   startDate            DateTime?
   endDate              DateTime?
-  closingDate          DateTime?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   teams                Team[]

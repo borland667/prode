@@ -18,7 +18,6 @@ const TEST_TOURNAMENT = {
   joinCode: 'TEST42',
   startDate: '2026-07-01T12:00:00.000Z',
   endDate: '2026-07-20T12:00:00.000Z',
-  closingDate: '2099-07-01T12:00:00.000Z',
   groups: [
     {
       name: 'A',
@@ -808,40 +807,6 @@ test('core API flows work end to end', async () => {
     assert.equal(userATournamentPredictionsAfterClear.response.status, 200);
     assert.equal(userATournamentPredictionsAfterClear.payload.groupPredictions.length, 0);
     assert.equal(userATournamentPredictionsAfterClear.payload.knockoutPredictions.length, 0);
-
-    await prisma.tournament.update({
-      where: { id: tournamentId },
-      data: {
-        closingDate: new Date(Date.now() - 60_000),
-      },
-    });
-
-    const closedPredictionAttempt = await apiRequest(
-      baseUrl,
-      `/api/tournaments/${tournamentId}/predictions`,
-      {
-        method: 'POST',
-        token: userAUpdatedToken,
-        body: {
-          groupPredictions: [],
-          knockoutPredictions: [],
-        },
-      }
-    );
-    assert.equal(closedPredictionAttempt.response.status, 403);
-
-    const userC = await registerUser(baseUrl, {
-      name: 'User C',
-      email: 'userc@example.com',
-      password: 'supersecret1',
-    });
-
-    const closedJoinAttempt = await apiRequest(baseUrl, `/api/tournaments/${tournamentId}/join`, {
-      method: 'POST',
-      token: userC.token,
-      body: { joinCode: 'TEST42' },
-    });
-    assert.equal(closedJoinAttempt.response.status, 403);
   } finally {
     await env.dispose();
   }

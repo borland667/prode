@@ -77,7 +77,6 @@ function createEmptyBuilderForm() {
     joinCode: '',
     startDate: '',
     endDate: '',
-    closingDate: '',
     groupsJson: DEFAULT_GROUPS_TEMPLATE,
     roundsJson: DEFAULT_ROUNDS_TEMPLATE,
   };
@@ -99,7 +98,6 @@ function buildBuilderFormFromTournament(tournament) {
     joinCode: tournament?.joinCode || '',
     startDate: toDateTimeLocalValue(tournament?.startDate),
     endDate: toDateTimeLocalValue(tournament?.endDate),
-    closingDate: toDateTimeLocalValue(tournament?.closingDate),
     groupsJson: JSON.stringify(
       (tournament?.groups || []).map((group) => ({
         name: group.name,
@@ -395,7 +393,6 @@ export default function Admin() {
       joinCode: builderForm.joinCode,
       startDate: builderForm.startDate || null,
       endDate: builderForm.endDate || null,
-      closingDate: builderForm.closingDate || null,
       groups,
       rounds,
     };
@@ -668,18 +665,6 @@ export default function Admin() {
                 type="datetime-local"
                 value={builderForm.endDate}
                 onChange={(event) => handleBuilderFieldChange('endDate', event.target.value)}
-                className="app-input"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="account-label">
-                {t('admin.closingDateLabel')}
-              </label>
-              <input
-                type="datetime-local"
-                value={builderForm.closingDate}
-                onChange={(event) => handleBuilderFieldChange('closingDate', event.target.value)}
                 className="app-input"
               />
             </div>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Clock } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../utils/api';
@@ -9,7 +8,6 @@ import { ANALYTICS_EVENTS, trackEvent } from '../utils/analytics';
 import {
   buildTeamMap,
   countTournamentMatches,
-  formatClosingCountdown,
   getLocalizedName,
   getKnockoutRounds,
   getModeLabel,
@@ -253,8 +251,6 @@ export default function Tournament() {
     );
   }
 
-  const closingDate = tournament.closingDate ? new Date(tournament.closingDate) : null;
-  const now = new Date();
   const groups = sortGroups(tournament.groups || []);
   const groupStageRound = (tournament.rounds || []).find(
     (round) => round.name === 'group_stage'
@@ -270,7 +266,6 @@ export default function Tournament() {
   const canManageLeagues = Boolean(user && tournament.access?.canViewPredictions);
   const isPrivate = Boolean(tournament.access?.isPrivate);
   const isMember = Boolean(tournament.access?.isMember);
-  const predictionsLocked = Boolean(tournament.access?.predictionsLocked);
   const canChangePrimaryEntry = Boolean(primaryEntry?.canChange);
   const showPrizeInfo = Boolean(tournament.prizesEnabled && tournament.entryFee);
   const currentPrimaryOption = primaryEntry?.options?.find((option) => option.isPrimary) || null;
@@ -304,9 +299,6 @@ export default function Tournament() {
       rounds,
     })
   );
-  const closingCountdown = closingDate
-    ? formatClosingCountdown(closingDate, { formatNumber, t, now })
-    : '';
 
   return (
     <div className="ds-shell min-h-screen">
@@ -336,11 +328,6 @@ export default function Tournament() {
               valueClassName="capitalize"
             />
             <TournamentStatCard
-              label={t('tournament.closingDate')}
-              value={closingDate ? formatDate(closingDate) : t('common.tbd')}
-              detail={closingCountdown ? `${t('home.tournamentEndsIn')} ${closingCountdown}` : ''}
-            />
-            <TournamentStatCard
               label={tournamentCountLabel}
               value={participantTotal}
             />
@@ -358,15 +345,6 @@ export default function Tournament() {
                     })
                   : ''
               }
-            />
-            <TournamentStatCard
-              label={t('tournament.predictionWindow')}
-              value={predictionsLocked ? t('tournament.closedNow') : t('tournament.openNow')}
-            />
-            <TournamentStatCard
-              label={t('home.tournamentEndsIn')}
-              value={closingCountdown || t('tournament.closedNow')}
-              icon={<Clock size={16} />}
             />
           </div>
 
@@ -439,11 +417,7 @@ export default function Tournament() {
                 {user ? t('tournament.joinToPredict') : t('tournament.signInToJoin')}
               </p>
 
-              {predictionsLocked ? (
-                <p className="text-white font-semibold">
-                  {t('tournament.joinClosed')}
-                </p>
-              ) : user ? (
+              {user ? (
                 <div className="tournament-inline-form">
                   <input
                     type="text"
@@ -471,7 +445,7 @@ export default function Tournament() {
               )}
 
               <p className="text-gray-400 text-sm mt-4">
-                {predictionsLocked ? t('tournament.predictionsClosedHelp') : t('tournament.joinHelp')}
+                {t('tournament.joinHelp')}
               </p>
             </Panel>
           ) : null}
@@ -496,27 +470,6 @@ export default function Tournament() {
                 </Button>
               )}
             </div>
-          ) : user && isMember && predictionsLocked ? (
-            <Panel padding="normal" radius="xl" className="tournament-section border border-amber-500/30">
-              <DisplayText as="h2" className="text-2xl text-white">
-                {t('tournament.predictionsClosed')}
-              </DisplayText>
-              <p className="text-gray-300 mb-5">
-                {t('tournament.predictionsClosedHelp')}
-              </p>
-              <div className="flex flex-wrap gap-4">
-                {hasPredictions ? (
-                  <Button
-                    as={Link}
-                    to={`/leaderboard/${id}`}
-                    variant="secondary"
-                    className="tournament-cta-button"
-                  >
-                    {t('home.viewLeaderboard')}
-                  </Button>
-                ) : null}
-              </div>
-            </Panel>
           ) : null}
         </div>
 

@@ -556,7 +556,6 @@ const WORLD_CUP_2026_DEF = {
     accessType: 'public',
     startDate: new Date('2026-06-11'),
     endDate: new Date('2026-07-19'),
-    closingDate: new Date('2026-06-10T19:00:00'),
   },
   groups: WORLD_CUP_2026_GROUPS,
   rounds: buildTournamentRounds(
@@ -635,7 +634,6 @@ const EURO_TEMPLATE_DEF = {
     accessType: 'public',
     startDate: new Date('2028-06-08'),
     endDate: new Date('2028-07-08'),
-    closingDate: new Date('2028-06-07T19:00:00'),
   },
   groups: EURO_GROUPS,
   rounds: buildTournamentRounds(
@@ -685,7 +683,6 @@ const ASIAN_CUP_TEMPLATE_DEF = {
     accessType: 'public',
     startDate: new Date('2027-01-07'),
     endDate: new Date('2027-02-05'),
-    closingDate: new Date('2027-01-06T19:00:00'),
   },
   groups: ASIAN_CUP_GROUPS,
   rounds: buildTournamentRounds(
@@ -711,7 +708,6 @@ const AFCON_TEMPLATE_DEF = {
     accessType: 'public',
     startDate: new Date('2027-01-15'),
     endDate: new Date('2027-02-13'),
-    closingDate: new Date('2027-01-14T19:00:00'),
   },
   groups: AFCON_GROUPS,
   rounds: buildTournamentRounds(
@@ -737,7 +733,6 @@ const COPA_AMERICA_TEMPLATE_DEF = {
     accessType: 'public',
     startDate: new Date('2028-06-20'),
     endDate: new Date('2028-07-14'),
-    closingDate: new Date('2028-06-19T19:00:00'),
   },
   groups: COPA_AMERICA_GROUPS,
   rounds: buildTournamentRounds(

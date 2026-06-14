@@ -308,7 +308,7 @@ Important:
 - join a private tournament with a join code
 - submit tournament-scope predictions
 - revisit and update tournament-scope predictions while the tournament is still open
-- clear predictions through the API before closing date using `DELETE /api/predictions/:id`
+- clear predictions through the API for any still-open matches using `DELETE /api/predictions/:id`
 - use random-fill from the prediction flow to generate a valid bracket across all steps
 - view group standings and knockout progress once results exist
 

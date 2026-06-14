@@ -56,7 +56,7 @@ Working:
 - public tournament participation
 - private tournament join with join code
 - tournament-scope predictions
-- prediction locking based on closing date/status
+- per-match prediction locking based on each match's kickoff time
 - tournament leaderboard
 - spectator standings and knockout progress
 

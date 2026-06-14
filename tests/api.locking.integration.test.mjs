@@ -13,7 +13,6 @@ const LOCK_TEST_TOURNAMENT = {
   status: 'upcoming',
   prizesEnabled: false,
   accessType: 'public',
-  closingDate: '2099-07-01T12:00:00.000Z',
   groups: [
     {
       name: 'A',

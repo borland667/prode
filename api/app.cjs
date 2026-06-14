@@ -383,26 +383,8 @@ function normalizeTournamentStatus(status) {
 }
 
 function getTournamentLifecycle(tournament) {
-  const status = normalizeTournamentStatus(tournament.status);
-  const closingDate = tournament.closingDate ? new Date(tournament.closingDate) : null;
-  const hasClosedByDate = Boolean(closingDate) && closingDate.getTime() <= Date.now();
-  const predictionsLocked =
-    status === 'closed' || status === 'finished' || hasClosedByDate;
-
-  let lockedReason = null;
-  if (status === 'finished') {
-    lockedReason = 'finished';
-  } else if (status === 'closed') {
-    lockedReason = 'closed';
-  } else if (hasClosedByDate) {
-    lockedReason = 'closing_date_passed';
-  }
-
   return {
-    status: predictionsLocked && status !== 'finished' ? 'closed' : status,
-    predictionsOpen: !predictionsLocked,
-    predictionsLocked,
-    lockedReason,
+    status: normalizeTournamentStatus(tournament.status),
   };
 }
 
@@ -725,7 +707,6 @@ function normalizeTournamentStructurePayload(body = {}) {
       joinCode,
       startDate: parseOptionalDate(body.startDate, 'Start date'),
       endDate: parseOptionalDate(body.endDate, 'End date'),
-      closingDate: parseOptionalDate(body.closingDate, 'Closing date'),
     },
     groups: normalizedGroups,
     rounds: normalizedRounds,
@@ -834,7 +815,6 @@ async function getParticipantCount(tournamentId) {
 
 function buildTournamentAccess(tournament, viewer) {
   const accessType = normalizeAccessType(tournament.accessType);
-  const lifecycle = getTournamentLifecycle(tournament);
   const isPrivate = accessType === 'private';
   const isAdmin = viewer?.role === 'ADMIN';
   const isMember = isAdmin || Boolean((tournament.members || []).length);
@@ -845,14 +825,11 @@ function buildTournamentAccess(tournament, viewer) {
     isPrivate,
     isMember,
     isAdmin,
-    canJoin: Boolean(viewer?.id) && isPrivate && !isMember && lifecycle.predictionsOpen,
+    canJoin: Boolean(viewer?.id) && isPrivate && !isMember,
     requiresJoinCode: isPrivate,
     canViewLeaderboard: canParticipate,
     canViewPredictions: canParticipate,
-    canSubmitPredictions: canParticipate && Boolean(viewer?.id) && lifecycle.predictionsOpen,
-    predictionWindowOpen: lifecycle.predictionsOpen,
-    predictionsLocked: lifecycle.predictionsLocked,
-    lockedReason: lifecycle.lockedReason,
+    canSubmitPredictions: canParticipate && Boolean(viewer?.id),
   };
 }
 
@@ -881,7 +858,6 @@ function serializeTournament(tournament, counts, viewer) {
     joinCode: access.isMember || access.isAdmin ? tournament.joinCode : null,
     startDate: tournament.startDate,
     endDate: tournament.endDate,
-    closingDate: tournament.closingDate,
     participantCount: counts.participantCount,
     memberCount: counts.memberCount,
     access,
@@ -996,7 +972,6 @@ async function getTournamentAccessState(tournamentId, viewer) {
     select: {
       id: true,
       status: true,
-      closingDate: true,
       accessType: true,
       joinCode: true,
       ...(viewer?.id
@@ -1042,11 +1017,7 @@ async function ensureTournamentPredictionSubmissionAccess(tournamentId, viewer) 
   const accessState = await ensureTournamentParticipationAccess(tournamentId, viewer);
 
   if (!accessState.access.canSubmitPredictions) {
-    const error = new Error(
-      accessState.access.predictionsLocked
-        ? 'Predictions are closed for this tournament'
-        : 'You cannot submit predictions for this tournament'
-    );
+    const error = new Error('You cannot submit predictions for this tournament');
     error.status = 403;
     throw error;
   }
@@ -1470,7 +1441,6 @@ async function listPrimaryEntryOptions(userId, tournamentId) {
       select: {
         id: true,
         name: true,
-        closingDate: true,
         status: true,
         accessType: true,
       },
@@ -1482,7 +1452,6 @@ async function listPrimaryEntryOptions(userId, tournamentId) {
     ...knockoutScopes.map((entry) => entry.scopeKey),
   ]);
   const currentScopeKey = selection?.scopeKey || TOURNAMENT_SCOPE_KEY;
-  const lifecycle = tournament ? getTournamentLifecycle(tournament) : { predictionsLocked: false };
 
   const options = [
     {
@@ -1508,7 +1477,7 @@ async function listPrimaryEntryOptions(userId, tournamentId) {
 
   return {
     currentScopeKey,
-    canChange: !lifecycle.predictionsLocked,
+    canChange: true,
     options,
   };
 }
@@ -2331,10 +2300,8 @@ async function buildAccountNavigation(userId) {
         nameEs: true,
         accessType: true,
         status: true,
-        closingDate: true,
       },
       orderBy: [
-        { closingDate: 'asc' },
         { startDate: 'asc' },
         { name: 'asc' },
       ],
@@ -2377,7 +2344,6 @@ async function buildAccountNavigation(userId) {
       nameEs: tournament.nameEs || null,
       accessType: normalizeAccessType(tournament.accessType),
       status: tournament.status,
-      closingDate: tournament.closingDate,
     })),
     leagues: leagues.map((league) => ({
       id: league.id,
@@ -2917,11 +2883,7 @@ app.get('/api/tournaments/:id/primary-entry', verifyToken, async (req, res) => {
 
 app.post('/api/tournaments/:id/primary-entry', verifyToken, async (req, res) => {
   try {
-    const accessState = await ensureTournamentParticipationAccess(req.params.id, req.user);
-
-    if (accessState.access.predictionsLocked) {
-      throw createHttpError(403, 'Primary entry selection is locked for this tournament');
-    }
+    await ensureTournamentParticipationAccess(req.params.id, req.user);
 
     const scopeKey = String(req.body.scopeKey || '').trim() || TOURNAMENT_SCOPE_KEY;
     await validatePrimaryEntryScopeSelection({
@@ -3283,7 +3245,6 @@ app.get('/api/leagues/invite/:joinCode', optionalAuth, async (req, res) => {
             nameEs: true,
             accessType: true,
             status: true,
-            closingDate: true,
             ...(req.user?.id
               ? {
                   members: {

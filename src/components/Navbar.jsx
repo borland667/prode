@@ -21,17 +21,6 @@ import { get } from '../utils/api';
 import { getLocalizedName, getModeLabel } from '../utils/tournament';
 import { Button, DisplayText, Panel, Pill } from './ui/DesignSystem';
 
-function formatClosingDate(dateValue, formatDate, fallbackLabel) {
-  if (!dateValue) {
-    return fallbackLabel;
-  }
-
-  return formatDate(dateValue, {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 function NavDropdown({
   dropdownId,
   icon,
@@ -157,7 +146,7 @@ export default function Navbar() {
   const [navCollections, setNavCollections] = useState({ tournaments: [], leagues: [] });
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { language, setLanguage, t, formatDate, formatNumber } = useLanguage();
+  const { language, setLanguage, t, formatNumber } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -204,7 +193,6 @@ export default function Navbar() {
     { value: 'it', label: t('nav.languages.it'), shortLabel: 'IT' },
     { value: 'nl', label: t('nav.languages.nl'), shortLabel: 'NL' },
   ];
-  const featuredClosingDate = formatClosingDate(featuredTournament?.closingDate, formatDate, t('common.tbd'));
   const featuredModeLabel = featuredTournament?.mode
     ? getModeLabel(featuredTournament.mode, language)
     : '--';
@@ -217,7 +205,6 @@ export default function Navbar() {
           accent: true,
         },
         { label: t('home.currentMode'), value: featuredModeLabel },
-        { label: t('tournament.closingDate'), value: featuredClosingDate },
         {
           label: t('tournament.participants'),
           value: formatNumber(featuredTournament.participantCount || 0),
@@ -247,12 +234,12 @@ export default function Navbar() {
         title: getLocalizedName(entry, language, entry.name),
         subtitle: isFeatured
           ? `${t('nav.featured')} • ${modeLabel}`
-          : `${accessLabel} • ${formatClosingDate(entry.closingDate, formatDate, t('common.tbd'))}`,
+          : `${accessLabel} • ${modeLabel}`,
         status: entry.status,
         accessType: entry.accessType,
       };
     });
-  }, [availableTournaments, featuredTournament?.id, formatDate, language, t]);
+  }, [availableTournaments, featuredTournament?.id, language, t]);
 
   const leagueQuickLinks = useMemo(
     () =>
