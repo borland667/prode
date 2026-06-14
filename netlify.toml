@@ -3,6 +3,16 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Pin runtime versions for the (now-secondary) Netlify-side build path.
+# The primary deploy path is the GitHub Actions `deploy-production` job in
+# `.github/workflows/ci.yml`, which runs `netlify deploy --prod` from a
+# pinned Node 24.1.0 runner. Keeping these here is defence-in-depth so a
+# stray Netlify auto-build does not silently regress on a newer image
+# (the June 2026 `noble` rollout took our auto-deploys offline for 7 weeks
+# before this pipeline existed).
+[build.environment]
+  NODE_VERSION = "24.1.0"
+
 [[redirects]]
   from = "/api/*"
   # Function must not be named "api": it collides with the /api source directory
