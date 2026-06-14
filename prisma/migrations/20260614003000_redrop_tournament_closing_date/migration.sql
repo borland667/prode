@@ -1,0 +1,13 @@
+-- Redrop of "Tournament"."closingDate".
+--
+-- The original drop migration (20260614000000_drop_tournament_closing_date)
+-- was applied to production while the deployed Netlify Lambda still held a
+-- pre-merge bundle that selected the column in prisma.tournament.findMany.
+-- That race caused 500s on /api/tournaments?... until the column was
+-- restored manually as a hotfix. This migration finishes the deprecation
+-- once the new Lambda (which no longer references closingDate) is live.
+--
+-- IF EXISTS keeps the migration idempotent in environments where the
+-- column was never restored (e.g. local dev databases that ran the
+-- original drop migration cleanly).
+ALTER TABLE "Tournament" DROP COLUMN IF EXISTS "closingDate";

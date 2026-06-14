@@ -741,6 +741,26 @@ Current automation contract:
 
 This keeps the migration path explicit and checked-in while allowing repositories without configured production secrets to keep using the same CI workflow safely.
 
+### Destructive Migrations And The Deploy Race
+
+CI's `migrate-production` job and Netlify's build are independent
+triggers on the same `main` push event. There is no ordering
+guarantee between "schema is migrated" and "new Lambda bundle is
+serving traffic." For backward-compatible changes (`ADD COLUMN`
+nullable, new tables) the race is harmless. For destructive
+changes it is not: an incompatible drop can land in the DB while
+the live Lambda still selects the column, returning 500s until
+Netlify catches up.
+
+Use a two-step pattern for destructive changes (see §3 of
+`AGENTS.md`):
+
+1. ship code that no longer references the column, merge, and
+   confirm the new Lambda is live
+2. ship the destructive Prisma migration in a follow-up PR so CI
+   only drops the column once the deployed bundle has stopped
+   reading it
+
 ## 16. Current Architectural Gaps
 
 The main outstanding architectural work is:

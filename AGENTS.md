@@ -73,6 +73,28 @@ Rules:
 - never make undocumented schema changes
 - production migrations should run from GitHub Actions on `main` using the `PRODUCTION_DATABASE_URL` GitHub secret
 - production migration automation must be secret-gated and skip cleanly when the required secret is not configured
+- never apply production migrations from a local machine; the CI job is the only supported path so that migrations and the deployed Lambda bundle stay in lockstep
+
+### Destructive Schema Changes
+
+`DROP COLUMN`, `DROP TABLE`, renames, and type changes that are not
+backward compatible must follow a two-step pattern so the deployed
+Lambda is never out of sync with the live schema:
+
+1. **PR A — stop using the column.** Ship code that no longer reads
+   or writes the affected column. Schema and migrations are
+   unchanged in this PR. Merge to `main`, wait for the new Lambda
+   to deploy on Netlify, and verify the live `/api/...` endpoints
+   no longer reference the column.
+2. **PR B — drop the column.** Add the destructive Prisma migration
+   in a follow-up PR. When CI runs `db:migrate:deploy` on this PR,
+   the live Lambda is already on the column-free build, so the drop
+   does not break in-flight requests.
+
+Symmetric guidance applies to adding required columns: ship the
+migration first (column added as nullable or with a default), wait
+for the migrate job to finish, and only then ship the code that
+treats the column as required.
 
 ## 4. API And Data Safety
 
