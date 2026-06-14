@@ -17,6 +17,10 @@ import {
   resolveMatchParticipants,
   sortGroups,
 } from '../utils/tournament';
+import {
+  computeGroupStandings,
+  computePredictedGroupStandings,
+} from '../utils/standings';
 
 export default function Tournament() {
   const { id } = useParams();
@@ -28,6 +32,9 @@ export default function Tournament() {
   const [tournament, setTournament] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [hasPredictions, setHasPredictions] = useState(false);
+  const [userPredictions, setUserPredictions] = useState(null);
+  const [activeView, setActiveView] = useState('groups');
+  const [standingsView, setStandingsView] = useState('actual');
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -60,6 +67,7 @@ export default function Tournament() {
         setTournament(tournamentData);
         setLeagues(leagueData || []);
         setPrimaryEntry(primaryEntryData);
+        setUserPredictions(predictionsData);
         setHasPredictions(
           Boolean(
             predictionsData?.groupPredictions?.length || predictionsData?.knockoutPredictions?.length
@@ -295,6 +303,19 @@ export default function Tournament() {
       (round.matches || []).map((match) => [match.id, match.winner || ''])
     )
   );
+  const groupStageMatches = groupStageRound?.matches || [];
+  const standingsByGroupId = new Map(
+    groups.map((group) => [group.id, computeGroupStandings(group, groupStageMatches)])
+  );
+  const userGroupPredictionMap = userPredictions?.groupPredictionMap || {};
+  const predictedStandingsByGroupId = new Map(
+    groups.map((group) => [
+      group.id,
+      computePredictedGroupStandings(group, userGroupPredictionMap[group.id] || null),
+    ])
+  );
+  const canShowMyPicks = Boolean(user && tournament.access?.canViewPredictions);
+  const knockoutTabAvailable = rounds.length > 0;
   const statusLabel = t(`tournament.${tournament.status}`) !== `tournament.${tournament.status}`
     ? t(`tournament.${tournament.status}`)
     : tournament.status;
@@ -629,6 +650,39 @@ export default function Tournament() {
           </section>
         ) : null}
 
+        <div className="tournament-view-tabs" role="tablist" aria-label={t('tournament.tournamentDetails')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === 'groups'}
+            className={`tournament-view-tabs__tab ${activeView === 'groups' ? 'is-active' : ''}`}
+            onClick={() => setActiveView('groups')}
+          >
+            {t('tournament.groups')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === 'standings'}
+            className={`tournament-view-tabs__tab ${activeView === 'standings' ? 'is-active' : ''}`}
+            onClick={() => setActiveView('standings')}
+          >
+            {t('tournament.standings')}
+          </button>
+          {knockoutTabAvailable ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === 'knockout'}
+              className={`tournament-view-tabs__tab ${activeView === 'knockout' ? 'is-active' : ''}`}
+              onClick={() => setActiveView('knockout')}
+            >
+              {t('tournament.knockout')}
+            </button>
+          ) : null}
+        </div>
+
+        {activeView === 'groups' ? (
         <section className="tournament-section">
           <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
             <div className="tournament-section__header tournament-section__header--split">
@@ -780,6 +834,137 @@ export default function Tournament() {
             </div>
           </Panel>
         </section>
+        ) : null}
+
+        {activeView === 'standings' ? (
+        <section className="tournament-section">
+          <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
+            <div className="tournament-section__header tournament-section__header--split">
+              <div className="tournament-section__title-group">
+                <Pill className="text-emerald-200">
+                  {t('tournament.standings')}
+                </Pill>
+                <DisplayText as="h2" className="text-4xl text-white">
+                  {t('tournament.standings')}
+                </DisplayText>
+              </div>
+              {canShowMyPicks ? (
+                <div className="tournament-standings-toggle" role="tablist" aria-label={t('tournament.standings')}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={standingsView === 'actual'}
+                    className={`tournament-standings-toggle__btn ${standingsView === 'actual' ? 'is-active' : ''}`}
+                    onClick={() => setStandingsView('actual')}
+                  >
+                    {t('tournament.standingsViewActual')}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={standingsView === 'picks'}
+                    className={`tournament-standings-toggle__btn ${standingsView === 'picks' ? 'is-active' : ''}`}
+                    onClick={() => setStandingsView('picks')}
+                  >
+                    {t('tournament.standingsViewPicks')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {standingsView === 'picks' && canShowMyPicks ? (
+              <p className="tournament-standings-note">
+                {t('tournament.standingsPicksNote')}
+              </p>
+            ) : null}
+
+            <div className="tournament-standings-grid">
+              {groups.map((group) => {
+                const showPicks = standingsView === 'picks' && canShowMyPicks;
+                const rows = showPicks
+                  ? predictedStandingsByGroupId.get(group.id) || []
+                  : standingsByGroupId.get(group.id) || [];
+                return (
+                  <Panel
+                    key={group.id}
+                    padding="compact"
+                    radius="xl"
+                    className="tournament-standings-card"
+                  >
+                    <div className="tournament-standings-card__header">
+                      <Pill compact className="text-emerald-200">{group.name}</Pill>
+                    </div>
+                    <div className="tournament-standings-table-wrap">
+                      <table className="tournament-standings-table">
+                        <thead>
+                          <tr>
+                            <th scope="col" className="tournament-standings-table__rank-col">
+                              {t('tournament.standingsTable.rank')}
+                            </th>
+                            <th scope="col" className="tournament-standings-table__team-col">
+                              {t('tournament.standingsTable.team')}
+                            </th>
+                            <th scope="col" abbr={t('tournament.standingsTable.playedFull')}>{t('tournament.standingsTable.played')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.wonFull')}>{t('tournament.standingsTable.won')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.drawnFull')}>{t('tournament.standingsTable.drawn')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.lostFull')}>{t('tournament.standingsTable.lost')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.goalsForFull')}>{t('tournament.standingsTable.goalsFor')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.goalsAgainstFull')}>{t('tournament.standingsTable.goalsAgainst')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.goalDiffFull')}>{t('tournament.standingsTable.goalDiff')}</th>
+                            <th scope="col" abbr={t('tournament.standingsTable.pointsFull')} className="tournament-standings-table__points-col">
+                              {t('tournament.standingsTable.points')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row, index) => {
+                            const dash = '—';
+                            const rankNumber = showPicks
+                              ? row.predictedRank ?? index + 1
+                              : index + 1;
+                            const goalDiff = !showPicks && row.goalDiff > 0
+                              ? `+${formatNumber(row.goalDiff)}`
+                              : !showPicks
+                                ? formatNumber(row.goalDiff)
+                                : dash;
+                            return (
+                              <tr key={row.teamId} className="tournament-standings-table__row">
+                                <td className="tournament-standings-table__rank-col">
+                                  {formatNumber(rankNumber)}
+                                </td>
+                                <td className="tournament-standings-table__team-col">
+                                  <span className="tournament-standings-table__team-name">
+                                    {getLocalizedName(row.team, language, row.team.name)}
+                                  </span>
+                                  {row.team.code ? (
+                                    <span className="tournament-standings-table__team-code">
+                                      {row.team.code}
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td>{showPicks ? dash : formatNumber(row.played)}</td>
+                                <td>{showPicks ? dash : formatNumber(row.won)}</td>
+                                <td>{showPicks ? dash : formatNumber(row.drawn)}</td>
+                                <td>{showPicks ? dash : formatNumber(row.lost)}</td>
+                                <td>{showPicks ? dash : formatNumber(row.goalsFor)}</td>
+                                <td>{showPicks ? dash : formatNumber(row.goalsAgainst)}</td>
+                                <td>{goalDiff}</td>
+                                <td className="tournament-standings-table__points-col">
+                                  {showPicks ? dash : formatNumber(row.points)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Panel>
+                );
+              })}
+            </div>
+          </Panel>
+        </section>
+        ) : null}
 
         <section className="tournament-section">
           <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
@@ -857,7 +1042,7 @@ export default function Tournament() {
           </Panel>
         </section>
 
-        {rounds.length ? (
+        {activeView === 'knockout' && rounds.length ? (
           <section className="tournament-section">
             <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
               <div className="tournament-section__header tournament-section__header--split">
