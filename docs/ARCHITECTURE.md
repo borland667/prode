@@ -776,6 +776,16 @@ Notes:
 - Source of truth for both frontend (`VITE_*`) and backend runtime env vars is Netlify's project env, not GitHub Actions secrets. GitHub secrets only carry the values needed to authenticate the deploy itself (`NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`) plus `PRODUCTION_DATABASE_URL` for the migrate job.
 - Netlify's git auto-deploy is disabled (`stop_builds: true`) so the only deploy path is GitHub Actions. `[build.environment] NODE_VERSION = "24.1.0"` is still pinned in `netlify.toml` for defence in depth if auto-deploys are ever re-enabled.
 
+#### `VITE_*` env vars must not be marked secret
+
+Netlify lets you mark an env var as containing secret values. Secret env vars are never exposed during a build — they only reach Functions at request time. That breaks any `VITE_*` value, because Vite *only* reads env at build time. A silent regression we hit during this work: the bundle shipped with empty `VITE_POSTHOG_KEY`, `VITE_ANALYTICS_ENABLED`, `VITE_ANALYTICS_PROVIDER`, and `VITE_POSTHOG_HOST` even though all four were set on the Netlify project, because all four had been flagged secret. PostHog analytics were effectively dead in prod with no error.
+
+Operational rules:
+
+- Any env var prefixed `VITE_` must be a regular (non-secret) Netlify env var. They are meant to be in the public browser bundle by design (PostHog uses a public client-side key, analytics flag is a boolean, etc.).
+- Backend-only secrets (`DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_SECRET`, `RESULTS_IMPORT_API_KEY`) stay marked secret. They are read from `process.env` by the Lambda at request time and never need to appear in a build.
+- Quick check during CI debugging: `netlify env:list --context production --plain | grep '^VITE_'`. If any value is masked with `****`, that variable is incorrectly flagged secret.
+
 ### Destructive Migrations And The Deploy Race
 
 CI's `migrate-production` job and the deploy step are sequenced in the

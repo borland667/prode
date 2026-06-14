@@ -122,9 +122,34 @@ Required GitHub secrets:
 - `NETLIFY_AUTH_TOKEN` (gates deploy)
 - `NETLIFY_SITE_ID` (gates deploy)
 
+These three are the *only* env values that live in GitHub repo secrets.
+Everything else needed by the build or runtime — `DATABASE_URL`,
+`JWT_SECRET`, `SITE_URL`, `GOOGLE_*`, `RESULTS_IMPORT_API_KEY`, and the
+`VITE_*` family — lives in the Netlify project env. The deploy job
+shells out to `netlify deploy --prod --build`, which loads those values
+into the Vite build and into the Functions runtime.
+
 If `NETLIFY_AUTH_TOKEN` or `NETLIFY_SITE_ID` is missing, the deploy
-job is skipped cleanly; the workflow stays green, and Netlify's own
-git auto-deploy (still enabled as a fallback) takes over.
+job is skipped cleanly; the workflow stays green. Netlify's git
+auto-deploy is disabled (`stop_builds: true`), so a skipped deploy
+means no production update — never let the workflow stay green and
+silent in that state.
+
+#### `VITE_*` env vars must not be marked secret in Netlify
+
+Vite reads env vars at build time only. Netlify's "secret" flag hides
+the value from the build environment (it is only injected into
+Functions at request time). Marking a `VITE_*` value as secret is
+therefore a foot-gun: the build silently emits an empty string and
+the deployed bundle ships with that feature broken — analytics, the
+PostHog client, the Google client id check, etc.
+
+Rule: every `VITE_*` env var in Netlify must be a regular env var.
+Backend-only secrets (`DATABASE_URL`, `JWT_SECRET`,
+`GOOGLE_CLIENT_SECRET`, `RESULTS_IMPORT_API_KEY`) should stay marked
+secret. If you ever need to audit, run
+`netlify env:list --context production --plain | grep '^VITE_'` —
+any masked value (`****`) is a misconfiguration.
 
 ## 4. API And Data Safety
 
