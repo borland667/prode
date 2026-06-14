@@ -760,7 +760,7 @@ Pipeline contract (`.github/workflows/ci.yml`):
 | `check-production-migrate` | push to `main` | gates the migrate job on `PRODUCTION_DATABASE_URL` |
 | `migrate-production` | push to `main` (when gated true) | `npm run db:migrate:deploy` + `npm run db:seed` |
 | `check-production-deploy` | push to `main` | gates the deploy job on `NETLIFY_AUTH_TOKEN` + `NETLIFY_SITE_ID` |
-| `deploy-production` | push to `main` (when gated true) | builds, generates Prisma client, `netlify deploy --prod --skip-functions-cache`, then smoke-checks the live API |
+| `deploy-production` | push to `main` (when gated true) | `npm ci` (postinstall regenerates Prisma client), `netlify deploy --prod --build --skip-functions-cache` (Netlify build injects `VITE_*` project env into the bundle), then smoke-checks the live API |
 
 Required GitHub secrets:
 
@@ -770,9 +770,11 @@ Required GitHub secrets:
 
 Notes:
 
+- `--build` is mandatory: it runs `netlify build` which loads the Netlify project env vars into the Vite build, so `VITE_*` values (PostHog key, analytics flags, Google client id, etc.) are baked into the deployed bundle. Without it we would silently ship a bundle with empty `VITE_*` values.
 - `--skip-functions-cache` is mandatory: the older "Deploying functions from cache" path can publish a function bundle whose Prisma client predates the current schema.
 - The deploy job runs a 5-attempt curl smoke check against `/api/tournaments?status=active,upcoming` and fails the CI run if the live API does not 200.
-- Netlify's git auto-deploy remains enabled as a fallback. With `[build.environment] NODE_VERSION = "24.1.0"` pinned in `netlify.toml`, future image rollouts have one fewer variable; but the GitHub Actions path is the source of truth.
+- Source of truth for both frontend (`VITE_*`) and backend runtime env vars is Netlify's project env, not GitHub Actions secrets. GitHub secrets only carry the values needed to authenticate the deploy itself (`NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`) plus `PRODUCTION_DATABASE_URL` for the migrate job.
+- Netlify's git auto-deploy is disabled (`stop_builds: true`) so the only deploy path is GitHub Actions. `[build.environment] NODE_VERSION = "24.1.0"` is still pinned in `netlify.toml` for defence in depth if auto-deploys are ever re-enabled.
 
 ### Destructive Migrations And The Deploy Race
 
