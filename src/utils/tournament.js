@@ -103,7 +103,15 @@ export function getSportLabel(sport, language = 'en') {
 
 export function getModeRuleSections({ mode, rules, language = 'en', t }) {
   const modeKey = mode?.key || 'classic_argentinian_prode';
-  const knockoutRounds = rules?.knockout || [];
+  // Defensive: the API filters group_stage out of `rules.knockout`, but if a
+  // stale or partial payload ever sneaks it in we must not render it like a
+  // knockout round (its scoring follows the 4/3/2/1 group-standings model,
+  // not pointsPerCorrect).
+  const knockoutRounds = (rules?.knockout || []).filter(
+    (round) => round?.round !== 'group_stage'
+  );
+  const groupStageRules = rules?.groupStage;
+  const groupCount = rules?.groupStageSummary?.groups;
 
   switch (modeKey) {
     case 'classic_argentinian_prode':
@@ -119,6 +127,10 @@ export function getModeRuleSections({ mode, rules, language = 'en', t }) {
         primary: {
           id: 'group-stage',
           title: t('home.groupStage'),
+          lead: groupStageRules
+            ? `${groupStageRules.exactOrder} ${t('home.pointsPerStandings')}`
+            : '',
+          subLead: groupCount ? `${groupCount} ${t('home.groupsInStage')}` : '',
           lines: [
             t('home.groupStageRuleExact'),
             t('home.groupStageRuleInverted'),

@@ -7,10 +7,11 @@
 //
 // The module is intentionally pure: it accepts a prisma client and a
 // fetcher so the caller (the Express endpoint at runtime, the test suite
-// in CI) can wire it as needed. The importer writes group standings and
-// knockout-match winners directly through prisma but does not recompute
-// scores; the caller invokes the existing persistTournamentScores helper
-// when the importer reports new writes.
+// in CI) can wire it as needed. The importer writes group standings,
+// per-match final scores, and (when known) match winners directly through
+// prisma but does not recompute leaderboard scores; the caller invokes the
+// existing persistTournamentScores helper when the importer reports new
+// writes.
 
 const DEFAULT_BASE_URL = 'https://api.football-data.org/v4';
 
@@ -39,6 +40,8 @@ const KNOCKOUT_STAGES = [
   'third_place_match',
   'final',
 ];
+
+const FINISHED_STAGES = ['group_stage', ...KNOCKOUT_STAGES];
 
 function normalizeStage(stage) {
   if (!stage) {
@@ -148,23 +151,40 @@ async function importFootballDataResults({
   );
   const roundsByName = new Map(tournament.rounds.map((round) => [round.name, round]));
 
-  // Build an index of knockout matches whose participants are already
-  // resolved so we can match them to feed entries by team pair. Matches
-  // whose selected team ids are still null cannot be matched yet and are
-  // reported back as "unresolved".
-  const knockoutMatchIndex = new Map();
+  // Build an index of matches keyed by `${round}::${sortedTeamPair}` so we
+  // can resolve feed entries to DB rows by team pair regardless of the
+  // home/away ordering. Knockout matches use the resolved selectedTeamIds;
+  // group_stage matches are seeded with team codes in homeLabel/awayLabel,
+  // so we map those back to team ids via teamsByCode. Matches whose
+  // participants we cannot resolve are reported as "unresolved" rather
+  // than silently skipped.
+  const matchIndex = new Map();
   const unresolvedKnockoutMatches = [];
   for (const round of tournament.rounds) {
-    if (!KNOCKOUT_STAGES.includes(round.name)) {
+    if (!FINISHED_STAGES.includes(round.name)) {
       continue;
     }
     for (const match of round.matches || []) {
-      if (!match.selectedHomeTeamId || !match.selectedAwayTeamId) {
-        unresolvedKnockoutMatches.push({ matchId: match.id, round: round.name });
+      let homeTeamId = match.selectedHomeTeamId;
+      let awayTeamId = match.selectedAwayTeamId;
+      if (round.name === 'group_stage') {
+        const homeFromLabel = match.homeLabel
+          ? teamsByCode.get(String(match.homeLabel).toUpperCase())
+          : null;
+        const awayFromLabel = match.awayLabel
+          ? teamsByCode.get(String(match.awayLabel).toUpperCase())
+          : null;
+        homeTeamId = homeTeamId || homeFromLabel?.id || null;
+        awayTeamId = awayTeamId || awayFromLabel?.id || null;
+      }
+      if (!homeTeamId || !awayTeamId) {
+        if (KNOCKOUT_STAGES.includes(round.name)) {
+          unresolvedKnockoutMatches.push({ matchId: match.id, round: round.name });
+        }
         continue;
       }
-      const key = `${round.name}::${pairKey(match.selectedHomeTeamId, match.selectedAwayTeamId)}`;
-      knockoutMatchIndex.set(key, { match, round });
+      const key = `${round.name}::${pairKey(homeTeamId, awayTeamId)}`;
+      matchIndex.set(key, { match, round });
     }
   }
 
@@ -236,7 +256,7 @@ async function importFootballDataResults({
       continue;
     }
     const roundName = normalizeStage(externalMatch.stage);
-    if (!roundName || !KNOCKOUT_STAGES.includes(roundName)) {
+    if (!roundName || !FINISHED_STAGES.includes(roundName)) {
       continue;
     }
     if (!roundsByName.has(roundName)) {
@@ -255,7 +275,7 @@ async function importFootballDataResults({
     }
 
     const key = `${roundName}::${pairKey(homeTeam.id, awayTeam.id)}`;
-    const dbEntry = knockoutMatchIndex.get(key);
+    const dbEntry = matchIndex.get(key);
     if (!dbEntry) {
       matchUnmatched.push({
         stage: externalMatch.stage,
@@ -277,11 +297,14 @@ async function importFootballDataResults({
       winnerCode = homeTeam.code;
     } else if (externalWinner === 'AWAY_TEAM') {
       winnerCode = awayTeam.code;
-    } else {
-      // DRAW after extra time + penalties is reported as winner=null with
-      // a penalties block populated. football-data.org sets winner via
-      // shootout outcome on most finals, but if the field really is null
-      // the match cannot have a winner from this feed alone.
+    }
+
+    // Knockout matches must declare a winner; if the feed reports `null`
+    // (a draw with no shootout, or an unsupported outcome) we cannot
+    // resolve downstream slots so we surface the row as "unmatched"
+    // instead of silently persisting an inconsistent state. Group_stage
+    // matches are allowed to end in a draw (winner = null).
+    if (!winnerCode && KNOCKOUT_STAGES.includes(roundName)) {
       matchUnmatched.push({
         stage: externalMatch.stage,
         homeTla: homeTeam.code,
@@ -291,9 +314,15 @@ async function importFootballDataResults({
       continue;
     }
 
+    const fullTime = externalMatch.score?.fullTime || {};
+    const homeScore = Number.isInteger(fullTime.home) ? fullTime.home : null;
+    const awayScore = Number.isInteger(fullTime.away) ? fullTime.away : null;
+
     matchWrites.push({
       matchId: dbEntry.match.id,
       winner: winnerCode,
+      homeScore,
+      awayScore,
     });
   }
 
@@ -315,6 +344,8 @@ async function importFootballDataResults({
           where: { id: write.matchId },
           data: {
             winner: write.winner,
+            homeScore: write.homeScore,
+            awayScore: write.awayScore,
             status: 'finished',
           },
         })
@@ -354,4 +385,5 @@ module.exports = {
   importFootballDataResults,
   STAGE_TO_ROUND_NAME,
   KNOCKOUT_STAGES,
+  FINISHED_STAGES,
 };

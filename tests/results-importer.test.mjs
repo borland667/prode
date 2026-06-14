@@ -30,7 +30,30 @@ function buildTournamentFixture({ groupBHasResult = true } = {}) {
   ];
 
   const rounds = [
-    { id: 'round-group', name: 'group_stage', matches: [] },
+    {
+      id: 'round-group',
+      name: 'group_stage',
+      matches: [
+        {
+          id: 'match-gs-mex-rsa',
+          status: 'scheduled',
+          winner: null,
+          homeLabel: 'MEX',
+          awayLabel: 'RSA',
+          selectedHomeTeamId: null,
+          selectedAwayTeamId: null,
+        },
+        {
+          id: 'match-gs-cze-kor',
+          status: 'scheduled',
+          winner: null,
+          homeLabel: 'CZE',
+          awayLabel: 'KOR',
+          selectedHomeTeamId: null,
+          selectedAwayTeamId: null,
+        },
+      ],
+    },
     {
       id: 'round-r32',
       name: 'round_of_32',
@@ -39,6 +62,8 @@ function buildTournamentFixture({ groupBHasResult = true } = {}) {
           id: 'match-r32-1',
           status: 'scheduled',
           winner: null,
+          homeLabel: '1A',
+          awayLabel: '2B',
           selectedHomeTeamId: 'team-mex',
           selectedAwayTeamId: 'team-bih',
         },
@@ -46,6 +71,8 @@ function buildTournamentFixture({ groupBHasResult = true } = {}) {
           id: 'match-r32-2',
           status: 'finished',
           winner: 'KOR',
+          homeLabel: '1B',
+          awayLabel: '2A',
           selectedHomeTeamId: 'team-kor',
           selectedAwayTeamId: 'team-qat',
         },
@@ -136,12 +163,29 @@ function buildMatchesPayload() {
   return {
     matches: [
       {
+        // group_stage match that resolves to a DB row via homeLabel/awayLabel
+        // codes → should write scores + winner
+        status: 'FINISHED',
+        stage: 'GROUP_STAGE',
+        homeTeam: { tla: 'MEX', name: 'Mexico' },
+        awayTeam: { tla: 'RSA', name: 'South Africa' },
+        score: { winner: 'HOME_TEAM', fullTime: { home: 3, away: 1 } },
+      },
+      {
+        // group_stage draw → should still record scores with winner=null
+        status: 'FINISHED',
+        stage: 'GROUP_STAGE',
+        homeTeam: { tla: 'CZE', name: 'Czechia' },
+        awayTeam: { tla: 'KOR', name: 'Korea Republic' },
+        score: { winner: null, fullTime: { home: 2, away: 2 } },
+      },
+      {
         // matches the resolved DB match in round_of_32 → should write a winner
         status: 'FINISHED',
         stage: 'LAST_32',
         homeTeam: { tla: 'MEX', name: 'Mexico' },
         awayTeam: { tla: 'BIH', name: 'Bosnia and Herzegovina' },
-        score: { winner: 'HOME_TEAM' },
+        score: { winner: 'HOME_TEAM', fullTime: { home: 2, away: 0 } },
       },
       {
         // matches the already-finished DB match → should be skipped
@@ -149,7 +193,7 @@ function buildMatchesPayload() {
         stage: 'LAST_32',
         homeTeam: { tla: 'KOR', name: 'Korea Republic' },
         awayTeam: { tla: 'QAT', name: 'Qatar' },
-        score: { winner: 'HOME_TEAM' },
+        score: { winner: 'HOME_TEAM', fullTime: { home: 1, away: 0 } },
       },
       {
         // no resolved DB participants in round_of_16 → unmatched
@@ -157,7 +201,7 @@ function buildMatchesPayload() {
         stage: 'LAST_16',
         homeTeam: { tla: 'MEX', name: 'Mexico' },
         awayTeam: { tla: 'CAN', name: 'Canada' },
-        score: { winner: 'AWAY_TEAM' },
+        score: { winner: 'AWAY_TEAM', fullTime: { home: 0, away: 1 } },
       },
     ],
   };
@@ -220,23 +264,44 @@ test('importFootballDataResults updates knockout winners only for resolved, unfi
     logger: { log: () => {} },
   });
 
-  assert.equal(summary.matches.written, 1, 'only the unfinished R32 match should be written');
+  assert.equal(
+    summary.matches.written,
+    3,
+    'two group-stage matches and one R32 winner should be written'
+  );
   assert.equal(summary.matches.skipped, 1, 'the already-finished R32 match should be skipped');
   assert.equal(summary.matches.unmatched, 1, 'the R16 match with unresolved slots should be unmatched');
   assert.equal(summary.matches.unresolvedSlots, 1, 'one unresolved knockout slot should be reported');
 
-  assert.equal(prisma.__updated.length, 1);
-  assert.deepEqual(prisma.__updated[0], {
-    where: { id: 'match-r32-1' },
-    data: { winner: 'MEX', status: 'finished' },
+  const updateById = new Map(prisma.__updated.map((entry) => [entry.where.id, entry.data]));
+  assert.deepEqual(updateById.get('match-gs-mex-rsa'), {
+    winner: 'MEX',
+    homeScore: 3,
+    awayScore: 1,
+    status: 'finished',
+  });
+  assert.deepEqual(
+    updateById.get('match-gs-cze-kor'),
+    { winner: null, homeScore: 2, awayScore: 2, status: 'finished' },
+    'group-stage draws should record scores with winner=null'
+  );
+  assert.deepEqual(updateById.get('match-r32-1'), {
+    winner: 'MEX',
+    homeScore: 2,
+    awayScore: 0,
+    status: 'finished',
   });
 });
 
 test('importFootballDataResults runs no DB writes when feed returns nothing new', async () => {
   const fixture = buildTournamentFixture({ groupBHasResult: true });
-  // Both groups already have a stored result and both R32 matches are
-  // marked finished, so the feed has nothing new to write.
+  // Both groups already have a stored result, every group-stage match is
+  // already marked finished, and both R32 matches are marked finished too,
+  // so the feed has nothing new to write.
   fixture.groupResults.push({ groupId: 'group-a', first: 'MEX', second: 'RSA', third: 'KOR' });
+  for (const match of fixture.rounds[0].matches) {
+    match.status = 'finished';
+  }
   fixture.rounds[1].matches[0].status = 'finished';
   fixture.rounds[1].matches[0].winner = 'MEX';
 

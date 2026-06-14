@@ -105,6 +105,8 @@ model Match {
   selectedHomeTeamId   String?
   selectedAwayTeamId   String?
   winner               String?
+  homeScore            Int?
+  awayScore            Int?
   status               String               @default("scheduled")
   matchDate            DateTime?
   predictionsClosed    Boolean              @default(false)

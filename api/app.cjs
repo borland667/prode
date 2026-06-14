@@ -466,6 +466,8 @@ function serializeRounds(rounds, lockedMatchIds = new Set()) {
       selectedHomeTeamId: match.selectedHomeTeamId || null,
       selectedAwayTeamId: match.selectedAwayTeamId || null,
       winner: match.winner,
+      homeScore: match.homeScore ?? null,
+      awayScore: match.awayScore ?? null,
       status: match.status,
       matchDate: match.matchDate,
       predictionsClosed: Boolean(match.predictionsClosed),

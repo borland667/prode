@@ -11,6 +11,7 @@ import {
   getLocalizedName,
   getKnockoutRounds,
   getModeLabel,
+  getModeRuleSections,
   getRoundLabel,
   getSportLabel,
   resolveMatchParticipants,
@@ -256,6 +257,12 @@ export default function Tournament() {
     (round) => round.name === 'group_stage'
   );
   const rounds = getKnockoutRounds(tournament.rounds || []);
+  const ruleSections = getModeRuleSections({
+    mode: tournament.mode,
+    rules: tournament.rules,
+    language,
+    t,
+  });
   const teamMap = buildTeamMap(groups);
   const teamsByCode = Object.fromEntries(
     groups.flatMap((group) =>
@@ -698,38 +705,154 @@ export default function Tournament() {
                         <span className="tournament-group-fixtures__title">
                           {t('common.matches')}
                         </span>
-                        {fixtures.map((match) => (
-                          <div key={match.id} className="tournament-group-fixture">
-                            <span className="tournament-group-fixture__teams">
-                              {getLocalizedName(
-                                teamsByCode[match.homeLabel],
-                                language,
-                                match.homeLabel
-                              )}
-                              <span aria-hidden="true"> vs </span>
-                              {getLocalizedName(
-                                teamsByCode[match.awayLabel],
-                                language,
-                                match.awayLabel
-                              )}
-                            </span>
-                            {match.matchDate ? (
-                              <time dateTime={match.matchDate}>
-                                {formatDate(match.matchDate, {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </time>
-                            ) : null}
-                          </div>
-                        ))}
+                        {fixtures.map((match) => {
+                          const hasScore =
+                            match.homeScore !== null &&
+                            match.homeScore !== undefined &&
+                            match.awayScore !== null &&
+                            match.awayScore !== undefined;
+                          const homeWon = hasScore && match.homeScore > match.awayScore;
+                          const awayWon = hasScore && match.awayScore > match.homeScore;
+                          return (
+                            <div key={match.id} className="tournament-group-fixture">
+                              <span className="tournament-group-fixture__teams">
+                                <span
+                                  className={
+                                    homeWon ? 'tournament-group-fixture__winner' : ''
+                                  }
+                                >
+                                  {getLocalizedName(
+                                    teamsByCode[match.homeLabel],
+                                    language,
+                                    match.homeLabel
+                                  )}
+                                </span>
+                                {hasScore ? (
+                                  <span className="tournament-group-fixture__score">
+                                    {' '}
+                                    {formatNumber(match.homeScore)}
+                                    <span aria-hidden="true"> – </span>
+                                    {formatNumber(match.awayScore)}
+                                    {' '}
+                                  </span>
+                                ) : (
+                                  <span aria-hidden="true"> vs </span>
+                                )}
+                                <span
+                                  className={
+                                    awayWon ? 'tournament-group-fixture__winner' : ''
+                                  }
+                                >
+                                  {getLocalizedName(
+                                    teamsByCode[match.awayLabel],
+                                    language,
+                                    match.awayLabel
+                                  )}
+                                </span>
+                              </span>
+                              <span className="tournament-group-fixture__meta">
+                                {hasScore ? (
+                                  <span className="tournament-group-fixture__status">
+                                    {t('tournament.finalTime')}
+                                  </span>
+                                ) : null}
+                                {match.matchDate ? (
+                                  <time dateTime={match.matchDate}>
+                                    {formatDate(match.matchDate, {
+                                      weekday: 'short',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      timeZoneName: 'short',
+                                    })}
+                                  </time>
+                                ) : null}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : null}
                   </Panel>
                 );
               })}
+            </div>
+          </Panel>
+        </section>
+
+        <section className="tournament-section">
+          <Panel variant="strong" padding="normal" radius="2xl" className="tournament-structure-shell">
+            <div className="tournament-section__header tournament-section__header--split">
+              <div className="tournament-section__title-group">
+                <Pill className="text-emerald-200">
+                  {t('home.scoringRules')}
+                </Pill>
+                <DisplayText as="h2" className="text-4xl text-white">
+                  {t('home.scoringRules')}
+                </DisplayText>
+              </div>
+              {ruleSections?.summary?.note ? (
+                <Pill compact className="text-emerald-200">
+                  {ruleSections.summary.note}
+                </Pill>
+              ) : null}
+            </div>
+            <div className="home-rules-layout">
+              <div className="ds-panel home-rule-card home-rule-card--primary rounded-panel-lg">
+                <h3 className="ds-display home-rule-card__title">
+                  {ruleSections?.primary?.title || t('home.groupStage')}
+                </h3>
+                <div className="home-rule-card__body">
+                  {ruleSections?.primary?.lead ? (
+                    <p className="home-rule-card__line home-rule-card__line--lead">
+                      {ruleSections.primary.lead}
+                    </p>
+                  ) : null}
+                  {ruleSections?.primary?.subLead ? (
+                    <p className="home-rule-card__line">
+                      {ruleSections.primary.subLead}
+                    </p>
+                  ) : null}
+                  {(ruleSections?.primary?.lines || []).map((line) => (
+                    <p key={line} className="home-rule-card__line">
+                      {line}
+                    </p>
+                  ))}
+                  {ruleSections?.primary?.footer ? (
+                    <p className="home-rule-card__footer">
+                      {ruleSections.primary.footer}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="home-knockout-grid">
+                {(ruleSections?.secondary || []).map((section) => (
+                  <div
+                    key={section.id}
+                    className="ds-panel home-rule-card rounded-panel-lg"
+                  >
+                    <h3 className="ds-display home-rule-card__title">
+                      {section.title}
+                    </h3>
+                    <div className="home-rule-card__body">
+                      {section.lines.map((line, index) => (
+                        <p
+                          key={line}
+                          className={`home-rule-card__line ${index === 0 ? 'home-rule-card__line--lead' : ''}`}
+                        >
+                          {line}
+                        </p>
+                      ))}
+                      {section.footer ? (
+                        <p className="home-rule-card__footer">
+                          {section.footer}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </Panel>
         </section>
@@ -782,6 +905,17 @@ export default function Tournament() {
                           teamMap,
                         });
 
+                        const hasScore =
+                          match.homeScore !== null &&
+                          match.homeScore !== undefined &&
+                          match.awayScore !== null &&
+                          match.awayScore !== undefined;
+                        const homeWon = hasScore
+                          ? match.homeScore > match.awayScore
+                          : Boolean(match.winner) && match.winner === matchup.home.teamId;
+                        const awayWon = hasScore
+                          ? match.awayScore > match.homeScore
+                          : Boolean(match.winner) && match.winner === matchup.away.teamId;
                         return (
                           <div
                             key={match.id}
@@ -793,35 +927,47 @@ export default function Tournament() {
                                 {match.matchDate ? (
                                   <time dateTime={match.matchDate}>
                                     {formatDate(match.matchDate, {
+                                      weekday: 'short',
                                       month: 'short',
                                       day: 'numeric',
                                       hour: '2-digit',
                                       minute: '2-digit',
+                                      timeZoneName: 'short',
                                     })}
                                   </time>
                                 ) : null}
                                 <span className="tournament-match-card__status">
-                                  {match.status}
+                                  {hasScore ? t('tournament.finalTime') : match.status}
                                 </span>
                               </div>
                             </div>
 
                             <div className="tournament-match-card__teams">
-                              <div className={`tournament-match-row ${match.winner === matchup.home.teamId ? 'is-winner' : ''}`}>
+                              <div className={`tournament-match-row ${homeWon ? 'is-winner' : ''}`}>
                                 <span className="tournament-match-row__name">
                                   {matchup.home.teamName || matchup.home.slotLabel || match.homeLabel}
                                 </span>
-                                {match.winner === matchup.home.teamId ? (
+                                {hasScore ? (
+                                  <span className="tournament-match-row__score">
+                                    {formatNumber(match.homeScore)}
+                                  </span>
+                                ) : null}
+                                {homeWon ? (
                                   <Pill compact className="tournament-match-row__winner">
                                     {t('tournament.winner')}
                                   </Pill>
                                 ) : null}
                               </div>
-                              <div className={`tournament-match-row ${match.winner === matchup.away.teamId ? 'is-winner' : ''}`}>
+                              <div className={`tournament-match-row ${awayWon ? 'is-winner' : ''}`}>
                                 <span className="tournament-match-row__name">
                                   {matchup.away.teamName || matchup.away.slotLabel || match.awayLabel}
                                 </span>
-                                {match.winner === matchup.away.teamId ? (
+                                {hasScore ? (
+                                  <span className="tournament-match-row__score">
+                                    {formatNumber(match.awayScore)}
+                                  </span>
+                                ) : null}
+                                {awayWon ? (
                                   <Pill compact className="tournament-match-row__winner">
                                     {t('tournament.winner')}
                                   </Pill>

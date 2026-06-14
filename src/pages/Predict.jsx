@@ -21,7 +21,7 @@ import {
 
 export default function Predict() {
   const { id } = useParams();
-  const { language, t, formatNumber } = useLanguage();
+  const { language, t, formatDate, formatNumber } = useLanguage();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -393,6 +393,7 @@ export default function Predict() {
               knockoutWinnerSelections={knockoutWinnerSelections}
               teamMap={teamMap}
               language={language}
+              formatDate={formatDate}
               onSelectSlot={(matchId, side, teamId) => {
                 const current = knockoutPredictions[matchId] || {};
                 const nextPrediction = {
@@ -632,6 +633,7 @@ function RoundStep({
   knockoutWinnerSelections,
   teamMap,
   language,
+  formatDate,
   onSelectSlot,
   onSelect,
   t,
@@ -677,6 +679,22 @@ function RoundStep({
                   </Pill>
                 ) : null}
               </div>
+
+              {match.matchDate ? (
+                <time
+                  dateTime={match.matchDate}
+                  className="block text-xs text-gray-400 mb-3"
+                >
+                  {formatDate(match.matchDate, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZoneName: 'short',
+                  })}
+                </time>
+              ) : null}
 
               {match.winner ? (
                 <p className="text-sm text-gray-300 mb-4">

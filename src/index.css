@@ -1956,6 +1956,37 @@ html.theme-light .nav-dropdown-settings,
   font-weight: 650;
 }
 
+.tournament-group-fixture__winner {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.tournament-group-fixture__score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.tournament-group-fixture__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.tournament-group-fixture__status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.45rem;
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.05rem 0.4rem;
+  text-transform: uppercase;
+}
+
 .tournament-round-header {
   display: flex;
   flex-wrap: wrap;
@@ -2040,6 +2071,21 @@ html.theme-light .nav-dropdown-settings,
 
 .tournament-match-row__winner {
   flex-shrink: 0;
+  color: var(--accent-strong);
+}
+
+.tournament-match-row__score {
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 1.5rem;
+  color: var(--text-main);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+}
+
+.tournament-match-row.is-winner .tournament-match-row__score {
   color: var(--accent-strong);
 }
 

@@ -102,6 +102,9 @@ Working:
 - save knockout results
 - auto-recalculate scores on result save
 - manual score recalculation
+- import group standings, finished group-stage match scores, and
+  knockout winners from football-data.org through
+  `POST /tournaments/:id/import-results`
 
 ### 2.7 World Cup 2026 Support
 

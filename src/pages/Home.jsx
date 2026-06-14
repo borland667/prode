@@ -369,6 +369,16 @@ export default function Home() {
                   {modeRuleSections?.primary?.title || t('home.groupStage')}
                 </h3>
                 <div className="home-rule-card__body">
+                  {modeRuleSections?.primary?.lead ? (
+                    <p className="home-rule-card__line home-rule-card__line--lead">
+                      {modeRuleSections.primary.lead}
+                    </p>
+                  ) : null}
+                  {modeRuleSections?.primary?.subLead ? (
+                    <p className="home-rule-card__line">
+                      {modeRuleSections.primary.subLead}
+                    </p>
+                  ) : null}
                   {(modeRuleSections?.primary?.lines || []).map((line) => (
                     <p key={line} className="home-rule-card__line">
                       {line}

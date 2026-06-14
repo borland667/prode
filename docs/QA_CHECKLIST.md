@@ -325,6 +325,9 @@ Expected:
 - the third-place match resolves the two semifinal losers
 - the final resolves the two semifinal winners
 - World Cup 2026 reports 104 total matches
+- played matches show the final score (e.g. `Mexico 3 – 1 South Africa`)
+  with the winning side highlighted on both the group fixtures list and
+  the knockout cards; unplayed matches still render as `Home vs Away`
 
 ## 19. Prediction Deletion API
 
@@ -384,6 +387,8 @@ Run only when the server has `RESULTS_IMPORT_API_KEY` configured.
 Expected:
 
 - admin-entered group results are never overwritten
+- finished matches (group + knockout) record `homeScore`, `awayScore`, and
+  `status='finished'`; group-stage draws are saved with `winner=null`
 - knockout matches only update when their participants are already resolved
 - score recompute fires only when the importer wrote at least one row
 

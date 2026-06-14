@@ -615,10 +615,13 @@ Safety properties:
   CLI logs missing client-side env vars and exits 0 instead of failing
 - group standings are upserted only when no `GroupResult` exists for
   that group, so admin-entered standings are never overwritten
-- knockout match updates fire only when the DB row has both
-  `selectedHomeTeamId` and `selectedAwayTeamId` populated and the match
-  status is not already `finished`, so admin-entered winners and
-  unresolved bracket slots are left alone
+- group-stage match rows are matched by `homeLabel` / `awayLabel` team
+  codes and store the final score plus winner (a `null` winner is kept
+  for draws); knockout rows are matched by resolved team pair and must
+  declare a winner (feed entries reporting a draw with no shootout are
+  reported as unmatched instead of being persisted)
+- match updates write `homeScore`, `awayScore`, and `status='finished'`,
+  and skip any DB row already marked `finished`
 - recompute via `persistTournamentScores` runs only when the importer
   reports at least one write
 

@@ -5,6 +5,7 @@ import {
   buildRandomPredictionSet,
   getEligibleBestThirdGroups,
   getKnockoutRounds,
+  getModeRuleSections,
   hasBestThirdPlaceSlots,
   resolveMatchParticipants,
   resolveSlot,
@@ -15,6 +16,31 @@ test('getEligibleBestThirdGroups parses knockout labels correctly', () => {
   assert.deepEqual(getEligibleBestThirdGroups('3[A/B/C/D]'), ['A', 'B', 'C', 'D']);
   assert.deepEqual(getEligibleBestThirdGroups('3[c/e/f]'), ['C', 'E', 'F']);
   assert.deepEqual(getEligibleBestThirdGroups('1A'), []);
+});
+
+test('getModeRuleSections never renders group_stage as a knockout card and leads with the group standings prize', () => {
+  const t = (key) => key;
+  const sections = getModeRuleSections({
+    mode: { key: 'classic_argentinian_prode' },
+    rules: {
+      groupStage: { exactOrder: 4 },
+      groupStageSummary: { groups: 12, maxPoints: 48 },
+      totalMaximumPoints: 174,
+      knockout: [
+        // Stale payload: group_stage must never be rendered as a knockout card.
+        { round: 'group_stage', pointsPerCorrect: 0, maxMatches: 72, maxPoints: 0 },
+        { round: 'round_of_32', pointsPerCorrect: 2, maxMatches: 16, maxPoints: 32 },
+      ],
+    },
+    t,
+  });
+
+  assert.deepEqual(
+    sections.secondary.map((section) => section.id),
+    ['round_of_32']
+  );
+  assert.equal(sections.primary.lead, '4 home.pointsPerStandings');
+  assert.equal(sections.primary.subLead, '12 home.groupsInStage');
 });
 
 test('getKnockoutRounds excludes the group_stage round even when it has seeded matches', () => {
