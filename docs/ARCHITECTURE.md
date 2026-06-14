@@ -244,6 +244,11 @@ Tournament access flags returned by the API include:
 - `predictionsLocked`
 - `lockedReason`
 
+`predictionsLocked` is the tournament-wide hard cap (admin-closed,
+finished, or past `closingDate`). Per-match and per-group locking is
+exposed separately on serialized matches and groups via
+`match.predictionLocked` and `group.predictionLocked`; see §7.5.
+
 ### 6.2 League Access
 
 League access is derived from:
@@ -316,6 +321,47 @@ The backend resolves the target scope and removes:
 - the score row for that scope
 
 If the removed scope was the official primary entry, the backend falls back to another available scope when possible.
+
+### 7.5 Prediction Locking
+
+Locking happens at two layers.
+
+**Tournament-wide hard cap.** When `Tournament.status` is `closed` or
+`finished`, or `closingDate` is in the past, `predictionsLocked` is true and
+`POST /api/tournaments/:id/predictions` (and the league equivalent) is
+rejected with 403. This is the same admin-driven kill switch the product
+always had.
+
+**Per-match and per-group locking** (`api/locking.cjs`). When the hard cap
+hasn't fired, individual items still lock based on their own kickoff:
+
+- a knockout match locks the moment `match.matchDate <= now`
+- a group's 1°/2°/3° prediction locks as soon as any group-stage match
+  between two of its teams has kicked off (you can't re-rank a group once
+  any of its games has been played)
+- a match with `matchDate = null` stays open until the importer or admin
+  assigns one
+
+`serializeRounds` and `serializeGroups` attach `predictionLocked: boolean`
+to every match and group in the API response so clients can render those
+tiles read-only.
+
+`savePredictionsForScope` recomputes the lock state on every submit and
+applies these rules:
+
+1. payload entries for locked groups or matches are dropped silently —
+   stale clients can never overwrite a pick once kickoff has passed
+2. existing locked rows are preserved untouched in the DB
+3. only the unlocked rows are deleted and recreated from the filtered
+   payload
+4. progression validation runs against the merged final state (existing
+   locked rows plus newly accepted unlocked picks), so locked SF winners
+   continue to constrain the Final pick
+
+This means the prediction window is genuinely per-match: a user can keep
+editing later rounds after group-stage kickoff, and the importer marking
+matches as finished does not affect locking — only the scheduled kickoff
+time does.
 
 ## 8. Domain Model
 

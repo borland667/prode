@@ -288,6 +288,8 @@ export const PT = {
     complete: 'Concluir',
     incompleteGroups: 'Complete todas as posições obrigatórias de cada grupo',
     incompleteRounds: 'Selecione os vencedores de todos os confrontos',
+    kickoffStarted: 'Jogo começou — palpite bloqueado',
+    groupLocked: 'Grupo bloqueado — o primeiro jogo já começou',
     duplicateGroupTeams: 'Cada posição do grupo deve usar times diferentes',
     groupA: 'Grupo A',
     groupB: 'Grupo B',

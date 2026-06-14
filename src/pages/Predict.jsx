@@ -128,6 +128,9 @@ export default function Predict() {
 
     if (stepConfig.type === 'groups') {
       for (const group of groups) {
+        if (group.predictionLocked) {
+          continue;
+        }
         const prediction = groupPredictions[group.id];
         if (!prediction?.first || !prediction?.second || (requiresThirdPlaceSelections && !prediction?.third)) {
           setError(t('predict.incompleteGroups'));
@@ -144,6 +147,9 @@ export default function Predict() {
 
     if (stepConfig.type === 'round') {
       for (const match of stepConfig.round.matches) {
+        if (match.predictionLocked) {
+          continue;
+        }
         if (!knockoutPredictions[match.id]?.predictedWinner) {
           setError(t('predict.incompleteRounds'));
           return false;
@@ -197,8 +203,35 @@ export default function Predict() {
       teamMap,
     });
 
-    setGroupPredictions(randomPredictions.groupPredictions);
-    setKnockoutPredictions(randomPredictions.knockoutPredictions);
+    // Never overwrite picks for locked groups or matches: the backend would
+    // drop them silently on save, but showing random values for read-only
+    // tiles would still be confusing.
+    const nextGroupPredictions = { ...randomPredictions.groupPredictions };
+    for (const group of groups) {
+      if (group.predictionLocked) {
+        if (groupPredictions[group.id]) {
+          nextGroupPredictions[group.id] = groupPredictions[group.id];
+        } else {
+          delete nextGroupPredictions[group.id];
+        }
+      }
+    }
+
+    const nextKnockoutPredictions = { ...randomPredictions.knockoutPredictions };
+    for (const round of rounds) {
+      for (const match of round.matches || []) {
+        if (match.predictionLocked) {
+          if (knockoutPredictions[match.id]) {
+            nextKnockoutPredictions[match.id] = knockoutPredictions[match.id];
+          } else {
+            delete nextKnockoutPredictions[match.id];
+          }
+        }
+      }
+    }
+
+    setGroupPredictions(nextGroupPredictions);
+    setKnockoutPredictions(nextKnockoutPredictions);
     setCurrentStep(Math.max(steps.length - 1, 0));
     setError('');
     setNotice(t('predict.randomFillDone'));
@@ -475,82 +508,95 @@ function GroupStageStep({ groups, predictions, requiresThirdPlaceSelections, lan
       </p>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {groups.map((group) => (
-          <Panel key={group.id} padding="compact" radius="xl" className="app-card">
-            <h3 className="text-lg font-bold text-emerald-400 mb-4">
-              {group.name}
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  {t('predict.selectFirst')}
-                </label>
-                <select
-                  value={predictions[group.id]?.first || ''}
-                  onChange={(e) => onSelect(group.id, 'first', e.target.value)}
-                  className="app-select"
-                >
-                  <option value="">-- {t('common.select')} --</option>
-                  {group.teams?.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {getLocalizedName(team, language, team.name)}
-                    </option>
-                  ))}
-                </select>
+        {groups.map((group) => {
+          const locked = Boolean(group.predictionLocked);
+          return (
+            <Panel key={group.id} padding="compact" radius="xl" className="app-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-emerald-400">
+                  {group.name}
+                </h3>
+                {locked ? (
+                  <Pill compact className="text-amber-200">
+                    {t('predict.groupLocked')}
+                  </Pill>
+                ) : null}
               </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  {t('predict.selectSecond')}
-                </label>
-                <select
-                  value={predictions[group.id]?.second || ''}
-                  onChange={(e) => onSelect(group.id, 'second', e.target.value)}
-                  className="app-select"
-                >
-                  <option value="">-- {t('common.select')} --</option>
-                  {group.teams?.map((team) => (
-                    <option
-                      key={team.id}
-                      value={team.id}
-                      disabled={predictions[group.id]?.first === team.id}
-                    >
-                      {getLocalizedName(team, language, team.name)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {requiresThirdPlaceSelections ? (
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">
-                    {t('predict.selectThird')}
+                    {t('predict.selectFirst')}
                   </label>
                   <select
-                    value={predictions[group.id]?.third || ''}
-                    onChange={(e) => onSelect(group.id, 'third', e.target.value)}
+                    value={predictions[group.id]?.first || ''}
+                    onChange={(e) => onSelect(group.id, 'first', e.target.value)}
                     className="app-select"
+                    disabled={locked}
+                  >
+                    <option value="">-- {t('common.select')} --</option>
+                    {group.teams?.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {getLocalizedName(team, language, team.name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">
+                    {t('predict.selectSecond')}
+                  </label>
+                  <select
+                    value={predictions[group.id]?.second || ''}
+                    onChange={(e) => onSelect(group.id, 'second', e.target.value)}
+                    className="app-select"
+                    disabled={locked}
                   >
                     <option value="">-- {t('common.select')} --</option>
                     {group.teams?.map((team) => (
                       <option
                         key={team.id}
                         value={team.id}
-                        disabled={
-                          predictions[group.id]?.first === team.id ||
-                          predictions[group.id]?.second === team.id
-                        }
+                        disabled={predictions[group.id]?.first === team.id}
                       >
                         {getLocalizedName(team, language, team.name)}
                       </option>
                     ))}
                   </select>
                 </div>
-              ) : null}
-            </div>
-          </Panel>
-        ))}
+
+                {requiresThirdPlaceSelections ? (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      {t('predict.selectThird')}
+                    </label>
+                    <select
+                      value={predictions[group.id]?.third || ''}
+                      onChange={(e) => onSelect(group.id, 'third', e.target.value)}
+                      className="app-select"
+                      disabled={locked}
+                    >
+                      <option value="">-- {t('common.select')} --</option>
+                      {group.teams?.map((team) => (
+                        <option
+                          key={team.id}
+                          value={team.id}
+                          disabled={
+                            predictions[group.id]?.first === team.id ||
+                            predictions[group.id]?.second === team.id
+                          }
+                        >
+                          {getLocalizedName(team, language, team.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+              </div>
+            </Panel>
+          );
+        })}
       </div>
     </div>
   );
@@ -592,15 +638,23 @@ function RoundStep({
             teamMap,
           });
 
-          const isDisabled = !matchup.home.teamId || !matchup.away.teamId;
+          const locked = Boolean(match.predictionLocked);
+          const isDisabled = locked || !matchup.home.teamId || !matchup.away.teamId;
           const homeBestThirdOptions = getBestThirdOptions(match.homeLabel, groups, groupPredictions, teamMap);
           const awayBestThirdOptions = getBestThirdOptions(match.awayLabel, groups, groupPredictions, teamMap);
 
           return (
             <Panel key={match.id} padding="compact" radius="xl" className="app-card">
-              <p className="text-sm text-gray-400 mb-4 font-semibold">
-                {match.code}: {match.homeLabel} vs {match.awayLabel}
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-gray-400 font-semibold">
+                  {match.code}: {match.homeLabel} vs {match.awayLabel}
+                </p>
+                {locked ? (
+                  <Pill compact className="text-amber-200">
+                    {t('predict.kickoffStarted')}
+                  </Pill>
+                ) : null}
+              </div>
 
               <div className="space-y-3">
                 <button
@@ -622,6 +676,7 @@ function RoundStep({
                     value={prediction.selectedHomeTeamId || ''}
                     onChange={(event) => onSelectSlot(match.id, 'home', event.target.value)}
                     className="app-select"
+                    disabled={locked}
                   >
                     <option value="">-- {t('predict.selectBestThirdTeam')} --</option>
                     {homeBestThirdOptions.map((team) => (
@@ -662,6 +717,7 @@ function RoundStep({
                     value={prediction.selectedAwayTeamId || ''}
                     onChange={(event) => onSelectSlot(match.id, 'away', event.target.value)}
                     className="app-select"
+                    disabled={locked}
                   >
                     <option value="">-- {t('predict.selectBestThirdTeam')} --</option>
                     {awayBestThirdOptions.map((team) => (

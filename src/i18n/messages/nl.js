@@ -288,6 +288,8 @@ export const NL = {
     complete: 'Voltooien',
     incompleteGroups: 'Vul alle vereiste groepsplaatsingen in',
     incompleteRounds: 'Selecteer winnaars voor alle wedstrijden',
+    kickoffStarted: 'Wedstrijd begonnen — voorspelling vergrendeld',
+    groupLocked: 'Groep vergrendeld — eerste wedstrijd is begonnen',
     duplicateGroupTeams: 'Elke groepsplaatsing moet verschillende teams gebruiken',
     groupA: 'Groep A',
     groupB: 'Groep B',

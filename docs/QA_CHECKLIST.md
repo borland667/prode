@@ -164,6 +164,8 @@ Expected:
 
 ## 11. Prediction Locking
 
+### 11.1 Tournament-Wide Hard Cap
+
 1. As `Admin`, set the tournament closing date to the past.
 2. Reload as a normal user.
 3. Try to enter or save predictions.
@@ -174,6 +176,28 @@ Expected:
 - prediction window shows locked/closed state
 - saves are rejected
 - new joins are blocked once the tournament is closed
+
+### 11.2 Per-Match And Per-Group Locking
+
+1. As `Admin`, leave the closing date in the future so the tournament is not
+   hard-closed.
+2. Set the `matchDate` on one knockout match to a timestamp in the past
+   (database edit or via the importer).
+3. Set the `matchDate` on one group-stage match to a timestamp in the past.
+4. Reload the prediction wizard as a normal user.
+5. Submit the wizard with deliberately changed picks for the locked match
+   and the locked group, plus changes to still-open matches and groups.
+
+Expected:
+
+- locked knockout match renders read-only with a "kickoff started" pill
+- locked group's 1°/2°/3° selectors are disabled with a "group locked" pill
+- the random-fill button does not overwrite locked tiles in the UI
+- after submit, the locked match's predicted winner is unchanged in the DB
+- the locked group's 1°/2°/3° rows are unchanged in the DB
+- unlocked matches and groups reflect the new picks
+- progression validation still runs against the merged set (locked
+  upstream + new downstream picks)
 
 ## 12. Scoped Predictions And Primary Entry
 

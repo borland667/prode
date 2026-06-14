@@ -286,6 +286,8 @@ export const ES = {
     complete: 'Completar',
     incompleteGroups: 'Completa todas las posiciones requeridas de cada grupo',
     incompleteRounds: 'Selecciona ganadores para todos los enfrentamientos',
+    kickoffStarted: 'Empezó el partido — pronóstico bloqueado',
+    groupLocked: 'Grupo bloqueado — ya arrancó el primer partido',
     duplicateGroupTeams: 'Cada posicion del grupo debe tener un equipo distinto',
     groupA: 'Grupo A',
     groupB: 'Grupo B',

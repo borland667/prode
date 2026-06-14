@@ -16,6 +16,7 @@ const {
   sendPasswordResetEmail,
 } = require('./email.cjs');
 const { importFootballDataResults } = require('./results-importer.cjs');
+const { buildLockState } = require('./locking.cjs');
 const {
   getModeNameEs,
   getRoundNameEs,
@@ -453,7 +454,7 @@ function serializeMode(tournament) {
   };
 }
 
-function serializeGroups(groups, groupResults = []) {
+function serializeGroups(groups, groupResults = [], lockedGroupIds = new Set()) {
   const resultsByGroupId = new Map(groupResults.map((result) => [result.groupId, result]));
 
   return sortGroups(groups).map((group) => ({
@@ -461,10 +462,11 @@ function serializeGroups(groups, groupResults = []) {
     name: group.name,
     teams: [...(group.teams || [])].sort((a, b) => a.name.localeCompare(b.name)),
     result: resultsByGroupId.get(group.id) || null,
+    predictionLocked: lockedGroupIds.has(group.id),
   }));
 }
 
-function serializeRounds(rounds) {
+function serializeRounds(rounds, lockedMatchIds = new Set()) {
   return sortRounds(rounds).map((round) => ({
     id: round.id,
     name: round.name,
@@ -484,6 +486,7 @@ function serializeRounds(rounds) {
       winner: match.winner,
       status: match.status,
       matchDate: match.matchDate,
+      predictionLocked: lockedMatchIds.has(match.id),
     })),
   }));
 }
@@ -854,8 +857,12 @@ function buildTournamentAccess(tournament, viewer) {
 }
 
 function serializeTournament(tournament, counts, viewer) {
-  const groups = serializeGroups(tournament.groups, tournament.groupResults);
-  const rounds = serializeRounds(tournament.rounds);
+  const lockState = buildLockState({
+    rounds: tournament.rounds,
+    groups: tournament.groups,
+  });
+  const groups = serializeGroups(tournament.groups, tournament.groupResults, lockState.lockedGroupIds);
+  const rounds = serializeRounds(tournament.rounds, lockState.lockedMatchIds);
   const mode = serializeMode(tournament);
   const access = buildTournamentAccess(tournament, viewer);
   const lifecycle = getTournamentLifecycle(tournament);
@@ -1649,7 +1656,7 @@ async function savePredictionsForScope({
   groupPredictions: rawGroupPredictions,
   knockoutPredictions: rawKnockoutPredictions,
 }) {
-  const [groups, rounds] = await Promise.all([
+  const [groups, rounds, existingGroupRows, existingKnockoutRows] = await Promise.all([
     prisma.group.findMany({
       where: { tournamentId },
       include: { teams: true },
@@ -1658,16 +1665,61 @@ async function savePredictionsForScope({
       where: { tournamentId },
       include: { matches: true },
     }),
+    prisma.groupPrediction.findMany({
+      where: { userId, tournamentId, scopeKey },
+    }),
+    prisma.knockoutPrediction.findMany({
+      where: { userId, tournamentId, scopeKey },
+    }),
   ]);
-  const requiresThirdPlaceSelections = hasBestThirdPlaceSlots(rounds);
-  const groupPredictions = parseGroupPredictionEntries(rawGroupPredictions);
-  const knockoutPredictions = parseKnockoutPredictionEntries(rawKnockoutPredictions);
 
-  if (!validateUniqueBestThirdSelections(knockoutPredictions)) {
+  const lockState = buildLockState({ rounds, groups });
+  const requiresThirdPlaceSelections = hasBestThirdPlaceSlots(rounds);
+
+  // The payload may still contain locked entries (e.g. a stale client tab).
+  // Drop them silently so already-kicked-off picks are never re-written.
+  const editableGroupPredictions = parseGroupPredictionEntries(rawGroupPredictions).filter(
+    (prediction) => !lockState.lockedGroupIds.has(prediction.groupId)
+  );
+  const editableKnockoutPredictions = parseKnockoutPredictionEntries(rawKnockoutPredictions).filter(
+    (prediction) => !lockState.lockedMatchIds.has(prediction.matchId)
+  );
+
+  // Existing locked rows are preserved verbatim and used as the immutable
+  // foundation for downstream progression validation.
+  const lockedGroupRows = existingGroupRows.filter((row) =>
+    lockState.lockedGroupIds.has(row.groupId)
+  );
+  const lockedKnockoutRows = existingKnockoutRows.filter((row) =>
+    lockState.lockedMatchIds.has(row.matchId)
+  );
+
+  const mergedGroupPredictions = [
+    ...lockedGroupRows.map((row) => ({
+      groupId: row.groupId,
+      first: row.first,
+      second: row.second,
+      third: row.third,
+    })),
+    ...editableGroupPredictions,
+  ];
+  const mergedKnockoutPredictions = [
+    ...lockedKnockoutRows.map((row) => ({
+      matchId: row.matchId,
+      predictedWinner: row.predictedWinner,
+      selectedHomeTeamId: row.selectedHomeTeamId,
+      selectedAwayTeamId: row.selectedAwayTeamId,
+    })),
+    ...editableKnockoutPredictions,
+  ];
+
+  if (!validateUniqueBestThirdSelections(mergedKnockoutPredictions)) {
     throw createHttpError(400, 'Each third-place team can only be used once in the Round of 32');
   }
 
-  for (const prediction of groupPredictions) {
+  // Structural validation only applies to entries the user actually submitted.
+  // Locked rows were valid when they were saved; we never second-guess them.
+  for (const prediction of editableGroupPredictions) {
     if (!prediction.groupId || !prediction.first || !prediction.second) {
       throw createHttpError(400, 'Incomplete group prediction payload');
     }
@@ -1682,7 +1734,7 @@ async function savePredictionsForScope({
     }
   }
 
-  for (const prediction of knockoutPredictions) {
+  for (const prediction of editableKnockoutPredictions) {
     if (!prediction.matchId || !prediction.predictedWinner) {
       throw createHttpError(400, 'Incomplete knockout prediction payload');
     }
@@ -1691,31 +1743,58 @@ async function savePredictionsForScope({
   validateKnockoutPredictionProgression({
     groups,
     rounds,
-    groupPredictions,
-    knockoutPredictions,
+    groupPredictions: mergedGroupPredictions,
+    knockoutPredictions: mergedKnockoutPredictions,
   });
 
-  const operations = [
-    prisma.groupPrediction.deleteMany({
-      where: {
-        userId,
-        tournamentId,
-        scopeKey,
-      },
-    }),
-    prisma.knockoutPrediction.deleteMany({
-      where: {
-        userId,
-        tournamentId,
-        scopeKey,
-      },
-    }),
-  ];
+  // Partial writes: keep locked rows in place, churn only the unlocked ones
+  // (both existing rows the user is replacing/clearing and any new picks).
+  const editableGroupIdsTouched = new Set([
+    ...existingGroupRows
+      .filter((row) => !lockState.lockedGroupIds.has(row.groupId))
+      .map((row) => row.groupId),
+    ...editableGroupPredictions.map((prediction) => prediction.groupId),
+  ]);
 
-  if (groupPredictions.length) {
+  const editableMatchIdsTouched = new Set([
+    ...existingKnockoutRows
+      .filter((row) => !lockState.lockedMatchIds.has(row.matchId))
+      .map((row) => row.matchId),
+    ...editableKnockoutPredictions.map((prediction) => prediction.matchId),
+  ]);
+
+  const operations = [];
+
+  if (editableGroupIdsTouched.size > 0) {
+    operations.push(
+      prisma.groupPrediction.deleteMany({
+        where: {
+          userId,
+          tournamentId,
+          scopeKey,
+          groupId: { in: Array.from(editableGroupIdsTouched) },
+        },
+      })
+    );
+  }
+
+  if (editableMatchIdsTouched.size > 0) {
+    operations.push(
+      prisma.knockoutPrediction.deleteMany({
+        where: {
+          userId,
+          tournamentId,
+          scopeKey,
+          matchId: { in: Array.from(editableMatchIdsTouched) },
+        },
+      })
+    );
+  }
+
+  if (editableGroupPredictions.length) {
     operations.push(
       prisma.groupPrediction.createMany({
-        data: groupPredictions.map((prediction) => ({
+        data: editableGroupPredictions.map((prediction) => ({
           userId,
           tournamentId,
           groupId: prediction.groupId,
@@ -1728,10 +1807,10 @@ async function savePredictionsForScope({
     );
   }
 
-  if (knockoutPredictions.length) {
+  if (editableKnockoutPredictions.length) {
     operations.push(
       prisma.knockoutPrediction.createMany({
-        data: knockoutPredictions.map((prediction) => ({
+        data: editableKnockoutPredictions.map((prediction) => ({
           userId,
           tournamentId,
           matchId: prediction.matchId,
@@ -1744,7 +1823,9 @@ async function savePredictionsForScope({
     );
   }
 
-  await prisma.$transaction(operations);
+  if (operations.length > 0) {
+    await prisma.$transaction(operations);
+  }
 }
 
 async function clearPredictionsForScope({ userId, tournamentId, scopeKey = TOURNAMENT_SCOPE_KEY }) {
